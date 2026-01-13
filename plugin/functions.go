@@ -63,6 +63,11 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 func (gr *Generator) getMessages(messages []*protogen.Message, visited map[string]bool) []*protogen.Message {
 	var results []*protogen.Message
 	for _, message := range messages {
+		// Skip Map Entries (they are internal artifacts for map<k,v> fields)
+		if message.Desc.IsMapEntry() {
+			continue
+		}
+
 		messageName := string(message.Desc.FullName())
 		if visited[messageName] {
 			continue
@@ -102,13 +107,16 @@ type schemaFieldConfig struct {
 }
 
 func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig) {
-	// Optimization: Direct function reference assignment
+	// Optimization: If this is a direct reference to another message (e.g. "User_WithDefs(defs)"),
+	// assign it directly to the property map.
 	if cfg.messageRef != "" && cfg.typeName == "" && cfg.nested == nil {
 		sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = %s`, cfg.fieldName, cfg.messageRef))
 		return
 	}
 
+	// Begin Object Definition
 	sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = &jsonschema.Schema{`, cfg.fieldName))
+
 	if cfg.typeName != "" {
 		sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.typeName))
 	}
@@ -118,25 +126,29 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig) {
 	if cfg.pattern != "" {
 		sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(cfg.pattern)))
 	}
+
 	sg.gen.P(fmt.Sprintf(`Title: "%s",`, sg.gr.escapeGoString(cfg.title)))
 	sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(cfg.description)))
 
+	// Map Key Validation (propertyNames)
 	if cfg.propertyNamesPattern != "" {
 		sg.gen.P(`PropertyNames: &jsonschema.Schema{`)
 		sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(cfg.propertyNamesPattern)))
 		sg.gen.P(`},`)
 	}
 
-	// Handle nested schemas (Arrays and Maps)
+	// Nested Schemas (Arrays "Items" or Maps "AdditionalProperties")
 	if cfg.nested != nil {
 		targetField := "Items" // Default for Array
 		if cfg.typeName == jsObject {
 			targetField = "AdditionalProperties"
 		}
 
+		// Case A: Nested item is a Message Reference (needs recursion handling)
 		if cfg.nested.messageRef != "" {
 			sg.gen.P(fmt.Sprintf(`%s: %s,`, targetField, cfg.nested.messageRef))
 		} else {
+			// Case B: Nested item is a Scalar/WKT (inline definition)
 			sg.gen.P(fmt.Sprintf(`%s: &jsonschema.Schema{`, targetField))
 			if cfg.nested.typeName != "" {
 				sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.nested.typeName))
@@ -147,17 +159,18 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig) {
 			if cfg.nested.format != "" {
 				sg.gen.P(fmt.Sprintf(`Format: "%s",`, sg.gr.escapeGoString(cfg.nested.format)))
 			}
+
 			sg.emitEnumAndBytesFields(cfg.nested)
 			sg.gen.P(`},`)
 		}
 	}
 
-	// Handle scalar enum and bytes at root level
+	// Enums and ContentEncoding for the root field
 	if cfg.typeName != jsArray && cfg.typeName != jsObject {
 		sg.emitEnumAndBytesFields(&cfg)
-		sg.gen.P(`Required: []string{},`)
 	}
 
+	// Close Object Definition
 	sg.gen.P("}")
 }
 
@@ -391,29 +404,46 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	}
 	sg.visited[messageName] = true
 
-	// 1. Calculate Required Fields
-	// In Proto3, fields are required by default unless marked 'optional' or part of a 'oneof'.
-	var requiredFields []string
-	for _, field := range message.Fields {
-		// Skip fields that are part of a OneOf (handled by schema.OneOf logic)
-		if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
-			continue
-		}
-
-		// Skip fields explicitly marked as optional
-		if field.Desc.HasOptionalKeyword() {
-			continue
-		}
-
-		// Use JSONName (camelCase)
-		requiredFields = append(requiredFields, field.Desc.JSONName())
-	}
-
+	goName := message.GoIdent.GoName
 	title, description := sg.gr.getTitleAndDescription(message.Desc)
 
-	sg.gen.P(fmt.Sprintf("// %s_JsonSchema is the JSON schema for the %s message", message.GoIdent.GoName, message.Desc.Name()))
-	sg.gen.P(fmt.Sprintf("func %s_JsonSchema() *jsonschema.Schema {", message.GoIdent.GoName))
-	sg.gen.P("// Initialize the schema")
+	// ==========================================
+	// 1. PUBLIC ENTRY POINT
+	// ==========================================
+	sg.gen.P(fmt.Sprintf("// %s_JsonSchema returns the JSON schema for the %s message.", goName, message.Desc.Name()))
+	sg.gen.P("// This is the primary entry point for schema generation. It returns a self-contained")
+	sg.gen.P("// schema with all transitive dependencies registered in the Definitions map.")
+	sg.gen.P("//")
+	sg.gen.P("// Use this function when registering the schema with an MCP tool or other JSON validator.")
+	sg.gen.P(fmt.Sprintf("func %s_JsonSchema() *jsonschema.Schema {", goName))
+	sg.gen.P("defs := make(map[string]*jsonschema.Schema)")
+	// Call internal builder
+	sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", goName))
+	// Return the definition from the map, ensuring it has the map attached
+	sg.gen.P(fmt.Sprintf("root := defs[\"%s\"]", message.Desc.FullName()))
+	sg.gen.P("root.Definitions = defs")
+	sg.gen.P("return root")
+	sg.gen.P("}")
+	sg.gen.P()
+
+	// ==========================================
+	// 2. INTERNAL BUILDER (WithDefs)
+	// ==========================================
+	sg.gen.P(fmt.Sprintf("// %s_JsonSchema_WithDefs is an internal helper that generates the schema and registers it in the definitions map.", goName))
+	sg.gen.P("//")
+	sg.gen.P("// WARNING: DO NOT call this function directly. It is intended for internal use by")
+	sg.gen.P(fmt.Sprintf("// %s_JsonSchema to handle recursion and cross-file references.", goName))
+	sg.gen.P(fmt.Sprintf("func %s_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {", goName))
+
+	// Check for recursion / existing definition
+	// We use the full proto name as the key in $defs to avoid collisions
+	defKey := string(message.Desc.FullName())
+	sg.gen.P(fmt.Sprintf("if _, ok := defs[\"%s\"]; ok {", defKey))
+	sg.gen.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
+	sg.gen.P("}")
+	sg.gen.P()
+
+	// Pre-declare the schema to handle cycles (add to map BEFORE processing fields)
 	sg.gen.P("schema := &jsonschema.Schema{")
 	sg.gen.P(`Type: "object",`)
 	if title != "" {
@@ -423,21 +453,29 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(description)))
 	}
 	sg.gen.P(`Properties: make(map[string]*jsonschema.Schema),`)
-	// 2. Emit Required Fields
+
+	// Required Fields Logic
+	var requiredFields []string
+	for _, field := range message.Fields {
+		if field.Oneof == nil && !field.Desc.HasOptionalKeyword() {
+			requiredFields = append(requiredFields, field.Desc.JSONName())
+		}
+	}
 	if len(requiredFields) > 0 {
 		sg.gen.P(`Required: []string{`)
-		for _, reqField := range requiredFields {
-			sg.gen.P(fmt.Sprintf(`"%s",`, reqField))
+		for _, f := range requiredFields {
+			sg.gen.P(fmt.Sprintf(`"%s",`, f))
 		}
 		sg.gen.P(`},`)
-	} else {
-		sg.gen.P(`Required: []string{},`)
 	}
 	sg.gen.P("}")
 	sg.gen.P()
 
-	oneofGroups := make(map[string][]string)
+	// REGISTER IN MAP NOW (Crucial for recursion)
+	sg.gen.P(fmt.Sprintf("defs[\"%s\"] = schema", defKey))
+	sg.gen.P()
 
+	oneofGroups := make(map[string][]string)
 	for _, field := range message.Fields {
 		if oneof := field.Oneof; oneof != nil && !oneof.Desc.IsSynthetic() {
 			groupName := string(oneof.Desc.Name())
@@ -479,14 +517,14 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		}
 	}
 
-	sg.gen.P("return schema")
+	sg.gen.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
 	sg.gen.P("}")
+
 	return nil
 }
 
 func (sg *MessageSchemaGenerator) generateFieldJSONSchema(field *protogen.Field) error {
 	title, description := sg.gr.getTitleAndDescription(field.Desc)
-	sg.gen.P("// Add the field to the schema")
 
 	if field.Desc.IsList() {
 		return sg.emitArraySchema(field, title, description)
@@ -523,7 +561,18 @@ func (sg *MessageSchemaGenerator) getKindTypeName(desc protoreflect.FieldDescrip
 }
 
 func (sg *MessageSchemaGenerator) referenceName(msg *protogen.Message) string {
-	return sg.gen.QualifiedGoIdent(msg.GoIdent) + "_JsonSchema()"
+	funcName := msg.GoIdent.GoName + "_JsonSchema_WithDefs"
+
+	// Create the identifier
+	ident := protogen.GoIdent{
+		GoName:       funcName,
+		GoImportPath: msg.GoIdent.GoImportPath,
+	}
+
+	// CRITICAL: Calling QualifiedGoIdent records the import usage in the plugin
+	qualifier := sg.gen.QualifiedGoIdent(ident)
+
+	return qualifier + "(defs)"
 }
 
 // getEnumValues extracts enum value names.
