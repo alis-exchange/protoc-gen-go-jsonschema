@@ -20,14 +20,6 @@ const (
 	jsNumber  = "number"
 	jsObject  = "object"
 	jsString  = "string"
-
-	defsPrefix = "#/$defs/"
-
-	// Any integers greater or less than these extrema cannot be safely represented
-	// according to RFC8259.
-	jsMaxInt  = 1<<53 - 1
-	jsMinInt  = -jsMaxInt
-	jsMaxUint = uint64(jsMaxInt)
 )
 
 type Generator struct{}
@@ -42,23 +34,16 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 	g.P(fmt.Sprintf("// Generated on: %s UTC", time.Now().UTC().Format("2006-01-02 15:04:05")))
 
 	g.P()
-
-	// Add package name
 	g.P(fmt.Sprintf("package %s", file.GoPackageName))
 
-	// Only add imports if there are messages in the file
 	if len(file.Messages) > 0 {
-		// Add imports
 		g.P("import (")
 		g.P("\"github.com/google/jsonschema-go/jsonschema\"")
 		g.P(")")
 		g.P()
 	}
 
-	// Get all messages
 	messages := gr.getMessages(file.Messages, make(map[string]bool))
-
-	// Generate JSON schemas for messages
 
 	for _, msg := range messages {
 		sg := &MessageSchemaGenerator{
@@ -77,17 +62,11 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 
 func (gr *Generator) getMessages(messages []*protogen.Message, visited map[string]bool) []*protogen.Message {
 	var results []*protogen.Message
-
 	for _, message := range messages {
-		// Get the fully qualified name of the message
 		messageName := string(message.Desc.FullName())
-
-		// Check if we've already processed this message type
 		if visited[messageName] {
 			continue
 		}
-
-		// Mark the message as visited
 		visited[messageName] = true
 
 		for _, field := range message.Fields {
@@ -96,10 +75,8 @@ func (gr *Generator) getMessages(messages []*protogen.Message, visited map[strin
 				results = append(results, nestedMessages...)
 			}
 		}
-
 		results = append(results, message)
 	}
-
 	return results
 }
 
@@ -116,17 +93,16 @@ type schemaFieldConfig struct {
 	description          string   // Schema description
 	typeName             string   // JSON Schema type ("array", "object", "string", etc.)
 	format               string   // JSON Schema format ("date-time", "email", etc.)
+	pattern              string   // Regex pattern for value validation
 	propertyNamesPattern string   // Regex pattern for validating property names (map keys)
 	enumValues           []string // Enum values (if any)
 	isBytes              bool     // Whether this is a bytes field (adds ContentEncoding/Format)
 	messageRef           string   // Message schema function reference (e.g., "Foo_JsonSchema()")
-	// For nested schemas (Items for arrays, AdditionalProperties for maps)
-	nested *schemaFieldConfig
+	nested               *schemaFieldConfig
 }
 
-// emitSchemaField generates Go code for a JSON schema property.
 func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig) {
-	// Handle message reference (direct assignment without inline schema)
+	// Optimization: Direct function reference assignment
 	if cfg.messageRef != "" && cfg.typeName == "" && cfg.nested == nil {
 		sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = %s`, cfg.fieldName, cfg.messageRef))
 		return
@@ -137,36 +113,40 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig) {
 		sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.typeName))
 	}
 	if cfg.format != "" {
-		sg.gen.P(fmt.Sprintf(`Format: "%s",`, cfg.format))
+		sg.gen.P(fmt.Sprintf(`Format: "%s",`, sg.gr.escapeGoString(cfg.format)))
+	}
+	if cfg.pattern != "" {
+		sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(cfg.pattern)))
 	}
 	sg.gen.P(fmt.Sprintf(`Title: "%s",`, sg.gr.escapeGoString(cfg.title)))
 	sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(cfg.description)))
 
 	if cfg.propertyNamesPattern != "" {
 		sg.gen.P(`PropertyNames: &jsonschema.Schema{`)
-		sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, cfg.propertyNamesPattern))
+		sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(cfg.propertyNamesPattern)))
 		sg.gen.P(`},`)
 	}
 
-	// Handle array items
-	if cfg.typeName == jsArray && cfg.nested != nil {
-		if cfg.nested.messageRef != "" {
-			sg.gen.P(fmt.Sprintf(`Items: %s,`, cfg.nested.messageRef))
-		} else {
-			sg.gen.P(`Items: &jsonschema.Schema{`)
-			sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.nested.typeName))
-			sg.emitEnumAndBytesFields(cfg.nested)
-			sg.gen.P(`},`)
+	// Handle nested schemas (Arrays and Maps)
+	if cfg.nested != nil {
+		targetField := "Items" // Default for Array
+		if cfg.typeName == jsObject {
+			targetField = "AdditionalProperties"
 		}
-	}
 
-	// Handle map additionalProperties
-	if cfg.typeName == jsObject && cfg.nested != nil {
 		if cfg.nested.messageRef != "" {
-			sg.gen.P(fmt.Sprintf(`AdditionalProperties: %s,`, cfg.nested.messageRef))
+			sg.gen.P(fmt.Sprintf(`%s: %s,`, targetField, cfg.nested.messageRef))
 		} else {
-			sg.gen.P(`AdditionalProperties: &jsonschema.Schema{`)
-			sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.nested.typeName))
+			sg.gen.P(fmt.Sprintf(`%s: &jsonschema.Schema{`, targetField))
+			if cfg.nested.typeName != "" {
+				sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.nested.typeName))
+			}
+			if cfg.nested.pattern != "" {
+				sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(cfg.nested.pattern)))
+			}
+			if cfg.nested.format != "" {
+				sg.gen.P(fmt.Sprintf(`Format: "%s",`, sg.gr.escapeGoString(cfg.nested.format)))
+			}
 			sg.emitEnumAndBytesFields(cfg.nested)
 			sg.gen.P(`},`)
 		}
@@ -181,7 +161,6 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig) {
 	sg.gen.P("}")
 }
 
-// emitEnumAndBytesFields outputs enum values and/or bytes encoding fields.
 func (sg *MessageSchemaGenerator) emitEnumAndBytesFields(cfg *schemaFieldConfig) {
 	if len(cfg.enumValues) > 0 {
 		sg.gen.P(`Enum: []any{`)
@@ -192,11 +171,11 @@ func (sg *MessageSchemaGenerator) emitEnumAndBytesFields(cfg *schemaFieldConfig)
 	}
 	if cfg.isBytes {
 		sg.gen.P(`ContentEncoding: "base64",`)
-		sg.gen.P(`Format: "byte",`)
+		// Format: byte is optional/OpenAPI specific, generally good to include
+		// sg.gen.P(`Format: "byte",`)
 	}
 }
 
-// emitArraySchema generates a JSON schema for a repeated (array) field.
 func (sg *MessageSchemaGenerator) emitArraySchema(field *protogen.Field, title, description string) error {
 	kindTypeName, err := sg.getKindTypeName(field.Desc)
 	if err != nil {
@@ -224,6 +203,11 @@ func (sg *MessageSchemaGenerator) emitArraySchema(field *protogen.Field, title, 
 			typeName: kindTypeName,
 			isBytes:  true,
 		}
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		cfg.nested = &schemaFieldConfig{
+			typeName: jsString,
+			pattern:  "^-?[0-9]+$",
+		}
 	default:
 		cfg.nested = &schemaFieldConfig{
 			typeName: kindTypeName,
@@ -234,7 +218,6 @@ func (sg *MessageSchemaGenerator) emitArraySchema(field *protogen.Field, title, 
 	return nil
 }
 
-// emitMapSchema generates a JSON schema for a map field.
 func (sg *MessageSchemaGenerator) emitMapSchema(field *protogen.Field, title, description string) error {
 	cfg := schemaFieldConfig{
 		fieldName:   field.Desc.JSONName(),
@@ -243,12 +226,10 @@ func (sg *MessageSchemaGenerator) emitMapSchema(field *protogen.Field, title, de
 		typeName:    jsObject,
 	}
 
-	// Maps in protobuf are represented as MessageKind with a special map entry type
-	// We need to look at the map value type to determine the schema
 	mapValue := field.Desc.MapValue()
 	mapKey := field.Desc.MapKey()
 
-	// Validate map keys (which are always strings in JSON)
+	// 1. Map Keys (JSON keys are always strings, check for numeric types)
 	switch mapKey.Kind() {
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
 		protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind,
@@ -264,8 +245,10 @@ func (sg *MessageSchemaGenerator) emitMapSchema(field *protogen.Field, title, de
 		return err
 	}
 
+	// 2. Map Values
 	switch mapValue.Kind() {
 	case protoreflect.MessageKind:
+		// Find the actual message type of the map value
 		var valMsg *protogen.Message
 		for _, f := range field.Message.Fields {
 			if f.Desc.Number() == 2 {
@@ -278,6 +261,7 @@ func (sg *MessageSchemaGenerator) emitMapSchema(field *protogen.Field, title, de
 		}
 		nestedCfg := sg.getMessageSchemaConfig(valMsg)
 		cfg.nested = &nestedCfg
+
 	case protoreflect.EnumKind:
 		cfg.nested = &schemaFieldConfig{
 			typeName:   kindTypeName,
@@ -287,6 +271,11 @@ func (sg *MessageSchemaGenerator) emitMapSchema(field *protogen.Field, title, de
 		cfg.nested = &schemaFieldConfig{
 			typeName: kindTypeName,
 			isBytes:  true,
+		}
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		cfg.nested = &schemaFieldConfig{
+			typeName: jsString,
+			pattern:  "^-?[0-9]+$",
 		}
 	default:
 		cfg.nested = &schemaFieldConfig{
@@ -298,80 +287,82 @@ func (sg *MessageSchemaGenerator) emitMapSchema(field *protogen.Field, title, de
 	return nil
 }
 
-// getMessageSchemaConfig returns the schema configuration for a message field,
-// handling Well-Known Types (WKTs) or returning a reference.
 func (sg *MessageSchemaGenerator) getMessageSchemaConfig(msg *protogen.Message) schemaFieldConfig {
 	fullName := string(msg.Desc.FullName())
 	switch fullName {
 	case "google.protobuf.Timestamp":
 		return schemaFieldConfig{typeName: jsString, format: "date-time", description: "RFC 3339 timestamp"}
 	case "google.protobuf.Duration":
-		return schemaFieldConfig{typeName: jsString, description: "Duration string (e.g. '1.5s')"}
+		return schemaFieldConfig{typeName: jsString, pattern: `^([0-9]+\.?[0-9]*|\.[0-9]+)s$`, description: "Duration string (e.g. '1.5s')"}
 	case "google.protobuf.Struct":
 		return schemaFieldConfig{typeName: jsObject, description: "Arbitrary JSON object"}
 	case "google.protobuf.Value":
 		return schemaFieldConfig{description: "Any JSON value"}
+	case "google.protobuf.ListValue":
+		return schemaFieldConfig{
+			typeName:    jsArray,
+			description: "Repeated JSON values",
+		}
 	case "google.protobuf.Any":
-		return schemaFieldConfig{typeName: jsObject, description: "Any protobuf message"}
+		return schemaFieldConfig{typeName: jsObject, description: "Any protobuf message (must include @type)"}
+	case "google.protobuf.FieldMask":
+		return schemaFieldConfig{typeName: jsString, description: "Field mask paths (comma separated)"}
+	case "google.protobuf.Empty":
+		return schemaFieldConfig{typeName: jsObject, description: "Empty object"}
+	case "google.protobuf.BoolValue":
+		return schemaFieldConfig{typeName: jsBoolean}
+	case "google.protobuf.StringValue":
+		return schemaFieldConfig{typeName: jsString}
+	case "google.protobuf.Int32Value", "google.protobuf.UInt32Value":
+		return schemaFieldConfig{typeName: jsInteger}
+	case "google.protobuf.Int64Value", "google.protobuf.UInt64Value":
+		return schemaFieldConfig{typeName: jsString, pattern: "^-?[0-9]+$"}
 	}
 	return schemaFieldConfig{messageRef: sg.referenceName(msg)}
 }
 
-// emitScalarSchema generates a JSON schema for a scalar (non-array, non-map) field.
 func (sg *MessageSchemaGenerator) emitScalarSchema(field *protogen.Field, title, description string) error {
 	kindTypeName, err := sg.getKindTypeName(field.Desc)
 	if err != nil {
 		return err
 	}
 
+	cfg := schemaFieldConfig{
+		fieldName:   field.Desc.JSONName(),
+		title:       title,
+		description: description,
+		typeName:    kindTypeName,
+	}
+
 	switch field.Desc.Kind() {
 	case protoreflect.MessageKind:
 		// Handle WKTs or get reference
-		cfg := sg.getMessageSchemaConfig(field.Message)
-		// Merge with field info
-		cfg.fieldName = field.Desc.JSONName()
-		// Only overwrite title/desc if not provided by WKT (or always overwrite?)
-		// Usually field doc is more relevant than type doc.
-		cfg.title = title
-		if description != "" {
-			cfg.description = description
+		nestedCfg := sg.getMessageSchemaConfig(field.Message)
+		// Merge WKT config onto main config
+		cfg.typeName = nestedCfg.typeName
+		cfg.format = nestedCfg.format
+		cfg.pattern = nestedCfg.pattern
+		cfg.messageRef = nestedCfg.messageRef
+		cfg.nested = nestedCfg.nested
+
+		// Prefer the WKT description if the field doc is empty, otherwise prefer field doc
+		if cfg.description == "" && nestedCfg.description != "" {
+			cfg.description = nestedCfg.description
 		}
-		sg.emitSchemaField(cfg)
 	case protoreflect.EnumKind:
-		sg.emitSchemaField(schemaFieldConfig{
-			fieldName:   field.Desc.JSONName(),
-			title:       title,
-			description: description,
-			typeName:    kindTypeName,
-			enumValues:  sg.getEnumValues(field),
-		})
+		cfg.enumValues = sg.getEnumValues(field)
 	case protoreflect.BytesKind:
-		sg.emitSchemaField(schemaFieldConfig{
-			fieldName:   field.Desc.JSONName(),
-			title:       title,
-			description: description,
-			typeName:    kindTypeName,
-			isBytes:     true,
-		})
-	default:
-		sg.emitSchemaField(schemaFieldConfig{
-			fieldName:   field.Desc.JSONName(),
-			title:       title,
-			description: description,
-			typeName:    kindTypeName,
-		})
+		cfg.isBytes = true
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		cfg.pattern = "^-?[0-9]+$"
 	}
 
+	sg.emitSchemaField(cfg)
 	return nil
 }
 
-// escapeGoString escapes a string for use in a Go string literal.
-// It handles newlines, tabs, quotes, and backslashes.
 func (gr *Generator) escapeGoString(s string) string {
-	// Use strconv.Quote which properly escapes all special characters,
-	// then remove the surrounding quotes since we're embedding it in our own string literal
 	quoted := strconv.Quote(s)
-	// Remove the surrounding quotes
 	return quoted[1 : len(quoted)-1]
 }
 
@@ -379,44 +370,44 @@ func (gr *Generator) getTitleAndDescription(desc protoreflect.Descriptor) (title
 	src := desc.ParentFile().SourceLocations().ByDescriptor(desc)
 	if src.LeadingComments != "" {
 		comments := strings.TrimSpace(src.LeadingComments)
-		// JSON schema has two fields for 'comments': title and description
-		// To support this, split the comments into to sections.
-		// Sections are separated by two newlines.
-		// The first 'section' is the title, the rest are the description.
 		parts := strings.SplitN(comments, "\n\n", 2)
 		if len(parts) < 2 {
-			// Check for Windows line endings.
 			parts = strings.SplitN(comments, "\r\n\r\n", 2)
 		}
 		if len(parts) == 2 {
-			// Found at least two sections.
-			// The first section is the title.
 			title = strings.TrimSpace(parts[0])
-			// The rest are the description.
 			description = strings.TrimSpace(parts[1])
 		} else {
-			// Only one section.
-			// Use the whole comment as the description.
 			description = comments
-			// Leave the title as the default (empty for fields, the message name for messages).
 		}
 	}
-
 	return title, description
 }
 
-// generateMessageJSONSchema generates a JSON schema for a message
 func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Message) error {
-	// Get the fully qualified name of the message
 	messageName := string(message.Desc.FullName())
-
-	// Check if we've already processed this message type
 	if sg.visited[messageName] {
 		return nil
 	}
-
-	// Mark the message as visited
 	sg.visited[messageName] = true
+
+	// 1. Calculate Required Fields
+	// In Proto3, fields are required by default unless marked 'optional' or part of a 'oneof'.
+	var requiredFields []string
+	for _, field := range message.Fields {
+		// Skip fields that are part of a OneOf (handled by schema.OneOf logic)
+		if field.Oneof != nil && !field.Oneof.Desc.IsSynthetic() {
+			continue
+		}
+
+		// Skip fields explicitly marked as optional
+		if field.Desc.HasOptionalKeyword() {
+			continue
+		}
+
+		// Use JSONName (camelCase)
+		requiredFields = append(requiredFields, field.Desc.JSONName())
+	}
 
 	title, description := sg.gr.getTitleAndDescription(message.Desc)
 
@@ -425,31 +416,40 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	sg.gen.P("// Initialize the schema")
 	sg.gen.P("schema := &jsonschema.Schema{")
 	sg.gen.P(`Type: "object",`)
-	sg.gen.P(fmt.Sprintf(`Title: "%s",`, sg.gr.escapeGoString(title)))
-	sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(description)))
+	if title != "" {
+		sg.gen.P(fmt.Sprintf(`Title: "%s",`, sg.gr.escapeGoString(title)))
+	}
+	if description != "" {
+		sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(description)))
+	}
 	sg.gen.P(`Properties: make(map[string]*jsonschema.Schema),`)
-	sg.gen.P(`Required: []string{},`)
+	// 2. Emit Required Fields
+	if len(requiredFields) > 0 {
+		sg.gen.P(`Required: []string{`)
+		for _, reqField := range requiredFields {
+			sg.gen.P(fmt.Sprintf(`"%s",`, reqField))
+		}
+		sg.gen.P(`},`)
+	} else {
+		sg.gen.P(`Required: []string{},`)
+	}
 	sg.gen.P("}")
 	sg.gen.P()
 
 	oneofGroups := make(map[string][]string)
 
 	for _, field := range message.Fields {
-		// Collect oneof info
 		if oneof := field.Oneof; oneof != nil && !oneof.Desc.IsSynthetic() {
 			groupName := string(oneof.Desc.Name())
 			oneofGroups[groupName] = append(oneofGroups[groupName], field.Desc.JSONName())
 		}
-
 		if err := sg.generateFieldJSONSchema(field); err != nil {
 			return err
 		}
 		sg.gen.P("")
 	}
 
-	// Generate OneOf validation
 	if len(oneofGroups) > 0 {
-		// Sort keys for deterministic output
 		var groupNames []string
 		for name := range oneofGroups {
 			groupNames = append(groupNames, name)
@@ -457,7 +457,6 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		sort.Strings(groupNames)
 
 		if len(groupNames) == 1 {
-			// Single oneof group
 			fields := oneofGroups[groupNames[0]]
 			sg.gen.P(`schema.OneOf = []*jsonschema.Schema{`)
 			for _, f := range fields {
@@ -465,7 +464,6 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 			}
 			sg.gen.P(`}`)
 		} else {
-			// Multiple oneof groups, use AllOf wrapping OneOfs
 			sg.gen.P(`schema.AllOf = []*jsonschema.Schema{`)
 			for _, name := range groupNames {
 				fields := oneofGroups[name]
@@ -483,23 +481,19 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 
 	sg.gen.P("return schema")
 	sg.gen.P("}")
-
 	return nil
 }
 
 func (sg *MessageSchemaGenerator) generateFieldJSONSchema(field *protogen.Field) error {
 	title, description := sg.gr.getTitleAndDescription(field.Desc)
-
 	sg.gen.P("// Add the field to the schema")
 
 	if field.Desc.IsList() {
 		return sg.emitArraySchema(field, title, description)
 	}
-
 	if field.Desc.IsMap() {
 		return sg.emitMapSchema(field, title, description)
 	}
-
 	return sg.emitScalarSchema(field, title, description)
 }
 
@@ -528,37 +522,26 @@ func (sg *MessageSchemaGenerator) getKindTypeName(desc protoreflect.FieldDescrip
 	}
 }
 
-// referenceName returns the Go string representation of a reference to the schema function
-// for the given message (e.g. "pkg.Message_JsonSchema()").
 func (sg *MessageSchemaGenerator) referenceName(msg *protogen.Message) string {
 	return sg.gen.QualifiedGoIdent(msg.GoIdent) + "_JsonSchema()"
 }
 
-// getEnumValues extracts enum value names from a protogen.Field.
-// It strips the enum name prefix from each value's Go identifier.
+// getEnumValues extracts enum value names.
+// Note: We use the Proto Value Name directly (Desc.Name()) because protojson defaults to
+// using the string name of the enum, not the Go constant name.
 func (sg *MessageSchemaGenerator) getEnumValues(field *protogen.Field) []string {
 	var enumValues []string
 	for _, value := range field.Enum.Values {
-		name := field.Desc.Enum().Name()
-		goName := value.GoIdent.GoName
-		prefix := string(name) + "_"
-		enumValue := strings.TrimPrefix(goName, prefix)
-		enumValues = append(enumValues, enumValue)
+		enumValues = append(enumValues, string(value.Desc.Name()))
 	}
 	return enumValues
 }
 
-// getEnumValuesFromDescriptor extracts enum value names from a protoreflect.EnumDescriptor.
-// This is used for map value types where we only have the descriptor.
 func (sg *MessageSchemaGenerator) getEnumValuesFromDescriptor(enumDesc protoreflect.EnumDescriptor) []string {
 	var enumValues []string
 	values := enumDesc.Values()
 	for i := 0; i < values.Len(); i++ {
-		value := values.Get(i)
-		fullName := string(value.FullName())
-		prefix := string(value.ParentFile().Package()) + "."
-		enumValue := strings.TrimPrefix(fullName, prefix)
-		enumValues = append(enumValues, enumValue)
+		enumValues = append(enumValues, string(values.Get(i).Name()))
 	}
 	return enumValues
 }
