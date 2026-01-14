@@ -16,11 +16,25 @@ A Protocol Buffers compiler (protoc) plugin that generates Go code for creating 
 
 ## Installation
 
+### Using go install
+
+This plugin depends on a private module (`open.alis.services/protobuf`), so you'll need to configure Go's module proxy settings:
+
 ```shell
+GOPROXY=https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,https://proxy.golang.org,direct \
+GONOPROXY=github.com/alis-exchange/protoc-gen-go-jsonschema \
+GONOSUMDB=open.alis.services/protobuf \
 go install github.com/alis-exchange/protoc-gen-go-jsonschema/cmd/protoc-gen-go-jsonschema@latest
 ```
 
-Or download a pre-built binary from the [releases page](https://github.com/alis-exchange/protoc-gen-go-jsonschema/releases).
+**Environment Variables Explained:**
+- `GOPROXY`: Configures the module proxy chain, including the Artifact Registry Repository for `open.alis.services/protobuf`
+- `GONOPROXY`: Excludes this public GitHub module from the Artifact Registry Repository
+- `GONOSUMDB`: Disables checksum verification for the Artifact Registry Repository
+
+### Download Pre-built Binary
+
+Alternatively, download a pre-built binary from the [releases page](https://github.com/alis-exchange/protoc-gen-go-jsonschema/releases).
 
 ## Usage
 
