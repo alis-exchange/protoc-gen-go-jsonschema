@@ -153,15 +153,15 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 	// Optimization for direct references
 	if cfg.messageRef != "" && cfg.typeName == "" && cfg.nested == nil {
 		if opts == nil {
-			sg.gen.P(fmt.Sprintf(`	schema.Properties["%s"] = %s`, cfg.fieldName, cfg.messageRef))
+			sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = %s`, cfg.fieldName, cfg.messageRef))
 			return
 		}
 	}
 
-	sg.gen.P(fmt.Sprintf(`	schema.Properties["%s"] = &jsonschema.Schema{`, cfg.fieldName))
+	sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = &jsonschema.Schema{`, cfg.fieldName))
 
 	if cfg.typeName != "" {
-		sg.gen.P(fmt.Sprintf(`		Type: "%s",`, cfg.typeName))
+		sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.typeName))
 	}
 
 	// --- Metadata (Apply to Root) ---
@@ -169,47 +169,47 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 	if opts.GetTitle() != "" {
 		title = opts.GetTitle()
 	}
-	sg.gen.P(fmt.Sprintf(`		Title: "%s",`, sg.gr.escapeGoString(title)))
+	sg.gen.P(fmt.Sprintf(`Title: "%s",`, sg.gr.escapeGoString(title)))
 
 	desc := cfg.description
 	if opts.GetDescription() != "" {
 		desc = opts.GetDescription()
 	}
-	sg.gen.P(fmt.Sprintf(`		Description: "%s",`, sg.gr.escapeGoString(desc)))
+	sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(desc)))
 
 	// --- Container Constraints (Apply to Root) ---
 	if opts.GetMinItems() != 0 {
 		val := opts.GetMinItems()
-		sg.gen.P(fmt.Sprintf(`		MinItems: %d,`, val))
+		sg.gen.P(fmt.Sprintf(`MinItems: %d,`, val))
 	}
 	if opts.GetMaxItems() != 0 {
 		val := opts.GetMaxItems()
-		sg.gen.P(fmt.Sprintf(`		MaxItems: %d,`, val))
+		sg.gen.P(fmt.Sprintf(`MaxItems: %d,`, val))
 	}
 	if opts.GetUniqueItems() {
-		sg.gen.P(`		UniqueItems: true,`)
+		sg.gen.P(`UniqueItems: true,`)
 	}
 	if opts.GetMinProperties() != 0 {
 		val := opts.GetMinProperties()
-		sg.gen.P(fmt.Sprintf(`		MinProperties: %d,`, val))
+		sg.gen.P(fmt.Sprintf(`MinProperties: %d,`, val))
 	}
 	if opts.GetMaxProperties() != 0 {
 		val := opts.GetMaxProperties()
-		sg.gen.P(fmt.Sprintf(`		MaxProperties: %d,`, val))
+		sg.gen.P(fmt.Sprintf(`MaxProperties: %d,`, val))
 	}
 
 	// Helper to emit Value Constraints (Strings, Numbers, Enums, ContentEncoding)
 	// We use this closure because these options apply to:
 	// 1. The Root Schema (if it's a Scalar)
 	// 2. The Nested Schema (if it's an Array/Map)
-	emitValueConstraints := func(c schemaFieldConfig, indent string) {
+	emitValueConstraints := func(c schemaFieldConfig) {
 		// Format
 		format := c.format
 		if opts.GetFormat() != "" {
 			format = opts.GetFormat()
 		}
 		if format != "" {
-			sg.gen.P(fmt.Sprintf(`%sFormat: "%s",`, indent, sg.gr.escapeGoString(format)))
+			sg.gen.P(fmt.Sprintf(`Format: "%s",`, sg.gr.escapeGoString(format)))
 		}
 
 		// Pattern
@@ -218,57 +218,57 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 			pattern = opts.GetPattern()
 		}
 		if pattern != "" {
-			sg.gen.P(fmt.Sprintf(`%sPattern: "%s",`, indent, sg.gr.escapeGoString(pattern)))
+			sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(pattern)))
 		}
 
 		// ContentEncoding (Logic: Custom Option > Default base64 if bytes)
 		if opts.GetContentEncoding() != "" {
 			val := opts.GetContentEncoding()
-			sg.gen.P(fmt.Sprintf(`%sContentEncoding: "%s",`, indent, sg.gr.escapeGoString(val)))
+			sg.gen.P(fmt.Sprintf(`ContentEncoding: "%s",`, sg.gr.escapeGoString(val)))
 		} else if c.isBytes {
-			sg.gen.P(fmt.Sprintf(`%sContentEncoding: "base64",`, indent))
+			sg.gen.P(`ContentEncoding: "base64",`)
 		}
 
 		// ContentMediaType
 		if opts.GetContentMediaType() != "" {
 			val := opts.GetContentMediaType()
-			sg.gen.P(fmt.Sprintf(`%sContentMediaType: "%s",`, indent, sg.gr.escapeGoString(val)))
+			sg.gen.P(fmt.Sprintf(`ContentMediaType: "%s",`, sg.gr.escapeGoString(val)))
 		}
 
 		// Numeric
 		if opts.GetMinimum() != 0 {
 			val := opts.GetMinimum()
 			// Use QualifiedGoIdent to ensure encoding/json is imported only if used
-			sg.gen.P(fmt.Sprintf(`%sMinimum: %s("%g"),`, indent, sg.gen.QualifiedGoIdent(jsonNumberType), val))
+			sg.gen.P(fmt.Sprintf(`Minimum: %s("%g"),`, sg.gen.QualifiedGoIdent(jsonNumberType), val))
 		}
 		if opts.GetMaximum() != 0 {
 			val := opts.GetMaximum()
-			sg.gen.P(fmt.Sprintf(`%sMaximum: %s("%g"),`, indent, sg.gen.QualifiedGoIdent(jsonNumberType), val))
+			sg.gen.P(fmt.Sprintf(`Maximum: %s("%g"),`, sg.gen.QualifiedGoIdent(jsonNumberType), val))
 		}
 		if opts.GetExclusiveMinimum() {
-			sg.gen.P(fmt.Sprintf(`%sExclusiveMinimum: true,`, indent))
+			sg.gen.P(`ExclusiveMinimum: true,`)
 		}
 		if opts.GetExclusiveMaximum() {
-			sg.gen.P(fmt.Sprintf(`%sExclusiveMaximum: true,`, indent))
+			sg.gen.P(`ExclusiveMaximum: true,`)
 		}
 
 		// String Length
 		if opts.GetMinLength() != 0 {
 			val := opts.GetMinLength()
-			sg.gen.P(fmt.Sprintf(`%sMinLength: %d,`, indent, val))
+			sg.gen.P(fmt.Sprintf(`MinLength: %d,`, val))
 		}
 		if opts.GetMaxLength() != 0 {
 			val := opts.GetMaxLength()
-			sg.gen.P(fmt.Sprintf(`%sMaxLength: %d,`, indent, val))
+			sg.gen.P(fmt.Sprintf(`MaxLength: %d,`, val))
 		}
 
 		// Enums
 		if len(c.enumValues) > 0 {
-			sg.gen.P(fmt.Sprintf(`%sEnum: []any{`, indent))
+			sg.gen.P(`Enum: []any{`)
 			for _, enumValue := range c.enumValues {
-				sg.gen.P(fmt.Sprintf(`%s	"%s",`, indent, enumValue))
+				sg.gen.P(fmt.Sprintf(`"%s",`, enumValue))
 			}
-			sg.gen.P(fmt.Sprintf(`%s},`, indent))
+			sg.gen.P(`},`)
 		}
 	}
 
@@ -281,38 +281,38 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 
 		if cfg.nested.messageRef != "" {
 			// Message Reference: Just emit the function call
-			sg.gen.P(fmt.Sprintf(`		%s: %s,`, targetField, cfg.nested.messageRef))
+			sg.gen.P(fmt.Sprintf(`%s: %s,`, targetField, cfg.nested.messageRef))
 		} else {
 			// Inline Definition (Scalar list, WKT list, or external type)
-			sg.gen.P(fmt.Sprintf(`		%s: &jsonschema.Schema{`, targetField))
+			sg.gen.P(fmt.Sprintf(`%s: &jsonschema.Schema{`, targetField))
 
 			// If it's a basic type, print it
 			if cfg.nested.typeName != "" {
-				sg.gen.P(fmt.Sprintf(`			Type: "%s",`, cfg.nested.typeName))
+				sg.gen.P(fmt.Sprintf(`Type: "%s",`, cfg.nested.typeName))
 			} else if cfg.nested.nested == nil {
 				// Fallback for external types (e.g. google.type.LatLng) -> Object
-				sg.gen.P(`			Type: "object",`)
+				sg.gen.P(`Type: "object",`)
 			}
 
 			// Apply Value Constraints to the NESTED item (e.g. pattern for string array items)
-			emitValueConstraints(*cfg.nested, "			")
+			emitValueConstraints(*cfg.nested)
 
-			sg.gen.P(`		},`)
+			sg.gen.P(`},`)
 		}
 	} else {
 		// --- Handle Scalar Values ---
 		// Apply Value Constraints to the ROOT
-		emitValueConstraints(cfg, "		")
+		emitValueConstraints(cfg)
 	}
 
 	// Map Property Names
 	if cfg.propertyNamesPattern != "" {
-		sg.gen.P(`		PropertyNames: &jsonschema.Schema{`)
-		sg.gen.P(fmt.Sprintf(`			Pattern: "%s",`, sg.gr.escapeGoString(cfg.propertyNamesPattern)))
-		sg.gen.P(`		},`)
+		sg.gen.P(`PropertyNames: &jsonschema.Schema{`)
+		sg.gen.P(fmt.Sprintf(`Pattern: "%s",`, sg.gr.escapeGoString(cfg.propertyNamesPattern)))
+		sg.gen.P(`},`)
 	}
 
-	sg.gen.P("	}")
+	sg.gen.P("}")
 }
 
 // -----------------------------------------------------------------------------
@@ -472,31 +472,31 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	// Public Entry Point
 	sg.gen.P(fmt.Sprintf("// %s_JsonSchema returns the JSON schema for the %s message.", goName, message.Desc.Name()))
 	sg.gen.P(fmt.Sprintf("func (x *%s) JsonSchema() *jsonschema.Schema {", goName))
-	sg.gen.P("    defs := make(map[string]*jsonschema.Schema)")
-	sg.gen.P(fmt.Sprintf("    _ = %s_JsonSchema_WithDefs(defs)", goName))
-	sg.gen.P(fmt.Sprintf("    root := defs[\"%s\"]", message.Desc.FullName()))
-	sg.gen.P("    root.Definitions = defs")
-	sg.gen.P("    return root")
+	sg.gen.P("defs := make(map[string]*jsonschema.Schema)")
+	sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", goName))
+	sg.gen.P(fmt.Sprintf("root := defs[\"%s\"]", message.Desc.FullName()))
+	sg.gen.P("root.Definitions = defs")
+	sg.gen.P("return root")
 	sg.gen.P("}")
 	sg.gen.P()
 
 	// Internal Helper
 	sg.gen.P(fmt.Sprintf("func %s_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {", goName))
 	defKey := string(message.Desc.FullName())
-	sg.gen.P(fmt.Sprintf("    if _, ok := defs[\"%s\"]; ok {", defKey))
-	sg.gen.P(fmt.Sprintf("        return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
-	sg.gen.P("    }")
+	sg.gen.P(fmt.Sprintf("if _, ok := defs[\"%s\"]; ok {", defKey))
+	sg.gen.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
+	sg.gen.P("}")
 	sg.gen.P()
 
-	sg.gen.P("    schema := &jsonschema.Schema{")
-	sg.gen.P(`        Type: "object",`)
+	sg.gen.P("schema := &jsonschema.Schema{")
+	sg.gen.P(`Type: "object",`)
 	if title != "" {
-		sg.gen.P(fmt.Sprintf(`        Title: "%s",`, sg.gr.escapeGoString(title)))
+		sg.gen.P(fmt.Sprintf(`Title: "%s",`, sg.gr.escapeGoString(title)))
 	}
 	if description != "" {
-		sg.gen.P(fmt.Sprintf(`        Description: "%s",`, sg.gr.escapeGoString(description)))
+		sg.gen.P(fmt.Sprintf(`Description: "%s",`, sg.gr.escapeGoString(description)))
 	}
-	sg.gen.P(`        Properties: make(map[string]*jsonschema.Schema),`)
+	sg.gen.P(`Properties: make(map[string]*jsonschema.Schema),`)
 
 	var requiredFields []string
 	for _, field := range message.Fields {
@@ -511,15 +511,15 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	}
 
 	if len(requiredFields) > 0 {
-		sg.gen.P(`        Required: []string{`)
+		sg.gen.P(`Required: []string{`)
 		for _, f := range requiredFields {
 			sg.gen.P(fmt.Sprintf(`"%s",`, f))
 		}
-		sg.gen.P(`        },`)
+		sg.gen.P(`},`)
 	}
-	sg.gen.P("    }")
+	sg.gen.P("}")
 	sg.gen.P()
-	sg.gen.P(fmt.Sprintf("    defs[\"%s\"] = schema", defKey))
+	sg.gen.P(fmt.Sprintf("defs[\"%s\"] = schema", defKey))
 	sg.gen.P()
 
 	oneofGroups := make(map[string][]string)
@@ -546,24 +546,24 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		sort.Strings(groupNames)
 		if len(groupNames) == 1 {
 			fields := oneofGroups[groupNames[0]]
-			sg.gen.P(`    schema.OneOf = []*jsonschema.Schema{`)
+			sg.gen.P(`schema.OneOf = []*jsonschema.Schema{`)
 			for _, f := range fields {
-				sg.gen.P(fmt.Sprintf(`        {Required: []string{"%s"}},`, f))
+				sg.gen.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
 			}
-			sg.gen.P(`    }`)
+			sg.gen.P(`}`)
 		} else {
-			sg.gen.P(`    schema.AllOf = []*jsonschema.Schema{`)
+			sg.gen.P(`schema.AllOf = []*jsonschema.Schema{`)
 			for _, name := range groupNames {
 				fields := oneofGroups[name]
-				sg.gen.P(`        {`)
-				sg.gen.P(`            OneOf: []*jsonschema.Schema{`)
+				sg.gen.P(`{`)
+				sg.gen.P(`OneOf: []*jsonschema.Schema{`)
 				for _, f := range fields {
-					sg.gen.P(fmt.Sprintf(`                {Required: []string{"%s"}},`, f))
+					sg.gen.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
 				}
-				sg.gen.P(`            },`)
-				sg.gen.P(`        },`)
+				sg.gen.P(`},`)
+				sg.gen.P(`},`)
 			}
-			sg.gen.P(`    }`)
+			sg.gen.P(`}`)
 		}
 	}
 
