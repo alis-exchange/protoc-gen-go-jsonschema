@@ -37,11 +37,9 @@ go.work.sum
 **debug/**
 **debug**
 
-# Test data
-**testdata**
+# Generated test artifacts (not golden files or fixtures)
+testdata/generated/
+testdata/schemas/go.sum
 
-# Generated files
-**generated**
-
-# Protos
-**protos**
+# Temporary test outputs
+*.test.out

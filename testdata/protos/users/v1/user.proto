@@ -1,0 +1,619 @@
+syntax = "proto3";
+
+package users.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "alis/open/options/v1/options.proto";
+
+option go_package = "github.com/newtonnthiga/users/v1;usersv1";
+
+option (alis.open.options.v1.file).json_schema.generate = true;
+
+// UserStatus represents the current status of a user account.
+enum UserStatus {
+  // Unspecified status - should not be used in practice.
+  USER_STATUS_UNSPECIFIED = 0;
+  // User account is active and can be used normally.
+  USER_STATUS_ACTIVE = 1;
+  // User account is inactive but not deleted.
+  USER_STATUS_INACTIVE = 2;
+  // User account has been suspended due to policy violations.
+  USER_STATUS_SUSPENDED = 3;
+  // User account has been deleted.
+  USER_STATUS_DELETED = 4;
+}
+
+// AccountType represents the type of subscription or account tier.
+enum AccountType {
+  // Unspecified account type - should not be used in practice.
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  // Free tier account with basic features.
+  ACCOUNT_TYPE_FREE = 1;
+  // Premium tier account with enhanced features.
+  ACCOUNT_TYPE_PREMIUM = 2;
+  // Enterprise tier account with full features and support.
+  ACCOUNT_TYPE_ENTERPRISE = 3;
+}
+
+// Priority represents the priority level for tasks or operations.
+enum Priority {
+  // Unspecified priority - should not be used in practice.
+  PRIORITY_UNSPECIFIED = 0;
+  // Low priority task.
+  PRIORITY_LOW = 1;
+  // Medium priority task.
+  PRIORITY_MEDIUM = 2;
+  // High priority task.
+  PRIORITY_HIGH = 3;
+  // Urgent priority task requiring immediate attention.
+  PRIORITY_URGENT = 4;
+}
+
+// Address represents a physical mailing address.
+message Address {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  // The street address including house number and street name.
+  optional string street = 1;
+  // The city name.
+  string city = 2;
+  // The state or province name.
+  optional string state = 3;
+  // The postal or zip code.
+  string zip_code = 4;
+  // The country name or code.
+  string country = 5;
+  // The latitude coordinate of the address.
+  double latitude = 6;
+  // The longitude coordinate of the address.
+  double longitude = 7;
+  // Additional address details stored as a nested message.
+  AddressDetails address_details = 8;
+
+  // AddressDetails contains additional structured address information.
+  message AddressDetails {
+    // The street name.
+    string street = 1;
+    // The city name.
+    string city = 2;
+    // The state or province.
+    string state = 3;
+    // The postal code.
+    string zip_code = 4;
+    // The country code.
+    string country = 5;
+  }
+}
+
+// AddressDetails represents detailed address information.
+message AddressDetails {
+  // The street name.
+  string street = 1;
+  // The city name.
+  string city = 2;
+  // The state or province.
+  string state = 3;
+  // The postal code.
+  string zip_code = 4;
+  // The country code.
+  string country = 5;
+  // Nested address details.
+  AddressDetails nested_address_details = 6;
+  // Repeated address details.
+  repeated AddressDetails repeated_address_details = 7;
+  // Map of address details.
+  map<string, AddressDetails> map_address_details = 8;
+  // Oneof address details.
+  oneof address_details { AddressDetails oneof_address_details = 9; }
+  // Optional address details.
+  optional AddressDetails optional_address_details = 10;
+}
+
+// ContactInfo contains contact information for a user.
+message ContactInfo {
+  // Primary phone number in E.164 format.
+  string phone = 1 [ (alis.open.options.v1.field).json_schema = {
+    format : "email",
+    title : "Primary Email"
+  } ];
+  // Mobile phone number in E.164 format.
+  string mobile = 2;
+  // Fax number if available.
+  string fax = 3;
+  // List of email addresses associated with the contact.
+  repeated string emails = 4;
+}
+
+// Metadata contains additional key-value metadata for resources.
+message Metadata {
+  // Map of string tags for categorization.
+  map<string, string> tags = 1;
+  // Map of numeric tags with string values.
+  map<int32, string> numeric_tags = 2;
+  // Additional unstructured data stored as a protobuf Struct.
+  google.protobuf.Struct extra_data = 3;
+}
+
+// ComprehensiveUser is a comprehensive user message demonstrating all proto3
+// features.
+message ComprehensiveUser {
+  // Scalar types section
+
+  // Unique identifier for the user.
+  string id = 1;
+  // Full name of the user.
+  string name = 2;
+  // Whether the user account is currently active.
+  bool is_active = 3;
+
+  // Integer types section
+
+  // Age of the user in years.
+  int32 age = 4;
+  // Unique user ID as a 64-bit integer.
+  int64 user_id = 5;
+  // User score as an unsigned 32-bit integer.
+  uint32 score = 6;
+  // Account number as an unsigned 64-bit integer.
+  uint64 account_number = 7;
+  // Signed score using zigzag encoding.
+  sint32 signed_score = 8;
+  // Signed ID using zigzag encoding.
+  sint64 signed_id = 9;
+  // Fixed-width unsigned 32-bit integer.
+  fixed32 fixed_uint = 10;
+  // Fixed-width unsigned 64-bit integer.
+  fixed64 fixed_ulong = 11;
+  // Fixed-width signed 32-bit integer.
+  sfixed32 sfixed_int = 12;
+  // Fixed-width signed 64-bit integer.
+  sfixed64 sfixed_long = 13;
+
+  // Floating point types section
+
+  // User rating as a single-precision float.
+  float rating = 14;
+  // Account balance as a double-precision float.
+  double balance = 15;
+
+  // Bytes section
+
+  // User avatar image as raw bytes.
+  bytes avatar = 16;
+  // Digital signature as raw bytes.
+  bytes signature = 17;
+
+  // Enum section
+
+  // Current status of the user account.
+  UserStatus status = 18;
+  // Type of account subscription.
+  AccountType account_type = 19;
+
+  // Nested message section
+
+  // Primary address of the user.
+  Address address = 20;
+  // Contact information for the user.
+  ContactInfo contact = 21;
+  // Additional metadata associated with the user.
+  Metadata metadata = 22;
+
+  // Repeated scalar types section
+
+  // List of tags associated with the user.
+  repeated string tags = 23;
+  // Historical scores for the user.
+  repeated int32 scores = 24;
+  // Boolean flags for various user settings.
+  repeated bool flags = 25;
+  // Historical ratings for the user.
+  repeated float ratings = 26;
+  // Historical balance snapshots.
+  repeated double balances = 27;
+  // Additional image data.
+  repeated bytes images = 28;
+
+  // Repeated enums section
+
+  // History of user status changes.
+  repeated UserStatus status_history = 29;
+  // List of priority levels assigned to the user.
+  repeated Priority priorities = 30;
+
+  // Repeated messages section
+
+  // List of all addresses associated with the user.
+  repeated Address addresses = 31;
+  // List of contact information entries.
+  repeated ContactInfo contacts = 32;
+
+  // Map types section
+
+  // Map of string attributes with string values.
+  map<string, string> attributes = 33;
+  // Map of numeric attributes with string values.
+  map<int32, string> numeric_attributes = 34;
+  // Map of string keys to integer values.
+  map<string, int32> string_to_int = 35;
+  // Map of string keys to boolean values.
+  map<string, bool> string_to_bool = 36;
+  // Map of string keys to Address message values.
+  map<string, Address> address_map = 37;
+  // Map of string keys to UserStatus enum values.
+  map<string, UserStatus> status_map = 38;
+  // Map of string keys to Address.AddressDetails message values.
+  map<string, Address.AddressDetails> address_details_map = 201;
+
+  // oneof fields section
+
+  // User identifier - can be email, username, or user number.
+  oneof identifier {
+    // Email address as identifier.
+    string email = 39;
+    // Username as identifier.
+    string username = 40;
+    // User number as identifier.
+    int64 user_number = 41;
+  }
+
+  // Payment method - can be credit card, bank account, or crypto wallet.
+  oneof payment_method {
+    // Credit card number.
+    string credit_card = 42;
+    // Bank account number.
+    string bank_account = 43;
+    // Cryptocurrency wallet address.
+    string crypto_wallet = 44;
+  }
+
+  // Contact preference - either contact info or mailing address.
+  oneof contact_preference {
+    // Preferred contact information.
+    ContactInfo contact_info = 45;
+    // Preferred mailing address.
+    Address mailing_address = 46;
+  }
+
+  // Well-known types section
+
+  // Timestamp when the user account was created.
+  google.protobuf.Timestamp created_at = 47;
+  // Timestamp when the user account was last updated.
+  google.protobuf.Timestamp updated_at = 48;
+  // Duration of the current user session.
+  google.protobuf.Duration session_duration = 49;
+  // Additional data stored as Any type.
+  google.protobuf.Any extra_data = 50;
+  // Dynamic data stored as Struct type.
+  google.protobuf.Struct dynamic_data = 51;
+
+  // Optional fields (proto3 optional) section
+
+  // Optional nickname for the user.
+  optional string nickname = 52;
+  // Optional age if not provided in the main age field.
+  optional int32 optional_age = 53;
+  // Optional boolean flag.
+  optional bool optional_flag = 54;
+  // Optional status override.
+  optional UserStatus optional_status = 55;
+  // Optional alternate address.
+  optional Address optional_address = 56;
+
+  // Reserved fields (for future use)
+  reserved 100 to 200;
+  reserved "future_field_1", "future_field_2";
+}
+
+// UserService provides operations for managing users.
+service UserService {
+  // CreateUser creates a new user account.
+  // Returns the created user with assigned ID.
+  rpc CreateUser(CreateUserRequest) returns (User);
+
+  // GetUser retrieves a user by their ID.
+  // Returns the user if found, or an error if not found.
+  rpc GetUser(GetUserRequest) returns (User);
+
+  // UpdateUser updates an existing user account.
+  // Returns the updated user information.
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+
+  // DeleteUser deletes a user account by ID.
+  // Returns a success indicator.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // GetComprehensiveUser retrieves a comprehensive user with all fields
+  // populated. This includes all nested messages, repeated fields, and maps.
+  rpc GetComprehensiveUser(GetUserRequest) returns (ComprehensiveUser);
+
+  // CreateComprehensiveUser creates a new comprehensive user account.
+  // This allows setting all available fields including nested structures.
+  rpc CreateComprehensiveUser(CreateComprehensiveUserRequest)
+      returns (ComprehensiveUser);
+
+  // BatchGetUsers retrieves multiple users in a single request.
+  // Useful for efficient bulk operations.
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse);
+}
+
+// User represents a basic user account.
+// This is kept for backward compatibility with existing clients.
+message User {
+  // Unique identifier for the user.
+  string id = 1;
+  // Full name of the user.
+  string name = 2;
+  // Email address of the user.
+  string email = 3;
+  // Hashed password (never store plain text passwords).
+  string password = 4;
+  // Current status of the user account.
+  UserStatus status = 5;
+  // Primary address of the user.
+  Address address = 6;
+}
+
+// CreateUserRequest contains information needed to create a new user.
+message CreateUserRequest {
+  // Full name of the user to create.
+  string name = 1;
+  // Email address for the new user account.
+  string email = 2;
+  // Password for the new user account (will be hashed).
+  string password = 3;
+  // Optional address for the new user.
+  optional Address address = 4;
+}
+
+// GetUserRequest contains the user ID to retrieve.
+message GetUserRequest {
+  // The unique identifier of the user to retrieve.
+  string id = 1;
+}
+
+// UpdateUserRequest contains the updated user information.
+message UpdateUserRequest {
+  // The user object with updated fields.
+  // Only provided fields will be updated.
+  User user = 1;
+}
+
+// DeleteUserRequest contains the user ID to delete.
+message DeleteUserRequest {
+  // The unique identifier of the user to delete.
+  string id = 1;
+}
+
+// DeleteUserResponse indicates whether the deletion was successful.
+message DeleteUserResponse {
+  // True if the user was successfully deleted, false otherwise.
+  bool success = 1;
+}
+
+// CreateComprehensiveUserRequest contains all information needed to create a
+// comprehensive user.
+message CreateComprehensiveUserRequest {
+  // The comprehensive user object to create.
+  ComprehensiveUser user = 1;
+  // Additional metadata to associate with the user.
+  map<string, string> metadata = 2;
+  // Tags to categorize the user.
+  repeated string tags = 3;
+}
+
+// BatchGetUsersRequest contains criteria for retrieving multiple users.
+message BatchGetUsersRequest {
+  // List of user IDs to retrieve.
+  repeated string ids = 1;
+  // List of user numbers to retrieve.
+  repeated int64 user_numbers = 2;
+  // Map of filter criteria (e.g., {"status": "active"}).
+  map<string, string> filters = 3;
+  // Query type - can be email query, name query, or status filter.
+  oneof query_type {
+    // Query users by email address.
+    string email_query = 4;
+    // Query users by name (partial match).
+    string name_query = 5;
+    // Filter users by status.
+    UserStatus status_filter = 6;
+  }
+}
+
+// BatchGetUsersResponse contains the results of a batch user retrieval.
+message BatchGetUsersResponse {
+  // List of retrieved users.
+  repeated ComprehensiveUser users = 1;
+  // Total count of users matching the query.
+  int32 total_count = 2;
+  // Whether there are more users available (for pagination).
+  bool has_more = 3;
+  // Timestamp when the query was executed.
+  google.protobuf.Timestamp query_timestamp = 4;
+}
+
+// UserProfile contains a user profile with additional profile-specific
+// information.
+message UserProfile {
+  // The comprehensive user information.
+  ComprehensiveUser user = 1;
+  // List of shipping addresses for the user.
+  repeated Address shipping_addresses = 2;
+  // Map of contact methods keyed by method type.
+  map<string, ContactInfo> contact_methods = 3;
+  // Profile type - can be personal or business profile.
+  oneof profile_type {
+    // Personal profile information.
+    PersonalProfile personal = 4;
+    // Business profile information.
+    BusinessProfile business = 5;
+  }
+  // Additional custom data stored as Any type.
+  google.protobuf.Any custom_data = 6;
+}
+
+// PersonalProfile contains information specific to personal user accounts.
+message PersonalProfile {
+  // First name of the user.
+  string first_name = 1;
+  // Last name of the user.
+  string last_name = 2;
+  // Date of birth of the user.
+  google.protobuf.Timestamp date_of_birth = 3;
+  // List of user interests or hobbies.
+  repeated string interests = 4;
+}
+
+// BusinessProfile contains information specific to business user accounts.
+message BusinessProfile {
+  // Name of the company.
+  string company_name = 1;
+  // Tax identification number for the business.
+  string tax_id = 2;
+  // Business address.
+  Address business_address = 3;
+  // List of department names in the company.
+  repeated string departments = 4;
+  // Map of department names to employee counts.
+  map<string, int32> employee_counts = 5;
+}
+
+// RepeatedFieldsDemo demonstrates all repeated field types.
+message RepeatedFieldsDemo {
+  // List of strings.
+  repeated string string_list = 1;
+  // List of 32-bit integers.
+  repeated int32 int_list = 2;
+  // List of 64-bit integers.
+  repeated int64 long_list = 3;
+  // List of unsigned 32-bit integers.
+  repeated uint32 uint_list = 4;
+  // List of unsigned 64-bit integers.
+  repeated uint64 ulong_list = 5;
+  // List of signed 32-bit integers (zigzag encoded).
+  repeated sint32 sint_list = 6;
+  // List of signed 64-bit integers (zigzag encoded).
+  repeated sint64 slong_list = 7;
+  // List of fixed-width unsigned 32-bit integers.
+  repeated fixed32 fixed_uint_list = 8;
+  // List of fixed-width unsigned 64-bit integers.
+  repeated fixed64 fixed_ulong_list = 9;
+  // List of fixed-width signed 32-bit integers.
+  repeated sfixed32 sfixed_int_list = 10;
+  // List of fixed-width signed 64-bit integers.
+  repeated sfixed64 sfixed_long_list = 11;
+  // List of single-precision floats.
+  repeated float float_list = 12;
+  // List of double-precision floats.
+  repeated double double_list = 13;
+  // List of boolean values.
+  repeated bool bool_list = 14;
+  // List of byte arrays.
+  repeated bytes bytes_list = 15;
+  // List of UserStatus enum values.
+  repeated UserStatus enum_list = 16;
+  // List of Address messages.
+  repeated Address message_list = 17;
+}
+
+// MapFieldsDemo demonstrates all map field types.
+message MapFieldsDemo {
+  // Map of string to string.
+  map<string, string> string_map = 1;
+  // Map of string to 32-bit integer.
+  map<string, int32> string_int_map = 2;
+  // Map of string to 64-bit integer.
+  map<string, int64> string_long_map = 3;
+  // Map of string to boolean.
+  map<string, bool> string_bool_map = 4;
+  // Map of string to single-precision float.
+  map<string, float> string_float_map = 5;
+  // Map of string to double-precision float.
+  map<string, double> string_double_map = 6;
+  // Map of string to byte array.
+  map<string, bytes> string_bytes_map = 7;
+  // Map of string to UserStatus enum.
+  map<string, UserStatus> string_enum_map = 8;
+  // Map of string to Address message.
+  map<string, Address> string_message_map = 9;
+  // Map of 32-bit integer to string.
+  map<int32, string> int_string_map = 10;
+  // Map of 64-bit integer to string.
+  map<int64, string> long_string_map = 11;
+  // Map of unsigned 32-bit integer to string.
+  map<uint32, string> uint_string_map = 12;
+  // Map of boolean to string.
+  map<bool, string> bool_string_map = 13;
+  // Map of 32-bit integer to 32-bit integer.
+  map<int32, int32> int_int_map = 14;
+  // Map of string to Timestamp.
+  map<string, google.protobuf.Timestamp> string_timestamp_map = 15;
+}
+
+// OneOfDemo demonstrates multiple oneof field groups.
+message OneOfDemo {
+  // First oneof group - can be string, int, or bool value.
+  oneof field1 {
+    // String value option.
+    string string_value = 1;
+    // Integer value option.
+    int32 int_value = 2;
+    // Boolean value option.
+    bool bool_value = 3;
+  }
+
+  // Second oneof group - can be Address, ContactInfo, or Metadata.
+  oneof field2 {
+    // Address message option.
+    Address address = 4;
+    // ContactInfo message option.
+    ContactInfo contact = 5;
+    // Metadata message option.
+    Metadata metadata = 6;
+  }
+
+  // Third oneof group - can be UserStatus, AccountType, or Priority enum.
+  oneof field3 {
+    // UserStatus enum option.
+    UserStatus status = 7;
+    // AccountType enum option.
+    AccountType account = 8;
+    // Priority enum option.
+    Priority priority = 9;
+  }
+
+  // Fourth oneof group - can be Timestamp, Duration, or Any.
+  oneof field4 {
+    // Timestamp value option.
+    google.protobuf.Timestamp timestamp = 10;
+    // Duration value option.
+    google.protobuf.Duration duration = 11;
+    // Any type value option.
+    google.protobuf.Any any_data = 12;
+  }
+}
+
+// WellKnownTypesDemo demonstrates usage of well-known protobuf types.
+message WellKnownTypesDemo {
+  // Timestamp representing creation time.
+  google.protobuf.Timestamp created_at = 1;
+  // Timestamp representing last update time.
+  google.protobuf.Timestamp updated_at = 2;
+  // Duration representing a time span.
+  google.protobuf.Duration time_duration = 3;
+  // Any type for storing arbitrary protobuf messages.
+  google.protobuf.Any any_field = 4;
+  // Struct type for storing arbitrary JSON-like data.
+  google.protobuf.Struct struct_field = 5;
+  // Value type for storing a single JSON value.
+  google.protobuf.Value value_field = 6;
+  // List of timestamps.
+  repeated google.protobuf.Timestamp timestamps = 7;
+  // Map of string keys to Timestamp values.
+  map<string, google.protobuf.Timestamp> timestamp_map = 8;
+}
