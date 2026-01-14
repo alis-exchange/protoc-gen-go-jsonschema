@@ -116,11 +116,28 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 
 	// Collect messages that should generate schemas, including their dependencies.
 	// The visited map prevents processing the same message twice.
+	// This includes cross-package messages to ensure the defs map is complete.
 	targetMessages := gr.getMessages(file.Messages, generateAll, make(map[string]bool))
 
-	// Skip file generation entirely if no messages need schemas.
+	// --- CRITICAL: Filter to only messages from THIS file's package ---
+	//
+	// Why: When multiple files in the same Go package reference messages with
+	// the same Go name from different proto packages, we would generate duplicate
+	// function definitions.
+	//
+	// Solution: Only generate schema functions for messages belonging to this file.
+	// Cross-package messages are automatically referenced via QualifiedGoIdent.
+	var localMessages []*protogen.Message
+	for _, msg := range targetMessages {
+		// Only include messages that belong to this file's Go package
+		if msg.GoIdent.GoImportPath == file.GoImportPath {
+			localMessages = append(localMessages, msg)
+		}
+	}
+
+	// Skip file generation entirely if no local messages need schemas.
 	// This avoids creating empty or import-only files.
-	if len(targetMessages) == 0 {
+	if len(localMessages) == 0 {
 		return nil, nil
 	}
 
@@ -152,10 +169,11 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 		g.P()
 	}
 
-	// --- Generate Message Schemas ---
-	// Process each target message, creating a fresh MessageSchemaGenerator
+	// --- Generate Message Schemas (LOCAL MESSAGES ONLY) ---
+	// Process each local message, creating a fresh MessageSchemaGenerator
 	// for each to ensure clean visited state tracking.
-	for _, msg := range targetMessages {
+	// Cross-package messages are referenced (not generated) via QualifiedGoIdent.
+	for _, msg := range localMessages {
 		sg := &MessageSchemaGenerator{
 			gr:      gr,
 			gen:     g,
