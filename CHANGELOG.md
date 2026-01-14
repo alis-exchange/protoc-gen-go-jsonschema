@@ -1,4 +1,9 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.3...v) (2026-01-14)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.4...v) (2026-01-14)
+
+
+### Bug Fixes
+
+* fix JSON Schema generation logic to only include file-local messages ([f244b8b](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/f244b8b818a12f2d04512dc775fe905e7db0569d))
 
 
 
