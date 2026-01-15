@@ -1,4 +1,13 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.5...v) (2026-01-15)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.6...v) (2026-01-15)
+
+
+
+## [0.0.6](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.5...v0.0.6) (2026-01-15)
+
+
+### Features
+
+* enhance build and install scripts with version handling ([b2b62da](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/b2b62dae7f9896acbf97335b8346807dfc78bbf5))
 
 
 
