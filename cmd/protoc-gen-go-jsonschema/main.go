@@ -44,8 +44,10 @@ func main() {
 		ParamFunc: flags.Set,
 	}
 
+	version := getVersion()
+
 	options.Run(func(p *protogen.Plugin) error {
 		p.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
-		return plugin.Generate(p)
+		return plugin.Generate(p, version)
 	})
 }

@@ -21,7 +21,7 @@ func TestPluginGeneratorSuite(t *testing.T) {
 
 // TestGenerate tests the main Generate function.
 func (s *PluginGeneratorTestSuite) TestGenerate() {
-	err := Generate(s.plugin)
+	err := Generate(s.plugin, "test")
 	s.Require().NoError(err, "Generate failed")
 
 	// Check the response
@@ -56,7 +56,7 @@ func (s *PluginGeneratorTestSuite) TestGenerateNoFiles() {
 	// Create a new plugin with no files to generate
 	emptyPlugin := createTestPlugin(s.T(), s.fds, []string{})
 
-	err := Generate(emptyPlugin)
+	err := Generate(emptyPlugin, "test")
 	s.Require().NoError(err, "Generate failed")
 
 	resp := emptyPlugin.Response()

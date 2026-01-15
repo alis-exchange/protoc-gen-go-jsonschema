@@ -207,7 +207,7 @@ func (s *PluginTestSuite) CreateMessageSchemaGenerator() *MessageSchemaGenerator
 
 // RunGenerate runs the Generate function and returns the generated content.
 func (s *PluginTestSuite) RunGenerate() map[string]string {
-	err := Generate(s.plugin)
+	err := Generate(s.plugin, "test")
 	s.Require().NoError(err, "Generate failed")
 
 	resp := s.plugin.Response()

@@ -150,6 +150,10 @@ func normalizeGeneratedContent(content string) string {
 		if strings.Contains(line, "Generated on:") {
 			continue
 		}
+		// Skip the "Plugin version:" line as it may vary
+		if strings.Contains(line, "Plugin version:") {
+			continue
+		}
 		normalized = append(normalized, line)
 	}
 	return strings.Join(normalized, "\n")
