@@ -1,4 +1,19 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.7...v) (2026-01-15)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.8...v) (2026-01-15)
+
+
+
+## [0.0.8](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.7...v0.0.8) (2026-01-15)
+
+
+### Bug Fixes
+
+* correct JSON schema definition assignment in message generation ([04cc4a6](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/04cc4a6b9cd5f631003ce26c6a8037559edee79b))
+
+
+### Features
+
+* add comprehensive weather forecast schema and validation tests ([2cc4319](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/2cc4319481aa63d63fb149452604fb78f7777038))
+* add versioning support to JSON Schema generation ([c2c4bd4](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/c2c4bd467bc9aa07582a991fea80937d55da270f))
 
 
 
