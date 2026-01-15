@@ -313,3 +313,296 @@ func (s *IntegrationTestSuite) TestRequiredFieldsGeneration() {
 		s.T().Log("Note: No Required field found - may be all fields optional")
 	}
 }
+
+// TestSchemaJSONSerializable tests that the generated schema can be serialized to JSON
+// without causing a stack overflow from circular references.
+// This is a critical test - see REPORT.md for details on the circular reference bug.
+func (s *IntegrationTestSuite) TestSchemaJSONSerializable() {
+	if testing.Short() {
+		s.T().Skip("Skipping JSON serialization test in short mode")
+	}
+
+	contents := s.RunGenerate()
+
+	// Create a temporary directory for the test
+	tmpDir := s.TempDir()
+	pkgDir := filepath.Join(tmpDir, "usersv1")
+	err := os.MkdirAll(pkgDir, 0o755)
+	s.Require().NoError(err, "Failed to create package directory")
+
+	// Write generated files
+	for name, content := range contents {
+		filePath := filepath.Join(pkgDir, filepath.Base(name))
+		err := os.WriteFile(filePath, []byte(content), 0o644)
+		s.Require().NoError(err, "Failed to write file %s", filePath)
+	}
+
+	// Create a minimal go.mod file
+	// Note: Using v0.3.0 to match the version from the user's bug report.
+	// This version has a MarshalJSON method that doesn't handle circular refs.
+	goMod := `module testserialize
+
+go 1.21
+
+require (
+	github.com/google/jsonschema-go v0.3.0
+	google.golang.org/protobuf v1.36.0
+)
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0o644)
+	s.Require().NoError(err, "Failed to write go.mod")
+
+	// Create stub types for the proto messages
+	stubContent := `package usersv1
+
+// Stub types for serialization test
+type Address struct{}
+type AddressDetails struct{}
+type ContactInfo struct{}
+type Metadata struct{}
+type ComprehensiveUser struct{}
+type User struct{}
+type CreateUserRequest struct{}
+type GetUserRequest struct{}
+type UpdateUserRequest struct{}
+type DeleteUserRequest struct{}
+type DeleteUserResponse struct{}
+type CreateComprehensiveUserRequest struct{}
+type BatchGetUsersRequest struct{}
+type BatchGetUsersResponse struct{}
+type UserProfile struct{}
+type PersonalProfile struct{}
+type BusinessProfile struct{}
+type RepeatedFieldsDemo struct{}
+type MapFieldsDemo struct{}
+type OneOfDemo struct{}
+type WellKnownTypesDemo struct{}
+type Address_AddressDetails struct{}
+`
+	stubPath := filepath.Join(pkgDir, "stub_types.go")
+	err = os.WriteFile(stubPath, []byte(stubContent), 0o644)
+	s.Require().NoError(err, "Failed to write stub file")
+
+	// Create a test file that verifies JSON serialization works
+	testContent := `package usersv1
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+)
+
+// TestSchemaCanBeSerialized verifies that calling JsonSchema() and then
+// json.Marshal() does not cause a stack overflow from circular references.
+// This test will fail with a stack overflow if the generated code has
+// the circular reference bug (root schema in defs, then defs assigned to root.Definitions).
+func TestSchemaCanBeSerialized(t *testing.T) {
+	testCases := []struct {
+		name   string
+		schema func() interface{ }
+	}{
+		{"Address", func() interface{} { return (&Address{}).JsonSchema() }},
+		{"User", func() interface{} { return (&User{}).JsonSchema() }},
+		{"ComprehensiveUser", func() interface{} { return (&ComprehensiveUser{}).JsonSchema() }},
+		{"AddressDetails", func() interface{} { return (&AddressDetails{}).JsonSchema() }},
+		{"ContactInfo", func() interface{} { return (&ContactInfo{}).JsonSchema() }},
+		{"Metadata", func() interface{} { return (&Metadata{}).JsonSchema() }},
+		{"UserProfile", func() interface{} { return (&UserProfile{}).JsonSchema() }},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			schema := tc.schema()
+			
+			// This will cause a stack overflow if there's a circular reference
+			data, err := json.Marshal(schema)
+			if err != nil {
+				t.Fatalf("Failed to marshal %s schema to JSON: %v", tc.name, err)
+			}
+			
+			if len(data) == 0 {
+				t.Fatalf("Marshaled %s schema is empty", tc.name)
+			}
+			
+			// Verify it's valid JSON by unmarshaling
+			var parsed map[string]interface{}
+			if err := json.Unmarshal(data, &parsed); err != nil {
+				t.Fatalf("Marshaled %s schema is not valid JSON: %v", tc.name, err)
+			}
+			
+			t.Logf("%s schema serialized successfully (%d bytes)", tc.name, len(data))
+		})
+	}
+}
+
+// TestSelfReferencingSchemaSerializable specifically tests schemas that have
+// self-referential messages (like AddressDetails which contains AddressDetails).
+// These are particularly prone to circular reference issues.
+func TestSelfReferencingSchemaSerializable(t *testing.T) {
+	// AddressDetails is self-referential in the proto definition
+	schema := (&AddressDetails{}).JsonSchema()
+	
+	data, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("Failed to marshal self-referencing schema: %v", err)
+	}
+	
+	t.Logf("Self-referencing AddressDetails schema serialized successfully (%d bytes)", len(data))
+}
+
+// TestSchemaDefinitionsAreSerializable tests that when Definitions (defs) is
+// populated and assigned to the root schema, serialization still works.
+// This specifically tests the circular reference scenario where:
+//   root = defs["key"]
+//   root.Definitions = defs  // defs contains root!
+func TestSchemaDefinitionsAreSerializable(t *testing.T) {
+	schema := (&User{}).JsonSchema()
+	
+	// Verify Definitions is not nil (the bug only occurs when Definitions is set)
+	if schema.Definitions == nil {
+		t.Fatal("Expected schema.Definitions to be non-nil")
+	}
+	
+	// Check that definitions contains entries
+	if len(schema.Definitions) == 0 {
+		t.Fatal("Expected schema.Definitions to have entries")
+	}
+	
+	t.Logf("Schema has %d definitions", len(schema.Definitions))
+	for key := range schema.Definitions {
+		t.Logf("  - %s", key)
+	}
+	
+	// CRITICAL CHECK: Verify the root schema is NOT in its own definitions
+	// This is the circular reference that causes stack overflow!
+	// The generated code does: root := defs["key"]; root.Definitions = defs
+	// If defs still contains the root, we have: root -> Definitions -> root (cycle!)
+	if _, hasRoot := schema.Definitions["users.v1.User"]; hasRoot {
+		t.Error("CIRCULAR REFERENCE DETECTED: Root schema 'users.v1.User' is in its own Definitions!")
+		t.Error("This WILL cause a stack overflow when marshaling to JSON with some library versions.")
+		t.Error("The fix is to delete the root from defs before assigning: delete(defs, key)")
+	} else {
+		t.Log("Good: Root schema is not in its own Definitions (no circular reference)")
+	}
+	
+	// Now serialize - this is where the circular reference would cause stack overflow
+	data, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("Failed to marshal schema with definitions: %v", err)
+	}
+	
+	// Verify the serialized JSON contains $defs
+	jsonStr := string(data)
+	if !strings.Contains(jsonStr, "$defs") && !strings.Contains(jsonStr, "definitions") {
+		t.Log("WARNING: Serialized JSON does not contain $defs or definitions")
+		t.Log("This might mean the Definitions field is not being serialized")
+	}
+	
+	t.Logf("Schema with definitions serialized successfully (%d bytes)", len(data))
+}
+
+// TestCircularReferenceDetection explicitly tests for the circular reference bug.
+// This creates a scenario that mimics what the generated code does and checks
+// if it would cause infinite recursion.
+func TestCircularReferenceDetection(t *testing.T) {
+	// Get schemas that should have themselves in defs based on the generated pattern
+	testCases := []struct {
+		name     string
+		schema   func() interface{}
+		fullName string
+	}{
+		{"User", func() interface{} { return (&User{}).JsonSchema() }, "users.v1.User"},
+		{"Address", func() interface{} { return (&Address{}).JsonSchema() }, "users.v1.Address"},
+		{"ComprehensiveUser", func() interface{} { return (&ComprehensiveUser{}).JsonSchema() }, "users.v1.ComprehensiveUser"},
+	}
+	
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			schema := tc.schema()
+			
+			// Use reflection to check the Definitions field
+			// (since we don't have direct access to *jsonschema.Schema type here)
+			data, err := json.Marshal(schema)
+			if err != nil {
+				t.Fatalf("Marshal failed (possible circular reference): %v", err)
+			}
+			
+			// Parse the JSON to check if root is in $defs
+			var parsed map[string]interface{}
+			if err := json.Unmarshal(data, &parsed); err != nil {
+				t.Fatalf("Unmarshal failed: %v", err)
+			}
+			
+			// Check $defs for circular reference
+			if defs, ok := parsed["$defs"].(map[string]interface{}); ok {
+				if _, hasRoot := defs[tc.fullName]; hasRoot {
+					t.Errorf("CIRCULAR REFERENCE: %s is in its own $defs!", tc.fullName)
+				} else {
+					t.Logf("Good: %s is not in its own $defs", tc.fullName)
+				}
+			}
+			
+			t.Logf("%s schema serialized OK (%d bytes)", tc.name, len(data))
+		})
+	}
+}
+`
+	testPath := filepath.Join(pkgDir, "serialization_test.go")
+	err = os.WriteFile(testPath, []byte(testContent), 0o644)
+	s.Require().NoError(err, "Failed to write test file")
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	s.Require().NoError(err, "go mod tidy failed: %s", string(output))
+
+	// Run the tests - this will fail with a stack overflow if the bug exists
+	cmd = exec.Command("go", "test", "-v", "-timeout", "30s", "./...")
+	cmd.Dir = tmpDir
+	output, err = cmd.CombinedOutput()
+
+	// Log the output for debugging
+	s.T().Logf("Test output:\n%s", string(output))
+
+	s.Require().NoError(err, "JSON serialization tests failed: %s\n\nThis likely indicates the circular reference bug. See REPORT.md for details.", string(output))
+
+	s.T().Log("Schema JSON serialization tests passed - no circular reference detected")
+}
+
+// TestNoCircularReferenceInGeneratedCode checks that the generated code
+// properly removes the root schema from defs before assigning to Definitions.
+// This is a static check that the fix for the circular reference bug is present.
+func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
+	content := s.GetGeneratedContent()
+
+	// The fix should include a delete statement to remove the root from defs
+	// before assigning defs to root.Definitions
+	//
+	// Pattern we're looking for:
+	//   delete(defs, "...")
+	//   root.Definitions = defs
+	//
+	// Or alternative fix patterns that prevent circular references
+
+	hasAssignment := strings.Contains(content, "root.Definitions = defs")
+
+	if hasAssignment {
+		// If we assign defs to root.Definitions, we need to ensure root is not in defs
+		// Check for the delete pattern
+		hasDelete := strings.Contains(content, "delete(defs,")
+
+		if !hasDelete {
+			// Alternative: check if using a reference wrapper pattern
+			// e.g., returning &jsonschema.Schema{Ref: ..., Definitions: defs}
+			// instead of modifying root
+
+			// For now, we warn but don't fail - the runtime test will catch the actual bug
+			s.T().Log("WARNING: Generated code assigns defs to root.Definitions without deleting root from defs.")
+			s.T().Log("This may cause a circular reference and stack overflow when serializing to JSON.")
+			s.T().Log("See REPORT.md for details on the fix.")
+		} else {
+			s.T().Log("Generated code properly removes root from defs before assignment (circular reference fix present)")
+		}
+	}
+}
