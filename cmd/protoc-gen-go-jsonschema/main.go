@@ -4,13 +4,29 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/alis-exchange/protoc-gen-go-jsonschema/plugin"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
-var version string // This will be set at build time
+// version can be set at build time via ldflags
+var version string
+
+func getVersion() string {
+	// If version was set via ldflags, use it
+	if version != "" {
+		return version
+	}
+
+	// Try to get version from Go module info (works with go install)
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" {
+		return info.Main.Version
+	}
+
+	return "development"
+}
 
 func main() {
 	var flags flag.FlagSet
@@ -20,10 +36,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		if version == "" {
-			version = "development" // Default version if not provided at build time
-		}
-		fmt.Printf("%s\n", version)
+		fmt.Printf("%s\n", getVersion())
 		os.Exit(0)
 	}
 
