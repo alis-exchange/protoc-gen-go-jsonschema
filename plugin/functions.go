@@ -203,6 +203,12 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 //
 // Returns a flat list of all messages that should generate schemas, in dependency order.
 func (gr *Generator) getMessages(messages []*protogen.Message, defaultGenerate bool, visited map[string]bool) []*protogen.Message {
+	return gr.getMessagesWithForce(messages, defaultGenerate, false, visited)
+}
+
+// getMessagesWithForce is the internal implementation that supports forcing generation.
+// When force=true, explicit generate=false options are ignored to prevent broken $refs.
+func (gr *Generator) getMessagesWithForce(messages []*protogen.Message, defaultGenerate bool, force bool, visited map[string]bool) []*protogen.Message {
 	var results []*protogen.Message
 
 	for _, message := range messages {
@@ -223,9 +229,17 @@ func (gr *Generator) getMessages(messages []*protogen.Message, defaultGenerate b
 
 		// --- Determine Generation Flag ---
 		// Start with the inherited default, then check for message-specific override.
+		// If force=true, ignore explicit generate=false to prevent broken $refs.
 		shouldGen := defaultGenerate
 		if opts := getMessageJsonSchemaOptions(message); opts != nil {
-			shouldGen = opts.GetGenerate()
+			optValue := opts.GetGenerate()
+			// When forced (e.g., by parent generating), ignore explicit false
+			if force && !optValue {
+				// Keep defaultGenerate (forced true), don't override to false
+				shouldGen = defaultGenerate
+			} else {
+				shouldGen = optValue
+			}
 		}
 
 		// --- Process Message if Enabled ---
@@ -243,7 +257,7 @@ func (gr *Generator) getMessages(messages []*protogen.Message, defaultGenerate b
 				// of their own options.
 				for _, field := range message.Fields {
 					if field.Desc.Kind() == protoreflect.MessageKind {
-						depMessages := gr.getMessages([]*protogen.Message{field.Message}, true, visited)
+						depMessages := gr.getMessagesWithForce([]*protogen.Message{field.Message}, true, true, visited)
 						results = append(results, depMessages...)
 					}
 				}
@@ -260,9 +274,10 @@ func (gr *Generator) getMessages(messages []*protogen.Message, defaultGenerate b
 		// - Parent fields will create $ref pointers to nested messages in $defs
 		// - Without forcing generation, $refs will be broken causing runtime errors
 		//
-		// This matches the field dependency logic (line 246) which also forces 'true'.
+		// When force=true, explicit generate=false on nested messages is ignored.
+		// This matches the field dependency logic which also forces generation.
 		if len(message.Messages) > 0 {
-			nestedResults := gr.getMessages(message.Messages, true, visited)
+			nestedResults := gr.getMessagesWithForce(message.Messages, true, true, visited)
 			results = append(results, nestedResults...)
 		}
 	}
