@@ -906,7 +906,7 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", goName))
 		sg.gen.P(fmt.Sprintf("root := defs[\"%s\"]", message.Desc.FullName()))
 		sg.gen.P(fmt.Sprintf("delete(defs, \"%s\")", message.Desc.FullName()))
-		sg.gen.P("root.Definitions = defs")
+		sg.gen.P("root.Defs = defs")
 		sg.gen.P("return root")
 		sg.gen.P("}")
 		sg.gen.P()
