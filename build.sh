@@ -1,6 +1,15 @@
 #!/bin/bash
 
 set -e  # Exit immediately on error
+
+# Require version argument
+if [ -z "$1" ]; then
+  echo "Error: Version argument is required"
+  echo "Usage: ./build.sh <version>"
+  echo "Example: ./build.sh v1.0.0"
+  exit 1
+fi
+
 VERSION=$1
 OUTPUT_DIR="dist/$VERSION"
 
