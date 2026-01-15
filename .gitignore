@@ -39,7 +39,11 @@ go.work.sum
 
 # Generated test artifacts (not golden files or fixtures)
 testdata/generated/
+testdata/debug/
 testdata/schemas/go.sum
+
+# Debug directory for local developer testing
+debug/
 
 # Temporary test outputs
 *.test.out

@@ -304,8 +304,8 @@ func (s *IntegrationTestSuite) TestSchemaDefinitionsArePopulated() {
 		s.T().Log("Note: No $ref found - may be inlining all schemas")
 	}
 
-	// Check for Definitions assignment
-	s.Contains(content, "root.Definitions = defs", "Generated code should assign Definitions to root schema")
+	// Check for Defs assignment
+	s.Contains(content, "root.Defs = defs", "Generated code should assign Defs to root schema")
 }
 
 // TestRequiredFieldsGeneration tests that required fields are properly marked.
@@ -535,19 +535,19 @@ func extractRefKey(ref string) string {
 // TestSchemaCanBeSerialized verifies that calling JsonSchema() and then
 // json.Marshal() does not cause a stack overflow from circular references.
 // This test will fail with a stack overflow if the generated code has
-// the circular reference bug (root schema in defs, then defs assigned to root.Definitions).
+// the circular reference bug (root schema in defs, then defs assigned to root.Defs).
 func TestSchemaCanBeSerialized(t *testing.T) {
 	testCases := []struct {
 		name   string
-		schema func() interface{ }
+		schema func() *jsonschema.Schema
 	}{
-		{"Address", func() interface{} { return (&Address{}).JsonSchema() }},
-		{"User", func() interface{} { return (&User{}).JsonSchema() }},
-		{"ComprehensiveUser", func() interface{} { return (&ComprehensiveUser{}).JsonSchema() }},
-		{"AddressDetails", func() interface{} { return (&AddressDetails{}).JsonSchema() }},
-		{"ContactInfo", func() interface{} { return (&ContactInfo{}).JsonSchema() }},
-		{"Metadata", func() interface{} { return (&Metadata{}).JsonSchema() }},
-		{"UserProfile", func() interface{} { return (&UserProfile{}).JsonSchema() }},
+		{"Address", func() *jsonschema.Schema { return (&Address{}).JsonSchema() }},
+		{"User", func() *jsonschema.Schema { return (&User{}).JsonSchema() }},
+		{"ComprehensiveUser", func() *jsonschema.Schema { return (&ComprehensiveUser{}).JsonSchema() }},
+		{"AddressDetails", func() *jsonschema.Schema { return (&AddressDetails{}).JsonSchema() }},
+		{"ContactInfo", func() *jsonschema.Schema { return (&ContactInfo{}).JsonSchema() }},
+		{"Metadata", func() *jsonschema.Schema { return (&Metadata{}).JsonSchema() }},
+		{"UserProfile", func() *jsonschema.Schema { return (&UserProfile{}).JsonSchema() }},
 	}
 
 	for _, tc := range testCases {
@@ -623,7 +623,7 @@ func TestSelfReferencingSchemaSerializable(t *testing.T) {
 // populated and assigned to the root schema, serialization still works.
 // This specifically tests the circular reference scenario where:
 //   root = defs["key"]
-//   root.Definitions = defs  // defs contains root!
+//   root.Defs = defs  // defs contains root!
 func TestSchemaDefinitionsAreSerializable(t *testing.T) {
 	schema := (&User{}).JsonSchema()
 	if schema == nil {
@@ -654,7 +654,7 @@ func TestSchemaDefinitionsAreSerializable(t *testing.T) {
 	
 	// CRITICAL CHECK: Verify the root schema is NOT in its own definitions
 	// This is the circular reference that causes stack overflow!
-	// The generated code does: root := defs["key"]; root.Definitions = defs
+	// The generated code does: root := defs["key"]; root.Defs = defs
 	// If defs still contains the root, we have: root -> Definitions -> root (cycle!)
 	if _, hasRoot := schema.Definitions["users.v1.User"]; hasRoot {
 		t.Error("CIRCULAR REFERENCE DETECTED: Root schema 'users.v1.User' is in its own Definitions!")
@@ -687,14 +687,14 @@ func TestCircularReferenceDetection(t *testing.T) {
 	// Get schemas that should have themselves in defs based on the generated pattern
 	testCases := []struct {
 		name     string
-		schema   func() interface{}
+		schema   func() *jsonschema.Schema
 		fullName string
 	}{
-		{"User", func() interface{} { return (&User{}).JsonSchema() }, "users.v1.User"},
-		{"Address", func() interface{} { return (&Address{}).JsonSchema() }, "users.v1.Address"},
-		{"ComprehensiveUser", func() interface{} { return (&ComprehensiveUser{}).JsonSchema() }, "users.v1.ComprehensiveUser"},
+		{"User", func() *jsonschema.Schema { return (&User{}).JsonSchema() }, "users.v1.User"},
+		{"Address", func() *jsonschema.Schema { return (&Address{}).JsonSchema() }, "users.v1.Address"},
+		{"ComprehensiveUser", func() *jsonschema.Schema { return (&ComprehensiveUser{}).JsonSchema() }, "users.v1.ComprehensiveUser"},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			schema := tc.schema()
@@ -770,18 +770,18 @@ func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
 	content := s.GetGeneratedContent()
 
 	// The fix should include a delete statement to remove the root from defs
-	// before assigning defs to root.Definitions
+	// before assigning defs to root.Defs
 	//
 	// Pattern we're looking for:
 	//   delete(defs, "...")
-	//   root.Definitions = defs
+	//   root.Defs = defs
 	//
 	// Or alternative fix patterns that prevent circular references
 
-	hasAssignment := strings.Contains(content, "root.Definitions = defs")
+	hasAssignment := strings.Contains(content, "root.Defs = defs")
 
 	if hasAssignment {
-		// If we assign defs to root.Definitions, we need to ensure root is not in defs
+		// If we assign defs to root.Defs, we need to ensure root is not in defs
 		// Check for the delete pattern
 		hasDelete := strings.Contains(content, "delete(defs,")
 
@@ -791,7 +791,7 @@ func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
 			// instead of modifying root
 
 			// For now, we warn but don't fail - the runtime test will catch the actual bug
-			s.T().Log("WARNING: Generated code assigns defs to root.Definitions without deleting root from defs.")
+			s.T().Log("WARNING: Generated code assigns defs to root.Defs without deleting root from defs.")
 			s.T().Log("This may cause a circular reference and stack overflow when serializing to JSON.")
 			s.T().Log("See REPORT.md for details on the fix.")
 		} else {
