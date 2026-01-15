@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package force_test.v1;
+
+import "alis/open/options/v1/options.proto";
+
+option go_package = "github.com/newtonnthiga/force_test/v1;forcetestv1";
+
+// Parent message with generate=true
+message ParentWithNested {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  // Regular field
+  string name = 1;
+
+  // Field referencing nested message
+  NestedMessage nested = 2;
+
+  // Repeated field referencing nested message
+  repeated NestedMessage nested_list = 3;
+
+  // Nested message with explicit generate=false
+  // This should still generate because parent has generate=true
+  message NestedMessage {
+    option (alis.open.options.v1.message).json_schema.generate = false;
+
+    string value = 1;
+    int32 count = 2;
+  }
+}
+
+// Parent message with generate=true and nested with generate=false
+message ParentWithForcedNested {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  string id = 1;
+
+  // Nested message that should be forced to generate
+  message ForcedNested {
+    option (alis.open.options.v1.message).json_schema.generate = false;
+
+    string data = 1;
+    bool flag = 2;
+  }
+
+  ForcedNested forced = 2;
+}
+
+// Parent message with generate=false (should not generate)
+message ParentWithoutGenerate {
+  // No generate option
+
+  string name = 1;
+
+  // Nested message - should not generate because parent doesn't generate
+  message NestedNoGenerate {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    string value = 1;
+  }
+
+  NestedNoGenerate nested = 2;
+}
+
+// Message with field dependency that has generate=false
+message ParentWithForcedDependency {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  string name = 1;
+
+  // Field dependency with generate=false - should still generate
+  DependencyMessage dependency = 2;
+}
+
+// Dependency message with explicit generate=false
+// Should still generate when referenced by parent
+message DependencyMessage {
+  option (alis.open.options.v1.message).json_schema.generate = false;
+
+  string value = 1;
+  int32 number = 2;
+}

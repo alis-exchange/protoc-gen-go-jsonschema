@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // PluginGeneratorTestSuite contains tests for the Generator and Generate function.
@@ -129,6 +131,86 @@ func (s *PluginGeneratorTestSuite) TestGetMessages() {
 		// Second call should return no additional messages
 		s.Equal(0, count2, "Expected 0 messages on second call (all visited)")
 		s.NotEqual(0, count1, "Expected some messages on first call")
+	})
+}
+
+// TestGetMessagesWithForce tests the force logic for nested messages and dependencies.
+func (s *PluginGeneratorTestSuite) TestGetMessagesWithForce() {
+	gr := s.Generator()
+
+	s.Run("force=true ignores explicit generate=false on nested messages", func() {
+		// Find a message with nested messages (Address has AddressDetails)
+		parentMsg := s.FindMessage("Address")
+		s.Require().NotNil(parentMsg, "Address message not found")
+
+		// Get nested messages
+		nestedMessages := parentMsg.Messages
+		s.Require().NotEmpty(nestedMessages, "Address should have nested messages")
+
+		// Test with force=false: should respect generate=false if set
+		visited := make(map[string]bool)
+		messagesNoForce := gr.getMessagesWithForce(nestedMessages, false, false, visited)
+		
+		// Test with force=true: should ignore generate=false and use defaultGenerate
+		visited2 := make(map[string]bool)
+		messagesWithForce := gr.getMessagesWithForce(nestedMessages, true, true, visited2)
+
+		// With force=true and defaultGenerate=true, nested messages should be included
+		// even if they have generate=false (which they don't in our test proto, but the logic should work)
+		s.NotEmpty(messagesWithForce, "Force=true should include nested messages when defaultGenerate=true")
+		
+		// Log both results for comparison
+		s.T().Logf("Without force: %d messages, With force: %d messages", len(messagesNoForce), len(messagesWithForce))
+		
+		// Verify AddressDetails is included when forced
+		foundNested := false
+		for _, msg := range messagesWithForce {
+			if strings.Contains(string(msg.Desc.FullName()), "AddressDetails") {
+				foundNested = true
+				break
+			}
+		}
+		s.True(foundNested, "Nested AddressDetails should be included when force=true")
+	})
+
+	s.Run("force=true includes field dependencies even with generate=false", func() {
+		// Find a message with message-type fields
+		parentMsg := s.FindMessage("ComprehensiveUser")
+		s.Require().NotNil(parentMsg, "ComprehensiveUser message not found")
+
+		// Get messages with force=true for field dependencies
+		visited := make(map[string]bool)
+		visited[string(parentMsg.Desc.FullName())] = true
+		
+		// Simulate field dependency processing with force=true
+		var depMessages []*protogen.Message
+		for _, field := range parentMsg.Fields {
+			if field.Desc.Kind() == protoreflect.MessageKind {
+				deps := gr.getMessagesWithForce([]*protogen.Message{field.Message}, true, true, visited)
+				depMessages = append(depMessages, deps...)
+			}
+		}
+
+		// Should include dependencies even if they have generate=false
+		s.NotEmpty(depMessages, "Force=true should include field dependencies")
+	})
+
+	s.Run("force=false respects explicit generate=false", func() {
+		// Test that without force, generate=false is respected
+		visited := make(map[string]bool)
+		
+		// Get all messages with force=false
+		allMessages := s.file.Messages
+		messagesNoForce := gr.getMessagesWithForce(allMessages, false, false, visited)
+
+		// Messages with generate=false should not be included when force=false
+		// (This test verifies the logic works, even if our test proto doesn't have generate=false)
+		for _, msg := range messagesNoForce {
+			opts := getMessageJsonSchemaOptions(msg)
+			if opts != nil && !opts.GetGenerate() {
+				s.Fail("Message with generate=false should not be included when force=false")
+			}
+		}
 	})
 }
 

@@ -2,6 +2,27 @@
 
 This document provides comprehensive information for AI agents and LLMs working with this codebase.
 
+## ⚠️ IMPORTANT: Documentation Maintenance
+
+**LLMs and AI agents MUST update this document when making significant changes to the plugin.**
+
+Significant changes include:
+- New features or capabilities
+- Changes to message generation logic
+- New options or option behaviors
+- Bug fixes that change behavior
+- New test patterns or testing approaches
+- Changes to the code generation output format
+
+When updating this document:
+1. Update the relevant sections with new information
+2. Add new sections if needed
+3. Update the "File Locations Quick Reference" table
+4. Update the "Common Issues and Solutions" section if applicable
+5. Keep examples and code snippets current
+
+**This document is the single source of truth for understanding how the plugin works.**
+
 ## Project Overview
 
 **protoc-gen-go-jsonschema** is a Protocol Buffers compiler plugin that generates Go code for creating JSON Schema (Draft 2020-12) representations of proto messages at runtime.
@@ -49,7 +70,8 @@ protoc-gen-go-jsonschema/
 │   └── testutil_test.go         # Test utility functions
 ├── testdata/
 │   ├── protos/                  # Sample proto files for testing
-│   │   └── users/v1/user.proto
+│   │   ├── users/v1/user.proto
+│   │   └── force_test/v1/force_test.proto  # Test proto for force logic
 │   ├── descriptors/             # Generated FileDescriptorSet files
 │   │   └── user.pb
 │   └── golden/                  # Expected output for golden file tests
@@ -109,7 +131,8 @@ protoc invokes plugin
 
 Stateless coordinator for file-level generation:
 - `generateFile()` - Creates output file, iterates messages
-- `getMessages()` - Recursively collects messages to generate (respects options)
+- `getMessages()` - Public wrapper that calls `getMessagesWithForce()` with `force=false`
+- `getMessagesWithForce()` - Internal implementation with force logic for dependencies and nested messages
 - `escapeGoString()` - Escapes strings for Go source code
 - `getTitleAndDescription()` - Extracts metadata from proto comments
 
@@ -242,6 +265,37 @@ message User {
 ```
 
 Extracted by: `getMessageJsonSchemaOptions(message *protogen.Message)`
+
+**Important: Force Logic for Dependencies and Nested Messages**
+
+When a message has `generate = true`, its **field dependencies** and **nested messages** are **forced to generate** even if they have `generate = false`. This ensures that `$ref` pointers in the generated schema can always be resolved.
+
+```protobuf
+message Parent {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+  
+  Dependency dep = 1;  // Field dependency - will generate even if generate=false
+  
+  message Nested {
+    option (alis.open.options.v1.message).json_schema.generate = false;  // Explicit false
+    string value = 1;
+  }
+  
+  Nested nested = 2;  // Nested message - will generate even if generate=false
+}
+
+message Dependency {
+  option (alis.open.options.v1.message).json_schema.generate = false;  // Explicit false
+  string data = 1;
+}
+```
+
+In the above example, both `Dependency` and `Parent.Nested` will generate schemas because `Parent` has `generate = true`. This prevents broken `$ref` pointers like `"#/$defs/package.Parent.Nested"` that point to non-existent definitions.
+
+The force logic is implemented in `getMessagesWithForce()`:
+- Field dependencies: Called with `force=true` (line 260)
+- Nested messages: Called with `force=true` (line 280)
+- When `force=true` and a message has `generate=false`, the `false` is ignored and `defaultGenerate` (which is `true` when forcing) is used instead
 
 ### Field-Level Options
 
@@ -460,6 +514,31 @@ The plugin handles circular message references through:
 1. Registering schema in `defs` BEFORE processing fields
 2. Checking `visited` map to avoid re-processing
 3. Returning `$ref` pointers instead of inline definitions
+4. **CRITICAL**: Removing root schema from `defs` before assigning to `root.Definitions` (prevents stack overflow on JSON marshaling)
+
+### Nested Messages with generate=false
+
+**Problem**: Nested messages with `generate = false` might not generate, causing broken `$ref` pointers.
+
+**Solution**: The force logic ensures that when a parent message has `generate = true`, all nested messages are forced to generate regardless of their own `generate` option. This is implemented in `getMessagesWithForce()` with `force=true` for nested message processing.
+
+**Example**:
+```protobuf
+message Parent {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+  
+  message Nested {
+    option (alis.open.options.v1.message).json_schema.generate = false;  // Still generates!
+    string value = 1;
+  }
+}
+```
+
+### Field Dependencies with generate=false
+
+**Problem**: Message-type fields referencing messages with `generate = false` might cause broken `$ref` pointers.
+
+**Solution**: Field dependencies are forced to generate when the parent generates. This is implemented in `getMessagesWithForce()` with `force=true` for field dependency processing.
 
 ### 64-bit Integer Precision
 
@@ -481,8 +560,13 @@ Well-Known Types are handled inline (no `$ref`), while user-defined messages use
 | Plugin entry point | `cmd/protoc-gen-go-jsonschema/main.go` |
 | Generation logic | `plugin/functions.go` |
 | Type constants | `plugin/functions.go` (top of file) |
+| Message collection | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()` |
+| Force logic | `plugin/functions.go` → `getMessagesWithForce()` (lines 230-243, 260, 280) |
 | WKT handling | `plugin/functions.go` → `getMessageSchemaConfig()` |
 | Options extraction | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()` |
 | Test fixtures | `testdata/protos/users/v1/user.proto` |
+| Force logic tests | `testdata/protos/force_test/v1/force_test.proto` |
 | Golden files | `testdata/golden/*.golden` |
 | Base test suite | `plugin/suite_test.go` |
+| Force logic unit tests | `plugin/plugin_test.go` → `TestGetMessagesWithForce()` |
+| Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()` |

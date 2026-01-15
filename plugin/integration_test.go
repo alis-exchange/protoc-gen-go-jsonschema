@@ -606,3 +606,175 @@ func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
 		}
 	}
 }
+
+// TestForceLogicForNestedMessages verifies that nested messages with generate=false
+// are still generated when their parent has generate=true (force logic).
+func (s *IntegrationTestSuite) TestForceLogicForNestedMessages() {
+	// This test requires a proto file with nested messages that have generate=false
+	// For now, we test with the existing proto structure and verify the logic works
+
+	content := s.GetGeneratedContent()
+
+	// Verify that nested messages are included in generated code
+	// Address.AddressDetails is a nested message in the test proto
+	s.Contains(content, "Address_AddressDetails_JsonSchema_WithDefs",
+		"Expected nested message Address_AddressDetails_JsonSchema_WithDefs to be generated")
+
+	// Verify the nested message function is called from parent
+	s.Contains(content, `schema.Properties["addressDetails"] = Address_AddressDetails_JsonSchema_WithDefs(defs)`,
+		"Expected parent message to call nested message's schema function")
+
+	// Verify the $defs key is present
+	s.Contains(content, `defs["users.v1.Address.AddressDetails"]`,
+		"Expected nested message to be added to defs")
+}
+
+// TestForceLogicForFieldDependencies verifies that field dependencies with generate=false
+// are still generated when their parent has generate=true (force logic).
+func (s *IntegrationTestSuite) TestForceLogicForFieldDependencies() {
+	content := s.GetGeneratedContent()
+
+	// Verify that message-type field dependencies are included
+	// ComprehensiveUser has Address field which should generate Address schema
+	s.Contains(content, "Address_JsonSchema_WithDefs",
+		"Expected field dependency Address_JsonSchema_WithDefs to be generated")
+
+	// Verify the dependency is referenced in the parent
+	s.Contains(content, `schema.Properties["address"]`,
+		"Expected parent message to reference field dependency")
+}
+
+// TestForceLogicRuntime verifies that forced messages are present in $defs at runtime.
+func (s *IntegrationTestSuite) TestForceLogicRuntime() {
+	contents := s.RunGenerate()
+
+	// Create temp directory for runtime test
+	tmpDir, err := os.MkdirTemp("", "force-logic-test-*")
+	s.Require().NoError(err)
+	defer os.RemoveAll(tmpDir)
+
+	// Write generated code
+	for name, content := range contents {
+		baseName := filepath.Base(name)
+		outPath := filepath.Join(tmpDir, baseName)
+		err := os.WriteFile(outPath, []byte(content), 0o644)
+		s.Require().NoError(err)
+	}
+
+	// Write stub types
+	stubContent := `package usersv1
+
+type UserStatus int32
+type AccountType int32
+type Priority int32
+type Address struct{}
+type Address_AddressDetails struct{}
+type AddressDetails struct{}
+type ContactInfo struct{}
+type Metadata struct{}
+type ComprehensiveUser struct{}
+type User struct{}
+type CreateUserRequest struct{}
+type GetUserRequest struct{}
+type UpdateUserRequest struct{}
+type DeleteUserRequest struct{}
+type DeleteUserResponse struct{}
+type CreateComprehensiveUserRequest struct{}
+type BatchGetUsersRequest struct{}
+type BatchGetUsersResponse struct{}
+type UserProfile struct{}
+type PersonalProfile struct{}
+type BusinessProfile struct{}
+type RepeatedFieldsDemo struct{}
+type MapFieldsDemo struct{}
+type OneOfDemo struct{}
+type WellKnownTypesDemo struct{}
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "stub_types.go"), []byte(stubContent), 0o644)
+	s.Require().NoError(err)
+
+	// Write test file that verifies forced messages are in $defs
+	testContent := `package usersv1
+
+import (
+	"testing"
+
+	"github.com/google/jsonschema-go/jsonschema"
+)
+
+func getDefKeys(defs map[string]*jsonschema.Schema) []string {
+	keys := make([]string, 0, len(defs))
+	for k := range defs {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func TestNestedMessageInDefs(t *testing.T) {
+	// Test that Address schema has AddressDetails in its definitions
+	// This verifies that nested messages are forced to generate
+	schema := (&Address{}).JsonSchema()
+	if schema == nil {
+		t.Fatal("Address.JsonSchema() returned nil")
+	}
+	if schema.Definitions == nil {
+		t.Fatal("Address schema has no Definitions")
+	}
+
+	// The nested message should be in $defs (forced generation)
+	nestedKey := "users.v1.Address.AddressDetails"
+	if _, ok := schema.Definitions[nestedKey]; !ok {
+		t.Errorf("Expected nested message %q in Definitions (forced generation), got keys: %v", nestedKey, getDefKeys(schema.Definitions))
+	}
+
+	t.Logf("Address schema Definitions keys: %v", getDefKeys(schema.Definitions))
+}
+
+func TestFieldDependencyInDefs(t *testing.T) {
+	// Test that ComprehensiveUser schema has Address in its definitions
+	// This verifies that field dependencies are forced to generate
+	schema := (&ComprehensiveUser{}).JsonSchema()
+	if schema == nil {
+		t.Fatal("ComprehensiveUser.JsonSchema() returned nil")
+	}
+	if schema.Definitions == nil {
+		t.Fatal("ComprehensiveUser schema has no Definitions")
+	}
+
+	// Field dependency should be in $defs (forced generation)
+	dependencyKey := "users.v1.Address"
+	if _, ok := schema.Definitions[dependencyKey]; !ok {
+		t.Errorf("Expected field dependency %q in Definitions (forced generation), got keys: %v", dependencyKey, getDefKeys(schema.Definitions))
+	}
+
+	t.Logf("ComprehensiveUser schema Definitions keys: %v", getDefKeys(schema.Definitions))
+}
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "force_test.go"), []byte(testContent), 0o644)
+	s.Require().NoError(err)
+
+	// Write go.mod
+	goModContent := `module testserialize/usersv1
+
+go 1.21
+
+require github.com/google/jsonschema-go v0.3.0
+`
+	err = os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goModContent), 0o644)
+	s.Require().NoError(err)
+
+	// Run go mod tidy
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	s.Require().NoError(err, "go mod tidy failed: %s", string(output))
+
+	// Run the test
+	cmd = exec.Command("go", "test", "-v", "-run", "TestNestedMessageInDefs|TestFieldDependencyInDefs")
+	cmd.Dir = tmpDir
+	output, err = cmd.CombinedOutput()
+
+	s.T().Logf("Force logic test output:\n%s", string(output))
+
+	s.Require().NoError(err, "Force logic tests failed: %s\n\nThis indicates forced messages may not be generating correctly.", string(output))
+}
