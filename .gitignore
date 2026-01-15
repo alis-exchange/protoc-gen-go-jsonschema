@@ -43,3 +43,6 @@ testdata/schemas/go.sum
 
 # Temporary test outputs
 *.test.out
+
+# LLM Files
+CLAUDE.md

@@ -251,11 +251,18 @@ func (gr *Generator) getMessages(messages []*protogen.Message, defaultGenerate b
 		}
 
 		// --- Process Nested Messages ---
-		// Always traverse into nested message definitions (e.g., message Parent { message Child {} })
-		// even if the parent is skipped, because nested messages might explicitly opt-in.
-		// Child messages inherit the parent's generation state unless they override it.
+		// CRITICAL: Force generation for nested messages when parent generates.
+		// This ensures $ref pointers like "#/$defs/Parent.Child" can be resolved.
+		//
+		// Rationale:
+		// - Nested messages are part of the parent's type system and cannot exist independently
+		// - If parent generates, all referenced nested types MUST generate
+		// - Parent fields will create $ref pointers to nested messages in $defs
+		// - Without forcing generation, $refs will be broken causing runtime errors
+		//
+		// This matches the field dependency logic (line 246) which also forces 'true'.
 		if len(message.Messages) > 0 {
-			nestedResults := gr.getMessages(message.Messages, shouldGen, visited)
+			nestedResults := gr.getMessages(message.Messages, true, visited)
 			results = append(results, nestedResults...)
 		}
 	}
