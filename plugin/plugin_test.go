@@ -150,7 +150,7 @@ func (s *PluginGeneratorTestSuite) TestGetMessagesWithForce() {
 		// Test with force=false: should respect generate=false if set
 		visited := make(map[string]bool)
 		messagesNoForce := gr.getMessagesWithForce(nestedMessages, false, false, visited)
-		
+
 		// Test with force=true: should ignore generate=false and use defaultGenerate
 		visited2 := make(map[string]bool)
 		messagesWithForce := gr.getMessagesWithForce(nestedMessages, true, true, visited2)
@@ -158,10 +158,10 @@ func (s *PluginGeneratorTestSuite) TestGetMessagesWithForce() {
 		// With force=true and defaultGenerate=true, nested messages should be included
 		// even if they have generate=false (which they don't in our test proto, but the logic should work)
 		s.NotEmpty(messagesWithForce, "Force=true should include nested messages when defaultGenerate=true")
-		
+
 		// Log both results for comparison
 		s.T().Logf("Without force: %d messages, With force: %d messages", len(messagesNoForce), len(messagesWithForce))
-		
+
 		// Verify AddressDetails is included when forced
 		foundNested := false
 		for _, msg := range messagesWithForce {
@@ -181,7 +181,7 @@ func (s *PluginGeneratorTestSuite) TestGetMessagesWithForce() {
 		// Get messages with force=true for field dependencies
 		visited := make(map[string]bool)
 		visited[string(parentMsg.Desc.FullName())] = true
-		
+
 		// Simulate field dependency processing with force=true
 		var depMessages []*protogen.Message
 		for _, field := range parentMsg.Fields {
@@ -198,7 +198,7 @@ func (s *PluginGeneratorTestSuite) TestGetMessagesWithForce() {
 	s.Run("force=false respects explicit generate=false", func() {
 		// Test that without force, generate=false is respected
 		visited := make(map[string]bool)
-		
+
 		// Get all messages with force=false
 		allMessages := s.file.Messages
 		messagesNoForce := gr.getMessagesWithForce(allMessages, false, false, visited)

@@ -1,0 +1,627 @@
+syntax = "proto3";
+
+package weather.v1;
+
+import "alis/open/options/v1/options.proto";
+
+option go_package = "github.com/newtonnthiga/weather/v1;weatherv1";
+
+// Comprehensive weather forecast request showcasing various proto3 types
+message GetWeatherForecastRequest {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  // City
+  //
+  // The name of the city for which to retrieve weather forecast information.
+  string city = 1;
+
+  // Country Code
+  //
+  // The ISO 3166-1 alpha-2 country code for the location.
+  string country_code = 2;
+
+  // Postal Code
+  //
+  // The postal or ZIP code for the location.
+  string postal_code = 3;
+
+  // Days Ahead
+  //
+  // Number of days ahead to forecast. Standard 32-bit signed integer.
+  int32 days_ahead = 4;
+
+  // Timestamp
+  //
+  // Unix timestamp for the forecast request. Standard 64-bit signed integer.
+  int64 timestamp = 5;
+
+  // Max Results
+  //
+  // Maximum number of forecast results to return. Unsigned 32-bit integer.
+  uint32 max_results = 6;
+
+  // Request ID
+  //
+  // Unique identifier for the request. Unsigned 64-bit integer.
+  uint64 request_id = 7;
+
+  // Offset Hours
+  //
+  // Time offset in hours from UTC. Signed integer with zigzag encoding.
+  sint32 offset_hours = 8;
+
+  // Epoch Seconds
+  //
+  // Unix epoch time in seconds. Signed integer with zigzag encoding.
+  sint64 epoch_seconds = 9;
+
+  // Location ID
+  //
+  // Fixed identifier for the location. Fixed 32-bit unsigned integer.
+  fixed32 location_id = 10;
+
+  // Session ID
+  //
+  // Unique session identifier. Fixed 64-bit unsigned integer.
+  fixed64 session_id = 11;
+
+  // Grid X
+  //
+  // X coordinate in the weather grid system. Fixed 32-bit signed integer.
+  sfixed32 grid_x = 12;
+
+  // Grid Y
+  //
+  // Y coordinate in the weather grid system. Fixed 64-bit signed integer.
+  sfixed64 grid_y = 13;
+
+  // Latitude
+  //
+  // Geographic latitude coordinate. 64-bit floating point number.
+  double latitude = 14;
+
+  // Longitude
+  //
+  // Geographic longitude coordinate. 32-bit floating point number.
+  float longitude = 15;
+
+  // Include Hourly
+  //
+  // Whether to include hourly forecast data in the response.
+  bool include_hourly = 16;
+
+  // Include Alerts
+  //
+  // Whether to include weather alerts and warnings in the response.
+  bool include_alerts = 17;
+
+  // Include Historical
+  //
+  // Whether to include historical weather data. Optional field (proto3).
+  optional bool include_historical = 18;
+
+  // API Key Hash
+  //
+  // Hashed API key for authentication purposes.
+  bytes api_key_hash = 19;
+
+  // Temperature Unit
+  //
+  // Unit of measurement for temperature values.
+  enum TemperatureUnit {
+    TEMPERATURE_UNIT_UNKNOWN = 0;
+    TEMPERATURE_UNIT_CELSIUS = 1;
+    TEMPERATURE_UNIT_FAHRENHEIT = 2;
+    TEMPERATURE_UNIT_KELVIN = 3;
+  }
+  TemperatureUnit temperature_unit = 20;
+
+  // Wind Speed Unit
+  //
+  // Unit of measurement for wind speed values.
+  enum WindSpeedUnit {
+    WIND_SPEED_UNIT_UNKNOWN = 0;
+    WIND_SPEED_UNIT_MPH = 1;
+    WIND_SPEED_UNIT_KPH = 2;
+    WIND_SPEED_UNIT_MS = 3; // meters per second
+  }
+  WindSpeedUnit wind_speed_unit = 21;
+
+  // Forecast Type
+  //
+  // Type of forecast data to retrieve.
+  enum ForecastType {
+    FORECAST_TYPE_UNKNOWN = 0;
+    FORECAST_TYPE_CURRENT = 1;
+    FORECAST_TYPE_HOURLY = 2;
+    FORECAST_TYPE_DAILY = 3;
+    FORECAST_TYPE_EXTENDED = 4;
+  }
+  ForecastType forecast_type = 22;
+
+  // Additional Locations
+  //
+  // List of additional location names to include in the forecast.
+  repeated string additional_locations = 23;
+
+  // Hour Intervals
+  //
+  // List of hour intervals for which to retrieve forecast data.
+  repeated int32 hour_intervals = 24;
+
+  // Elevation Levels
+  //
+  // List of elevation levels in meters for multi-level forecasts.
+  repeated double elevation_levels = 25;
+
+  // Forecast Types
+  //
+  // List of forecast types to include in the response.
+  repeated ForecastType forecast_types = 26;
+
+  // Custom Parameters
+  //
+  // Map of custom key-value parameters for extended functionality.
+  map<string, string> custom_parameters = 27;
+
+  // Location Aliases
+  //
+  // Map of location IDs to their human-readable alias names.
+  map<int32, string> location_aliases = 28;
+
+  // Threshold Values
+  //
+  // Map of threshold names to their numeric values for filtering.
+  map<string, double> threshold_values = 29;
+
+  // Location Preferences
+  //
+  // Primary location preferences including coordinates and metadata.
+  LocationPreferences location_preferences = 30;
+
+  // Alternative Locations
+  //
+  // List of alternative location preferences for multi-location forecasts.
+  repeated LocationPreferences alternative_locations = 31;
+
+  // Location Preferences
+  //
+  // Nested message containing location-specific preferences and metadata.
+  message LocationPreferences {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    // Name
+    //
+    // Human-readable name of the location.
+    string name = 1;
+
+    // Latitude
+    //
+    // Geographic latitude coordinate for the location.
+    double lat = 2;
+
+    // Longitude
+    //
+    // Geographic longitude coordinate for the location.
+    double lon = 3;
+
+    // Priority
+    //
+    // Priority level for this location in multi-location requests.
+    int32 priority = 4;
+
+    // Is Primary
+    //
+    // Whether this is the primary location in the request.
+    bool is_primary = 5;
+
+    // Tags
+    //
+    // List of tags associated with this location.
+    repeated string tags = 6;
+
+    // Metadata
+    //
+    // Map of additional metadata key-value pairs for the location.
+    map<string, string> metadata = 7;
+  }
+
+  // Identifier
+  //
+  // Oneof field allowing specification of location by city name, coordinates,
+  // or ZIP code.
+  oneof identifier {
+    // City Name
+    //
+    // Name of the city as an identifier.
+    string city_name = 32;
+
+    // Coordinates
+    //
+    // Geographic coordinates as an identifier.
+    Coordinates coordinates = 33;
+
+    // ZIP Code
+    //
+    // Postal or ZIP code as an identifier.
+    string zip_code = 34;
+  }
+
+  // Coordinates
+  //
+  // Nested message representing geographic coordinates.
+  message Coordinates {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    // Latitude
+    //
+    // Geographic latitude coordinate.
+    double lat = 1;
+
+    // Longitude
+    //
+    // Geographic longitude coordinate.
+    double lon = 2;
+  }
+}
+
+// Comprehensive weather forecast response showcasing various proto3 types
+message GetWeatherForecastResponse {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  // Location Name
+  //
+  // The name of the location for which the forecast was generated.
+  string location_name = 1;
+
+  // Timezone
+  //
+  // The IANA timezone identifier for the location.
+  string timezone = 2;
+
+  // Last Updated
+  //
+  // ISO 8601 timestamp indicating when the forecast data was last updated.
+  string last_updated = 3;
+
+  // Forecast Count
+  //
+  // Total number of forecast entries included in the response. Standard 32-bit
+  // signed integer.
+  int32 forecast_count = 4;
+
+  // Generated At
+  //
+  // Unix timestamp when the forecast response was generated. Standard 64-bit
+  // signed integer.
+  int64 generated_at = 5;
+
+  // Version
+  //
+  // Version number of the forecast data format. Unsigned 32-bit integer.
+  uint32 version = 6;
+
+  // Request Processing Time
+  //
+  // Time taken to process the request in milliseconds. Unsigned 64-bit integer.
+  uint64 request_processing_time_ms = 7;
+
+  // Timezone Offset
+  //
+  // Timezone offset from UTC in hours. Signed integer with zigzag encoding.
+  sint32 timezone_offset = 8;
+
+  // Cache Timestamp
+  //
+  // Unix timestamp when the data was cached. Signed integer with zigzag
+  // encoding.
+  sint64 cache_timestamp = 9;
+
+  // Data Source ID
+  //
+  // Identifier of the data source provider. Fixed 32-bit unsigned integer.
+  fixed32 data_source_id = 10;
+
+  // Response ID
+  //
+  // Unique identifier for this response. Fixed 64-bit unsigned integer.
+  fixed64 response_id = 11;
+
+  // Quality Score
+  //
+  // Quality score of the forecast data (0-100). Fixed 32-bit signed integer.
+  sfixed32 quality_score = 12;
+
+  // Confidence Level
+  //
+  // Confidence level of the forecast accuracy (0-100). Fixed 64-bit signed
+  // integer.
+  sfixed64 confidence_level = 13;
+
+  // Average Temperature
+  //
+  // Average temperature across the forecast period. 64-bit floating point
+  // number.
+  double average_temperature = 14;
+
+  // Humidity Percentage
+  //
+  // Average humidity percentage across the forecast period. 32-bit floating
+  // point number.
+  float humidity_percentage = 15;
+
+  // Is Current
+  //
+  // Whether this forecast represents current conditions.
+  bool is_current = 16;
+
+  // Has Alerts
+  //
+  // Whether there are any active weather alerts for this location.
+  bool has_alerts = 17;
+
+  // Is Cached
+  //
+  // Whether this response was served from cache. Optional field (proto3).
+  optional bool is_cached = 18;
+
+  // Forecast Hash
+  //
+  // Cryptographic hash of the forecast data for integrity verification.
+  bytes forecast_hash = 19;
+
+  // Temperature Unit
+  //
+  // Unit of measurement used for temperature values in this response.
+  GetWeatherForecastRequest.TemperatureUnit temperature_unit = 20;
+
+  // Wind Speed Unit
+  //
+  // Unit of measurement used for wind speed values in this response.
+  GetWeatherForecastRequest.WindSpeedUnit wind_speed_unit = 21;
+
+  // Daily Forecasts
+  //
+  // List of daily weather forecast entries.
+  repeated DailyForecast daily_forecasts = 22;
+
+  // Hourly Forecasts
+  //
+  // List of hourly weather forecast entries.
+  repeated HourlyForecast hourly_forecasts = 23;
+
+  // Weather Conditions
+  //
+  // List of weather condition descriptions for the forecast period.
+  repeated string weather_conditions = 24;
+
+  // Temperature Readings
+  //
+  // List of temperature readings at different times.
+  repeated int32 temperature_readings = 25;
+
+  // Precipitation Amounts
+  //
+  // List of precipitation amounts in millimeters for different time periods.
+  repeated double precipitation_amounts = 26;
+
+  // Metadata
+  //
+  // Map of additional metadata key-value pairs about the forecast.
+  map<string, string> metadata = 27;
+
+  // Alert Messages
+  //
+  // Map of alert IDs to their corresponding message text.
+  map<int32, string> alert_messages = 28;
+
+  // Statistics
+  //
+  // Map of statistical metric names to their computed values.
+  map<string, double> statistics = 29;
+
+  // Current Conditions
+  //
+  // Current weather conditions at the time of the forecast.
+  CurrentConditions current_conditions = 30;
+
+  // Alerts
+  //
+  // List of active weather alerts and warnings for the location.
+  repeated WeatherAlert alerts = 31;
+
+  // Daily Forecast
+  //
+  // Nested message representing a single day's weather forecast.
+  message DailyForecast {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    // Date
+    //
+    // Date of the forecast in ISO 8601 format (YYYY-MM-DD).
+    string date = 1;
+
+    // High Temperature
+    //
+    // Maximum temperature expected for the day in the specified unit.
+    double high_temp = 2;
+
+    // Low Temperature
+    //
+    // Minimum temperature expected for the day in the specified unit.
+    double low_temp = 3;
+
+    // Precipitation Chance
+    //
+    // Probability of precipitation as a percentage (0-100).
+    float precipitation_chance = 4;
+
+    // Wind Speed
+    //
+    // Average wind speed for the day in the specified unit.
+    int32 wind_speed = 5;
+
+    // Is Sunny
+    //
+    // Whether the day is expected to be predominantly sunny.
+    bool is_sunny = 6;
+
+    // Conditions
+    //
+    // List of weather condition descriptions for the day.
+    repeated string conditions = 7;
+
+    // Details
+    //
+    // Map of additional forecast details such as UV index and visibility.
+    map<string, string> details = 8;
+  }
+
+  // Hourly Forecast
+  //
+  // Nested message representing weather forecast for a specific hour.
+  message HourlyForecast {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    // Timestamp
+    //
+    // Unix timestamp for the hour being forecasted.
+    int64 timestamp = 1;
+
+    // Temperature
+    //
+    // Expected temperature for this hour in the specified unit.
+    double temperature = 2;
+
+    // Humidity
+    //
+    // Expected humidity percentage for this hour (0-100).
+    float humidity = 3;
+
+    // Wind Speed
+    //
+    // Expected wind speed for this hour in the specified unit.
+    int32 wind_speed = 4;
+
+    // Is Daylight
+    //
+    // Whether this hour falls during daylight hours.
+    bool is_daylight = 5;
+
+    // Condition
+    //
+    // Weather condition description for this hour.
+    string condition = 6;
+
+    // Pressure Readings
+    //
+    // List of atmospheric pressure readings in millibars for this hour.
+    repeated double pressure_readings = 7;
+  }
+
+  // Current Conditions
+  //
+  // Nested message representing the current weather conditions.
+  message CurrentConditions {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    // Temperature
+    //
+    // Current temperature in the specified unit.
+    double temperature = 1;
+
+    // Humidity
+    //
+    // Current humidity percentage (0-100).
+    float humidity = 2;
+
+    // Wind Speed
+    //
+    // Current wind speed in the specified unit.
+    int32 wind_speed = 3;
+
+    // Condition
+    //
+    // Current weather condition description.
+    string condition = 4;
+
+    // Observed At
+    //
+    // Unix timestamp when these conditions were observed.
+    int64 observed_at = 5;
+
+    // Is Daylight
+    //
+    // Whether it is currently daylight at the location.
+    bool is_daylight = 6;
+
+    // Weather Tags
+    //
+    // List of tags describing the current weather conditions.
+    repeated string weather_tags = 7;
+
+    // Sensor Readings
+    //
+    // Map of sensor metric names to their current readings.
+    map<string, double> sensor_readings = 8;
+  }
+
+  // Weather Alert
+  //
+  // Nested message representing a weather alert or warning.
+  message WeatherAlert {
+    option (alis.open.options.v1.message).json_schema.generate = true;
+
+    // ID
+    //
+    // Unique identifier for the weather alert.
+    string id = 1;
+
+    // Title
+    //
+    // Short title or headline of the weather alert.
+    string title = 2;
+
+    // Description
+    //
+    // Detailed description of the weather alert and its implications.
+    string description = 3;
+
+    // Issued At
+    //
+    // Unix timestamp when the alert was issued.
+    int64 issued_at = 4;
+
+    // Expires At
+    //
+    // Unix timestamp when the alert expires or is no longer valid.
+    int64 expires_at = 5;
+
+    // Severity
+    //
+    // Severity level of the weather alert.
+    enum Severity {
+      SEVERITY_UNKNOWN = 0;
+      SEVERITY_MINOR = 1;
+      SEVERITY_MODERATE = 2;
+      SEVERITY_SEVERE = 3;
+      SEVERITY_EXTREME = 4;
+    }
+    Severity severity = 6;
+
+    // Is Active
+    //
+    // Whether the alert is currently active.
+    bool is_active = 7;
+
+    // Affected Areas
+    //
+    // List of geographic areas affected by this alert.
+    repeated string affected_areas = 8;
+
+    // Alert Metadata
+    //
+    // Map of additional metadata about the alert such as issuer and type.
+    map<string, string> alert_metadata = 9;
+  }
+}
