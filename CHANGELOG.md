@@ -1,4 +1,19 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.6...v) (2026-01-15)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.7...v) (2026-01-15)
+
+
+
+## [0.0.7](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.6...v0.0.7) (2026-01-15)
+
+
+### Bug Fixes
+
+* enhance message generation logic to support forced generation ([4690e30](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/4690e30b69a658395154467464757abc455512be))
+* ensure nested message generation when parent generates ([0450792](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/0450792d08e18baf18ce1d2e3435919420ca5e4f))
+
+
+### Features
+
+* implement version handling in main.go ([b11dcf0](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/b11dcf072ed68673a798ccc403ca810790c9576a))
 
 
 
