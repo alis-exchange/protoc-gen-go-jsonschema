@@ -1,4 +1,13 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.8...v) (2026-01-15)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.9...v) (2026-01-16)
+
+
+
+## [0.0.9](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.8...v0.0.9) (2026-01-16)
+
+
+### Bug Fixes
+
+* **plugin:** prevent schema generation for protos without json_schema options ([833f0ab](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/833f0ab31b6dc416794da20e734e483007997b2a))
 
 
 
