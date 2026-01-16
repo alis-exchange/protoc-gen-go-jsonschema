@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-15 16:10:14 UTC
+// Generated on: 2026-01-16 10:13:02 UTC
 
 package usersv1
 
@@ -17,7 +17,7 @@ func (x *Address) JsonSchema() *jsonschema.Schema {
 	_ = Address_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.Address"]
 	delete(defs, "users.v1.Address")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -97,7 +97,7 @@ func (x *Address_AddressDetails) JsonSchema() *jsonschema.Schema {
 	_ = Address_AddressDetails_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.Address.AddressDetails"]
 	delete(defs, "users.v1.Address.AddressDetails")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -162,7 +162,7 @@ func (x *AddressDetails) JsonSchema() *jsonschema.Schema {
 	_ = AddressDetails_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.AddressDetails"]
 	delete(defs, "users.v1.AddressDetails")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -253,7 +253,7 @@ func (x *ContactInfo) JsonSchema() *jsonschema.Schema {
 	_ = ContactInfo_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.ContactInfo"]
 	delete(defs, "users.v1.ContactInfo")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -315,7 +315,7 @@ func (x *Metadata) JsonSchema() *jsonschema.Schema {
 	_ = Metadata_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.Metadata"]
 	delete(defs, "users.v1.Metadata")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -375,7 +375,7 @@ func (x *ComprehensiveUser) JsonSchema() *jsonschema.Schema {
 	_ = ComprehensiveUser_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.ComprehensiveUser"]
 	delete(defs, "users.v1.ComprehensiveUser")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -888,7 +888,7 @@ func (x *User) JsonSchema() *jsonschema.Schema {
 	_ = User_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.User"]
 	delete(defs, "users.v1.User")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -963,7 +963,7 @@ func (x *CreateUserRequest) JsonSchema() *jsonschema.Schema {
 	_ = CreateUserRequest_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.CreateUserRequest"]
 	delete(defs, "users.v1.CreateUserRequest")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1016,7 +1016,7 @@ func (x *GetUserRequest) JsonSchema() *jsonschema.Schema {
 	_ = GetUserRequest_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.GetUserRequest"]
 	delete(defs, "users.v1.GetUserRequest")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1053,7 +1053,7 @@ func (x *UpdateUserRequest) JsonSchema() *jsonschema.Schema {
 	_ = UpdateUserRequest_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.UpdateUserRequest"]
 	delete(defs, "users.v1.UpdateUserRequest")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1086,7 +1086,7 @@ func (x *DeleteUserRequest) JsonSchema() *jsonschema.Schema {
 	_ = DeleteUserRequest_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.DeleteUserRequest"]
 	delete(defs, "users.v1.DeleteUserRequest")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1123,7 +1123,7 @@ func (x *DeleteUserResponse) JsonSchema() *jsonschema.Schema {
 	_ = DeleteUserResponse_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.DeleteUserResponse"]
 	delete(defs, "users.v1.DeleteUserResponse")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1160,7 +1160,7 @@ func (x *CreateComprehensiveUserRequest) JsonSchema() *jsonschema.Schema {
 	_ = CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.CreateComprehensiveUserRequest"]
 	delete(defs, "users.v1.CreateComprehensiveUserRequest")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1213,7 +1213,7 @@ func (x *BatchGetUsersRequest) JsonSchema() *jsonschema.Schema {
 	_ = BatchGetUsersRequest_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.BatchGetUsersRequest"]
 	delete(defs, "users.v1.BatchGetUsersRequest")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1304,7 +1304,7 @@ func (x *BatchGetUsersResponse) JsonSchema() *jsonschema.Schema {
 	_ = BatchGetUsersResponse_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.BatchGetUsersResponse"]
 	delete(defs, "users.v1.BatchGetUsersResponse")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1364,7 +1364,7 @@ func (x *UserProfile) JsonSchema() *jsonschema.Schema {
 	_ = UserProfile_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.UserProfile"]
 	delete(defs, "users.v1.UserProfile")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1428,7 +1428,7 @@ func (x *PersonalProfile) JsonSchema() *jsonschema.Schema {
 	_ = PersonalProfile_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.PersonalProfile"]
 	delete(defs, "users.v1.PersonalProfile")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1490,7 +1490,7 @@ func (x *BusinessProfile) JsonSchema() *jsonschema.Schema {
 	_ = BusinessProfile_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.BusinessProfile"]
 	delete(defs, "users.v1.BusinessProfile")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1557,7 +1557,7 @@ func (x *RepeatedFieldsDemo) JsonSchema() *jsonschema.Schema {
 	_ = RepeatedFieldsDemo_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.RepeatedFieldsDemo"]
 	delete(defs, "users.v1.RepeatedFieldsDemo")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1768,7 +1768,7 @@ func (x *MapFieldsDemo) JsonSchema() *jsonschema.Schema {
 	_ = MapFieldsDemo_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.MapFieldsDemo"]
 	delete(defs, "users.v1.MapFieldsDemo")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -1971,7 +1971,7 @@ func (x *OneOfDemo) JsonSchema() *jsonschema.Schema {
 	_ = OneOfDemo_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.OneOfDemo"]
 	delete(defs, "users.v1.OneOfDemo")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
@@ -2111,7 +2111,7 @@ func (x *WellKnownTypesDemo) JsonSchema() *jsonschema.Schema {
 	_ = WellKnownTypesDemo_JsonSchema_WithDefs(defs)
 	root := defs["users.v1.WellKnownTypesDemo"]
 	delete(defs, "users.v1.WellKnownTypesDemo")
-	root.Definitions = defs
+	root.Defs = defs
 	return root
 }
 
