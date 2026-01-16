@@ -112,9 +112,12 @@ func (s *PluginTestSuite) regenerateDescriptorSet() {
 	}
 
 	// Find alis proto path if available (for custom options)
-	alisPath := "/Volumes/ExternalSSD/alis.build/alis/define"
-	if _, err := os.Stat(alisPath); err == nil {
-		args = append(args, "--proto_path="+alisPath)
+	// Use home directory to make path portable across systems
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
+		if _, err := os.Stat(alisPath); err == nil {
+			args = append(args, "--proto_path="+alisPath)
+		}
 	}
 
 	// Add the proto file

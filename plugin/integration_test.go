@@ -179,10 +179,13 @@ func (s *IntegrationTestSuite) TestEndToEndWithProtoc() {
 	protoFile := "users/v1/user.proto"
 
 	// Check for additional proto paths (alis options)
+	// Use home directory to make path portable across systems
 	var additionalPaths []string
-	alisPath := "/Volumes/ExternalSSD/alis.build/alis/define"
-	if _, err := os.Stat(alisPath); err == nil {
-		additionalPaths = append(additionalPaths, "--proto_path="+alisPath)
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
+		if _, err := os.Stat(alisPath); err == nil {
+			additionalPaths = append(additionalPaths, "--proto_path="+alisPath)
+		}
 	}
 
 	// Run protoc with our plugin
@@ -253,10 +256,13 @@ func (s *IntegrationTestSuite) TestDescriptorSetGeneration() {
 	outputPath := filepath.Join(tmpDir, "test.pb")
 
 	// Check for additional proto paths
+	// Use home directory to make path portable across systems
 	var additionalPaths []string
-	alisPath := "/Volumes/ExternalSSD/alis.build/alis/define"
-	if _, err := os.Stat(alisPath); err == nil {
-		additionalPaths = append(additionalPaths, alisPath)
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
+		if _, err := os.Stat(alisPath); err == nil {
+			additionalPaths = append(additionalPaths, alisPath)
+		}
 	}
 
 	fds := generateDescriptorSet(s.T(), protoPath, protoFile, outputPath, additionalPaths...)
@@ -1176,9 +1182,12 @@ func (s *IntegrationTestSuite) TestWeatherForecastSchemaValidation() {
 	}
 
 	// Find alis proto path if available (for custom options)
-	alisPath := "/Volumes/ExternalSSD/alis.build/alis/define"
-	if _, err := os.Stat(alisPath); err == nil {
-		args = append(args, "--proto_path="+alisPath)
+	// Use home directory to make path portable across systems
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
+		if _, err := os.Stat(alisPath); err == nil {
+			args = append(args, "--proto_path="+alisPath)
+		}
 	}
 
 	// Add the proto file
@@ -1805,9 +1814,12 @@ func (s *IntegrationTestSuite) TestNoJsonSchemaOptionsProto() {
 	}
 
 	// Find alis proto path if available (for custom options - not needed for this proto but keep for consistency)
-	alisPath := "/Volumes/ExternalSSD/alis.build/alis/define"
-	if _, err := os.Stat(alisPath); err == nil {
-		args = append(args, "--proto_path="+alisPath)
+	// Use home directory to make path portable across systems
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
+		if _, err := os.Stat(alisPath); err == nil {
+			args = append(args, "--proto_path="+alisPath)
+		}
 	}
 
 	// Add the proto file
@@ -1881,10 +1893,13 @@ func (s *IntegrationTestSuite) TestNoJsonSchemaOptionsWithProtoc() {
 	protoFile := "no_options/v1/no_options.proto"
 
 	// Check for additional proto paths (alis options - not needed but keep for consistency)
+	// Use home directory to make path portable across systems
 	var additionalPaths []string
-	alisPath := "/Volumes/ExternalSSD/alis.build/alis/define"
-	if _, err := os.Stat(alisPath); err == nil {
-		additionalPaths = append(additionalPaths, "--proto_path="+alisPath)
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
+		if _, err := os.Stat(alisPath); err == nil {
+			additionalPaths = append(additionalPaths, "--proto_path="+alisPath)
+		}
 	}
 
 	// Run protoc with our plugin
