@@ -266,23 +266,26 @@ func (gr *Generator) getMessagesWithForce(messages []*protogen.Message, defaultG
 					}
 				}
 			}
-		}
 
-		// --- Process Nested Messages ---
-		// CRITICAL: Force generation for nested messages when parent generates.
-		// This ensures $ref pointers like "#/$defs/Parent.Child" can be resolved.
-		//
-		// Rationale:
-		// - Nested messages are part of the parent's type system and cannot exist independently
-		// - If parent generates, all referenced nested types MUST generate
-		// - Parent fields will create $ref pointers to nested messages in $defs
-		// - Without forcing generation, $refs will be broken causing runtime errors
-		//
-		// When force=true, explicit generate=false on nested messages is ignored.
-		// This matches the field dependency logic which also forces generation.
-		if len(message.Messages) > 0 {
-			nestedResults := gr.getMessagesWithForce(message.Messages, true, true, visited)
-			results = append(results, nestedResults...)
+			// --- Process Nested Messages (ONLY when parent generates) ---
+			// CRITICAL: Force generation for nested messages when parent generates.
+			// This ensures $ref pointers like "#/$defs/Parent.Child" can be resolved.
+			//
+			// Rationale:
+			// - Nested messages are part of the parent's type system and cannot exist independently
+			// - If parent generates, all referenced nested types MUST generate
+			// - Parent fields will create $ref pointers to nested messages in $defs
+			// - Without forcing generation, $refs will be broken causing runtime errors
+			//
+			// When force=true, explicit generate=false on nested messages is ignored.
+			// This matches the field dependency logic which also forces generation.
+			//
+			// NOTE: This block is inside `if shouldGen` to ensure nested messages are
+			// only forced when the parent is actually generating a schema.
+			if len(message.Messages) > 0 {
+				nestedResults := gr.getMessagesWithForce(message.Messages, true, true, visited)
+				results = append(results, nestedResults...)
+			}
 		}
 	}
 
