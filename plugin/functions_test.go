@@ -283,15 +283,14 @@ func (s *FunctionsTestSuite) TestGetMessageSchemaConfigWKTs() {
 	msg := s.FindMessage("WellKnownTypesDemo")
 
 	tests := []struct {
-		fieldName     string
-		expectedType  string
-		expectFormat  string
-		expectPattern string
+		fieldName      string
+		expectedRef    string
+		expectMessageRef bool
 	}{
-		{"created_at", jsString, "date-time", ""},                       // Timestamp
-		{"time_duration", jsString, "", `^([0-9]+\.?[0-9]*|\.[0-9]+)s$`}, // Duration
-		{"struct_field", jsObject, "", ""},                              // Struct
-		{"any_field", jsObject, "", ""},                                 // Any
+		{"created_at", "google_protobuf_Timestamp_JsonSchema_WithDefs(defs)", true},   // Timestamp
+		{"time_duration", "google_protobuf_Duration_JsonSchema_WithDefs(defs)", true}, // Duration
+		{"struct_field", "google_protobuf_Struct_JsonSchema_WithDefs(defs)", true},    // Struct
+		{"any_field", "google_protobuf_Any_JsonSchema_WithDefs(defs)", true},          // Any
 	}
 
 	for _, tt := range tests {
@@ -299,12 +298,10 @@ func (s *FunctionsTestSuite) TestGetMessageSchemaConfigWKTs() {
 			field := s.FindField(msg, tt.fieldName)
 			cfg := sg.getMessageSchemaConfig(field.Message)
 
-			s.Equal(tt.expectedType, cfg.typeName, "Type for %s", tt.fieldName)
-			if tt.expectFormat != "" {
-				s.Equal(tt.expectFormat, cfg.format, "Format for %s", tt.fieldName)
-			}
-			if tt.expectPattern != "" {
-				s.Equal(tt.expectPattern, cfg.pattern, "Pattern for %s", tt.fieldName)
+			if tt.expectMessageRef {
+				s.NotEmpty(cfg.messageRef, "MessageRef for %s should be set", tt.fieldName)
+				s.Contains(cfg.messageRef, tt.expectedRef, "MessageRef for %s should contain expected function name", tt.fieldName)
+				s.Empty(cfg.typeName, "TypeName for %s should be empty (using $ref)", tt.fieldName)
 			}
 		})
 	}

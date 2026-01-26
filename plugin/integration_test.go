@@ -843,7 +843,7 @@ func (s *IntegrationTestSuite) TestForceLogicForNestedMessages() {
 		"Expected nested message Address_AddressDetails_JsonSchema_WithDefs to be generated")
 
 	// Verify the nested message function is called from parent
-	s.Contains(content, `schema.Properties["addressDetails"] = Address_AddressDetails_JsonSchema_WithDefs(defs)`,
+	s.Contains(content, `schema.Properties["address_details"] = Address_AddressDetails_JsonSchema_WithDefs(defs)`,
 		"Expected parent message to call nested message's schema function")
 
 	// Verify the $defs key is present
