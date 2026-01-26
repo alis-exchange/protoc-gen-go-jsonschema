@@ -61,6 +61,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Auth token for uploading the asset
 
+      # Upload Linux arm64 binary (ARM servers, Raspberry Pi, AWS Graviton)
+      - name: Upload Linux arm64 binary
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/${{ github.ref_name }}/protoc-gen-go-jsonschema-linux-arm64
+          asset_name: protoc-gen-go-jsonschema-linux-arm64
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Auth token for uploading the asset
+
       # Upload Darwin amd64 binary (Intel)
       - name: Upload Darwin amd64 binary
         uses: actions/upload-release-asset@v1
@@ -101,6 +112,17 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist/${{ github.ref_name }}/protoc-gen-go-jsonschema-windows-386.exe
           asset_name: protoc-gen-go-jsonschema-windows-386.exe
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Auth token for uploading the asset
+
+      # Upload Windows arm64 binary (Windows on ARM)
+      - name: Upload Windows arm64 binary
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/${{ github.ref_name }}/protoc-gen-go-jsonschema-windows-arm64.exe
+          asset_name: protoc-gen-go-jsonschema-windows-arm64.exe
           asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Auth token for uploading the asset
