@@ -1462,9 +1462,9 @@ func TestWeatherForecastRequestSchemaMarshalling(t *testing.T) {
 
 	// Test that the resolved schema can validate data
 	testData := map[string]interface{}{
-		"city":        "San Francisco",
-		"countryCode": "US",
-		"daysAhead":   7,
+		"city":         "San Francisco",
+		"country_code": "US",
+		"days_ahead":   7,
 	}
 	if err := resolved.Validate(&testData); err != nil {
 		t.Logf("Note: Test data validation failed (expected for partial data): %v", err)
@@ -1507,9 +1507,9 @@ func TestWeatherForecastResponseSchemaMarshalling(t *testing.T) {
 
 	// Test that the resolved schema can validate data
 	testData := map[string]interface{}{
-		"locationName": "San Francisco",
-		"timezone":     "America/Los_Angeles",
-		"forecastCount": 7,
+		"location_name":  "San Francisco",
+		"timezone":       "America/Los_Angeles",
+		"forecast_count": 7,
 	}
 	if err := resolved.Validate(&testData); err != nil {
 		t.Logf("Note: Test data validation failed (expected for partial data): %v", err)
@@ -1542,12 +1542,12 @@ func TestNestedMessageSchemasInDefs(t *testing.T) {
 	}
 
 	// Verify location_preferences property references the nested message
-	if prop, ok := schema.Properties["locationPreferences"]; ok {
+	if prop, ok := schema.Properties["location_preferences"]; ok {
 		if prop.Ref == "" {
-			t.Error("locationPreferences property should have a $ref")
+			t.Error("location_preferences property should have a $ref")
 		}
 	} else {
-		t.Error("Schema should have locationPreferences property")
+		t.Error("Schema should have location_preferences property")
 	}
 }
 

@@ -28,6 +28,7 @@ go install github.com/alis-exchange/protoc-gen-go-jsonschema/cmd/protoc-gen-go-j
 ```
 
 **Environment Variables Explained:**
+
 - `GOPROXY`: Configures the module proxy chain, including the Artifact Registry Repository for `open.alis.services/protobuf`
 - `GONOPROXY`: Excludes this public GitHub module from the Artifact Registry Repository
 - `GONOSUMDB`: Disables checksum verification for the Artifact Registry Repository
@@ -78,7 +79,7 @@ package main
 import (
     "encoding/json"
     "fmt"
-    
+
     examplev1 "github.com/example/api/v1"
 )
 
@@ -86,7 +87,7 @@ func main() {
     // Get the JSON Schema for the User message
     user := &examplev1.User{}
     schema := user.JsonSchema()
-    
+
     // Marshal to JSON
     jsonBytes, _ := json.MarshalIndent(schema, "", "  ")
     fmt.Println(string(jsonBytes))
@@ -143,16 +144,16 @@ message User {
     title: "Email Address"
     description: "User's primary email"
   }];
-  
+
   int32 age = 2 [(alis.open.options.v1.field).json_schema = {
     minimum: 0
     maximum: 150
   }];
-  
+
   string phone = 3 [(alis.open.options.v1.field).json_schema = {
     pattern: "^\\+[1-9]\\d{1,14}$"
   }];
-  
+
   // Exclude a field from the schema
   string internal_notes = 4 [(alis.open.options.v1.field).json_schema = {
     ignore: true
@@ -162,60 +163,70 @@ message User {
 
 #### Available Field Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `ignore` | bool | Exclude field from schema |
-| `title` | string | Schema title |
-| `description` | string | Schema description |
-| `format` | string | JSON Schema format (email, uri, date-time, etc.) |
-| `pattern` | string | Regex pattern for string validation |
-| `minimum` | double | Minimum value for numbers |
-| `maximum` | double | Maximum value for numbers |
-| `exclusive_minimum` | bool | Make minimum exclusive |
-| `exclusive_maximum` | bool | Make maximum exclusive |
-| `min_length` | uint64 | Minimum string length |
-| `max_length` | uint64 | Maximum string length |
-| `min_items` | uint64 | Minimum array length |
-| `max_items` | uint64 | Maximum array length |
-| `unique_items` | bool | Require unique array items |
-| `min_properties` | uint64 | Minimum object properties |
-| `max_properties` | uint64 | Maximum object properties |
-| `content_encoding` | string | Content encoding (e.g., "base64") |
-| `content_media_type` | string | Content media type |
+| Option               | Type   | Description                                      |
+| -------------------- | ------ | ------------------------------------------------ |
+| `ignore`             | bool   | Exclude field from schema                        |
+| `title`              | string | Schema title                                     |
+| `description`        | string | Schema description                               |
+| `format`             | string | JSON Schema format (email, uri, date-time, etc.) |
+| `pattern`            | string | Regex pattern for string validation              |
+| `minimum`            | double | Minimum value for numbers                        |
+| `maximum`            | double | Maximum value for numbers                        |
+| `exclusive_minimum`  | bool   | Make minimum exclusive                           |
+| `exclusive_maximum`  | bool   | Make maximum exclusive                           |
+| `min_length`         | uint64 | Minimum string length                            |
+| `max_length`         | uint64 | Maximum string length                            |
+| `min_items`          | uint64 | Minimum array length                             |
+| `max_items`          | uint64 | Maximum array length                             |
+| `unique_items`       | bool   | Require unique array items                       |
+| `min_properties`     | uint64 | Minimum object properties                        |
+| `max_properties`     | uint64 | Maximum object properties                        |
+| `content_encoding`   | string | Content encoding (e.g., "base64")                |
+| `content_media_type` | string | Content media type                               |
 
 ## Type Mapping
 
-| Proto Type | JSON Schema Type | Notes |
-|------------|------------------|-------|
-| `string` | `string` | |
-| `bool` | `boolean` | |
-| `int32`, `sint32`, `uint32`, `fixed32`, `sfixed32` | `integer` | |
-| `int64`, `sint64`, `uint64`, `fixed64`, `sfixed64` | `string` | Pattern: `^-?[0-9]+$` (JS precision) |
-| `float`, `double` | `number` | |
-| `bytes` | `string` | contentEncoding: "base64" |
-| `enum` | `string` | With `enum` constraint |
-| `message` | `object` | Or `$ref` to definition |
-| `repeated T` | `array` | With `items` schema |
-| `map<K, V>` | `object` | With `additionalProperties` |
+### Field Names
+
+Generated schemas use **proto field names** (snake_case) as property keys, not JSON names (camelCase). This is designed for use with `json.Marshal` rather than `protojson.Marshal`:
+
+```protobuf
+message User {
+  string first_name = 1;  // Schema property: "first_name" (not "firstName")
+}
+```
+
+### Type Conversions
+
+| Proto Type                                         | JSON Schema Type | Notes                                |
+| -------------------------------------------------- | ---------------- | ------------------------------------ |
+| `string`                                           | `string`         |                                      |
+| `bool`                                             | `boolean`        |                                      |
+| `int32`, `sint32`, `uint32`, `fixed32`, `sfixed32` | `integer`        |                                      |
+| `int64`, `sint64`, `uint64`, `fixed64`, `sfixed64` | `string`         | Pattern: `^-?[0-9]+$` (JS precision) |
+| `float`, `double`                                  | `number`         |                                      |
+| `bytes`                                            | `string`         | contentEncoding: "base64"            |
+| `enum`                                             | `string`         | With `enum` constraint               |
+| `message`                                          | `object`         | Or `$ref` to definition              |
+| `repeated T`                                       | `array`          | With `items` schema                  |
+| `map<K, V>`                                        | `object`         | With `additionalProperties`          |
 
 ## Well-Known Types
 
-Google's well-known types are handled with appropriate JSON representations:
+Google's well-known types (WKTs) are handled like normal messages - they generate schemas based on their actual proto field structure, not the special JSON encoding used by `protojson`. This is designed for use with standard `json.Marshal`.
 
-| WKT | JSON Schema |
-|-----|-------------|
-| `google.protobuf.Timestamp` | `string` with `format: "date-time"` |
-| `google.protobuf.Duration` | `string` with duration pattern |
-| `google.protobuf.Struct` | `object` (arbitrary JSON) |
-| `google.protobuf.Value` | Any JSON value |
-| `google.protobuf.Any` | `object` with `@type` field |
-| `google.protobuf.FieldMask` | `string` (comma-separated paths) |
-| `google.protobuf.Empty` | `object` (empty) |
-| `google.protobuf.*Value` | Corresponding primitive type |
+Since WKTs are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness:
+
+```go
+// Generated for WKTs (standalone functions, not methods)
+func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
+func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
+```
 
 ## Dependencies
 
 This plugin generates code that uses:
+
 - [`github.com/google/jsonschema-go/jsonschema`](https://pkg.go.dev/github.com/google/jsonschema-go/jsonschema) - JSON Schema types
 
 Add this to your project:

@@ -142,6 +142,7 @@ Stateful per-message schema builder:
 - `gr` - Reference to parent Generator
 - `gen` - Output file writer (`*protogen.GeneratedFile`)
 - `visited` - Map tracking processed messages (prevents infinite recursion)
+- `filePrefix` - Proto file name prefix for unique WKT function names
 
 Key methods:
 - `generateMessageJSONSchema()` - Generates complete schema for a message
@@ -159,7 +160,7 @@ Intermediate representation for field schemas:
 
 ```go
 type schemaFieldConfig struct {
-    fieldName            string  // JSON field name
+    fieldName            string  // Proto field name (snake_case)
     title                string  // Schema title
     description          string  // Schema description
     typeName             string  // JSON Schema type ("string", "object", etc.)
@@ -176,6 +177,26 @@ type schemaFieldConfig struct {
 ---
 
 ## Type Mapping Reference
+
+### Field Names
+
+Generated schemas use **proto field names** (snake_case) instead of JSON names (camelCase). This is because agents and MCP tools typically use `json.Marshal` instead of `protojson.Marshal`.
+
+```protobuf
+// Proto field definition
+message User {
+  string first_name = 1;  // Proto field name: first_name
+  string last_name = 2;   // Proto field name: last_name
+}
+```
+
+```go
+// Generated schema uses snake_case
+schema.Properties["first_name"] = &jsonschema.Schema{Type: "string"}
+schema.Properties["last_name"] = &jsonschema.Schema{Type: "string"}
+```
+
+The `getFieldName()` helper function returns the proto field name directly via `field.Desc.Name()`.
 
 ### Scalar Types
 
@@ -217,26 +238,34 @@ Map keys are always strings in JSON. Non-string proto keys use `propertyNames` v
 
 ## Well-Known Types (WKTs)
 
-Google's well-known types have special JSON representations:
+Google's well-known types (WKTs) are treated like normal messages and generate schemas with `$ref` definitions. Since WKTs are imported types (we can't add methods to them), the plugin generates **standalone functions** instead of methods.
 
-| WKT | JSON Schema Type | Format/Pattern | Description |
-|-----|------------------|----------------|-------------|
-| `google.protobuf.Timestamp` | `"string"` | `format: "date-time"` | RFC 3339 timestamp |
-| `google.protobuf.Duration` | `"string"` | `pattern: "^([0-9]+\.?[0-9]*\|.[0-9]+)s$"` | Duration like "1.5s" |
-| `google.protobuf.Struct` | `"object"` | — | Arbitrary JSON object |
-| `google.protobuf.Value` | (any) | — | Any JSON value |
-| `google.protobuf.ListValue` | `"array"` | — | JSON array |
-| `google.protobuf.Any` | `"object"` | — | Must include @type |
-| `google.protobuf.FieldMask` | `"string"` | — | Comma-separated paths |
-| `google.protobuf.Empty` | `"object"` | — | Empty object |
-| `google.protobuf.BoolValue` | `"boolean"` | — | Nullable bool |
-| `google.protobuf.StringValue` | `"string"` | — | Nullable string |
-| `google.protobuf.Int32Value` | `"integer"` | — | Nullable int32 |
-| `google.protobuf.Int64Value` | `"string"` | `pattern: "^-?[0-9]+$"` | Nullable int64 |
-| `google.protobuf.UInt32Value` | `"integer"` | — | Nullable uint32 |
-| `google.protobuf.UInt64Value` | `"string"` | `pattern: "^-?[0-9]+$"` | Nullable uint64 |
+### WKT Function Naming
 
-WKTs are handled inline in `getMessageSchemaConfig()` - they do NOT generate separate `$ref` definitions.
+WKT functions include a **file prefix** to ensure uniqueness when multiple proto files in the same package import the same WKTs:
+
+```go
+// From user.proto
+func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
+func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
+
+// From admin.proto (same package)
+func admin_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
+func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
+```
+
+The prefix is derived from the proto file name (e.g., `users/v1/admin.proto` → `admin`).
+
+### WKT Helper Functions
+
+Located in `plugin/functions.go`:
+- `isWKT(msg)` - Checks if a message is a Google WKT (`google.protobuf.*`)
+- `wktFunctionName(msg, filePrefix)` - Generates the function name with file prefix
+- `fileNamePrefix(file)` - Extracts prefix from proto file path
+
+### MessageSchemaGenerator.filePrefix
+
+The `MessageSchemaGenerator` struct includes a `filePrefix` field that is set during file generation and used for WKT function naming.
 
 ---
 
@@ -495,8 +524,9 @@ func MessageName_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 
 1. Update `getKindTypeName()` if it's a new proto kind
 2. Add handling in appropriate config builder (`getScalarSchemaConfig`, `getArraySchemaConfig`, or `getMapSchemaConfig`)
-3. If it's a WKT, add case to `getMessageSchemaConfig()`
-4. Add tests in `functions_test.go`
+3. Add tests in `functions_test.go`
+
+Note: WKTs are now handled like normal messages (no special cases needed).
 
 ### Adding New Option Support
 
@@ -547,9 +577,21 @@ JavaScript cannot safely represent integers beyond 2^53-1. The plugin:
 - Adds pattern `"^-?[0-9]+$"` for validation
 - This matches proto3 JSON encoding behavior
 
-### WKT vs User Messages
+### WKT Handling
 
-Well-Known Types are handled inline (no `$ref`), while user-defined messages use `$ref` to `$defs`. Check `getMessageSchemaConfig()` for the distinction.
+Well-Known Types (WKTs) are now treated like normal messages and generate schemas with `$ref` definitions. Key differences from user messages:
+
+1. **Standalone functions**: WKTs generate standalone functions (not methods) since we can't add methods to imported types
+2. **File prefix**: WKT function names include a file prefix (e.g., `user_google_protobuf_Timestamp_JsonSchema`) to avoid duplicate function names when multiple files in the same package import the same WKTs
+3. **Recursive dependencies**: WKT dependencies (including map value types) are properly collected via `getMessagesWithForce()`
+
+### Map Value Dependencies
+
+**Problem**: Map fields with message value types (e.g., `map<string, Value>`) might not collect the value message as a dependency.
+
+**Solution**: The `getMessagesWithForce()` function now handles map fields specially:
+- For map fields, it extracts the value message from the synthetic map entry (field number 2)
+- This ensures WKT dependencies like `google.protobuf.Value` (used by `Struct.fields`) are properly collected
 
 ---
 
@@ -561,8 +603,10 @@ Well-Known Types are handled inline (no `$ref`), while user-defined messages use
 | Generation logic | `plugin/functions.go` |
 | Type constants | `plugin/functions.go` (top of file) |
 | Message collection | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()` |
-| Force logic | `plugin/functions.go` → `getMessagesWithForce()` (lines 230-243, 260, 280) |
-| WKT handling | `plugin/functions.go` → `getMessageSchemaConfig()` |
+| Force logic | `plugin/functions.go` → `getMessagesWithForce()` |
+| Field name helper | `plugin/functions.go` → `getFieldName()` |
+| WKT helpers | `plugin/functions.go` → `isWKT()`, `wktFunctionName()`, `fileNamePrefix()` |
+| WKT schema generation | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isWKT()`) |
 | Options extraction | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()` |
 | Test fixtures | `testdata/protos/users/v1/user.proto` |
 | Force logic tests | `testdata/protos/force_test/v1/force_test.proto` |
@@ -570,3 +614,4 @@ Well-Known Types are handled inline (no `$ref`), while user-defined messages use
 | Base test suite | `plugin/suite_test.go` |
 | Force logic unit tests | `plugin/plugin_test.go` → `TestGetMessagesWithForce()` |
 | Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()` |
+| Debug tests (multi-file) | `debug/debug_test.go` |
