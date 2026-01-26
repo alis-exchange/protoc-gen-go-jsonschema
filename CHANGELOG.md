@@ -1,10 +1,6 @@
 # [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.0...v) (2026-01-26)
 
 
-
-# [0.1.0](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.0.9...v0.1.0) (2026-01-26)
-
-
 ### Features
 
 * enhance CI workflow and improve test portability ([8079001](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/807900196ad0c3200ac09c65f44d963a8d6c1be4))
