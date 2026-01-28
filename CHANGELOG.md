@@ -1,8 +1,18 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.0...v) (2026-01-26)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.1...v) (2026-01-28)
+
+
+
+## [0.1.1](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.0...v0.1.1) (2026-01-28)
+
+
+### Bug Fixes
+
+* update JSON schema generation for 64-bit integers ([e0cac1e](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/e0cac1e850a7a2a210336736cbd9540413d27c33))
 
 
 ### Features
 
+* add support for uploading arm64 binaries in release workflow ([ce68810](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/ce688102857ac156ee613bc06148605dbea8ddbd))
 * enhance CI workflow and improve test portability ([8079001](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/807900196ad0c3200ac09c65f44d963a8d6c1be4))
 
 
