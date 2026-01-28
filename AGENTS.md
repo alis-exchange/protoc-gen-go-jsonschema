@@ -7,6 +7,7 @@ This document provides comprehensive information for AI agents and LLMs working 
 **LLMs and AI agents MUST update this document when making significant changes to the plugin.**
 
 Significant changes include:
+
 - New features or capabilities
 - Changes to message generation logic
 - New options or option behaviors
@@ -15,6 +16,7 @@ Significant changes include:
 - Changes to the code generation output format
 
 When updating this document:
+
 1. Update the relevant sections with new information
 2. Add new sections if needed
 3. Update the "File Locations Quick Reference" table
@@ -130,6 +132,7 @@ protoc invokes plugin
 #### `Generator` (plugin/functions.go)
 
 Stateless coordinator for file-level generation:
+
 - `generateFile()` - Creates output file, iterates messages
 - `getMessages()` - Public wrapper that calls `getMessagesWithForce()` with `force=false`
 - `getMessagesWithForce()` - Internal implementation with force logic for dependencies and nested messages
@@ -139,12 +142,14 @@ Stateless coordinator for file-level generation:
 #### `MessageSchemaGenerator` (plugin/functions.go)
 
 Stateful per-message schema builder:
+
 - `gr` - Reference to parent Generator
 - `gen` - Output file writer (`*protogen.GeneratedFile`)
 - `visited` - Map tracking processed messages (prevents infinite recursion)
 - `filePrefix` - Proto file name prefix for unique WKT function names
 
 Key methods:
+
 - `generateMessageJSONSchema()` - Generates complete schema for a message
 - `generateFieldJSONSchema()` - Routes to appropriate config builder
 - `emitSchemaField()` - Generates Go code for a field's schema
@@ -200,39 +205,39 @@ The `getFieldName()` helper function returns the proto field name directly via `
 
 ### Scalar Types
 
-| Proto Type | JSON Schema Type | Additional Constraints |
-|------------|------------------|----------------------|
-| `string` | `"string"` | — |
-| `bool` | `"boolean"` | — |
-| `int32`, `sint32`, `sfixed32` | `"integer"` | — |
-| `uint32`, `fixed32` | `"integer"` | — |
-| `int64`, `sint64`, `sfixed64` | `"string"` | `pattern: "^-?[0-9]+$"` |
-| `uint64`, `fixed64` | `"string"` | `pattern: "^-?[0-9]+$"` |
-| `float` | `"number"` | — |
-| `double` | `"number"` | — |
-| `bytes` | `"string"` | `contentEncoding: "base64"` |
-| `enum` | `"string"` | `enum: ["VALUE1", "VALUE2", ...]` |
+| Proto Type                    | JSON Schema Type | Additional Constraints            |
+| ----------------------------- | ---------------- | --------------------------------- |
+| `string`                      | `"string"`       | —                                 |
+| `bool`                        | `"boolean"`      | —                                 |
+| `int32`, `sint32`, `sfixed32` | `"integer"`      | —                                 |
+| `uint32`, `fixed32`           | `"integer"`      | —                                 |
+| `int64`, `sint64`, `sfixed64` | `"integer"`      | —                                 |
+| `uint64`, `fixed64`           | `"integer"`      | —                                 |
+| `float`                       | `"number"`       | —                                 |
+| `double`                      | `"number"`       | —                                 |
+| `bytes`                       | `"string"`       | `contentEncoding: "base64"`       |
+| `enum`                        | `"string"`       | `enum: ["VALUE1", "VALUE2", ...]` |
 
-**Why 64-bit integers are strings**: JavaScript's `Number.MAX_SAFE_INTEGER` is 2^53-1. Values outside this range lose precision, so proto3 JSON encoding represents them as strings.
+**Note**: 64-bit integers are mapped to `"integer"` type for simplicity. While JavaScript has precision limitations for large integers (beyond 2^53-1), most use cases don't require values that large, and using `"integer"` provides better schema validation.
 
 ### Complex Types
 
-| Proto Type | JSON Schema Type | Structure |
-|------------|------------------|-----------|
-| `message` | `"object"` | Properties for each field, or `$ref` |
-| `repeated T` | `"array"` | `items` contains element schema |
-| `map<K, V>` | `"object"` | `additionalProperties` contains value schema |
-| `oneof` | — | `oneOf` constraint with `required` for each option |
+| Proto Type   | JSON Schema Type | Structure                                          |
+| ------------ | ---------------- | -------------------------------------------------- |
+| `message`    | `"object"`       | Properties for each field, or `$ref`               |
+| `repeated T` | `"array"`        | `items` contains element schema                    |
+| `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
+| `oneof`      | —                | `oneOf` constraint with `required` for each option |
 
 ### Map Key Handling
 
 Map keys are always strings in JSON. Non-string proto keys use `propertyNames` validation:
 
-| Proto Key Type | propertyNames Pattern |
-|----------------|----------------------|
-| `string` | (none) |
-| `int32`, `int64`, etc. | `"^-?[0-9]+$"` |
-| `bool` | `"^(true\|false)$"` |
+| Proto Key Type         | propertyNames Pattern |
+| ---------------------- | --------------------- |
+| `string`               | (none)                |
+| `int32`, `int64`, etc. | `"^-?[0-9]+$"`        |
+| `bool`                 | `"^(true\|false)$"`   |
 
 ---
 
@@ -259,6 +264,7 @@ The prefix is derived from the proto file name (e.g., `users/v1/admin.proto` →
 ### WKT Helper Functions
 
 Located in `plugin/functions.go`:
+
 - `isWKT(msg)` - Checks if a message is a Google WKT (`google.protobuf.*`)
 - `wktFunctionName(msg, filePrefix)` - Generates the function name with file prefix
 - `fileNamePrefix(file)` - Extracts prefix from proto file path
@@ -302,14 +308,14 @@ When a message has `generate = true`, its **field dependencies** and **nested me
 ```protobuf
 message Parent {
   option (alis.open.options.v1.message).json_schema.generate = true;
-  
+
   Dependency dep = 1;  // Field dependency - will generate even if generate=false
-  
+
   message Nested {
     option (alis.open.options.v1.message).json_schema.generate = false;  // Explicit false
     string value = 1;
   }
-  
+
   Nested nested = 2;  // Nested message - will generate even if generate=false
 }
 
@@ -322,6 +328,7 @@ message Dependency {
 In the above example, both `Dependency` and `Parent.Nested` will generate schemas because `Parent` has `generate = true`. This prevents broken `$ref` pointers like `"#/$defs/package.Parent.Nested"` that point to non-existent definitions.
 
 The force logic is implemented in `getMessagesWithForce()`:
+
 - Field dependencies: Called with `force=true` (line 260)
 - Nested messages: Called with `force=true` (line 280)
 - When `force=true` and a message has `generate=false`, the `false` is ignored and `defaultGenerate` (which is `true` when forcing) is used instead
@@ -343,6 +350,7 @@ message User {
 Extracted by: `getFieldJsonSchemaOptions(field *protogen.Field)`
 
 Available field options:
+
 - `ignore` - Exclude from schema
 - `title`, `description` - Metadata
 - `format`, `pattern` - String validation
@@ -403,6 +411,7 @@ func (s *IntegrationTestSuite) TestGoldenFile() {
 ```
 
 Update golden files with:
+
 ```shell
 go test ./plugin/... -update
 ```
@@ -410,6 +419,7 @@ go test ./plugin/... -update
 ### Test Utilities (`testutil_test.go`)
 
 Common helpers:
+
 - `loadDescriptorSet()` - Load FileDescriptorSet from .pb file
 - `createTestPlugin()` - Create protogen.Plugin for testing
 - `generateDescriptorSet()` - Run protoc to generate descriptor set
@@ -504,18 +514,18 @@ func MessageName_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
     if _, ok := defs["package.MessageName"]; ok {
         return &jsonschema.Schema{Ref: "#/$defs/package.MessageName"}
     }
-    
+
     schema := &jsonschema.Schema{
         Type: "object",
         Properties: make(map[string]*jsonschema.Schema),
         // ...
     }
-    
+
     // Register BEFORE processing fields (handles self-references)
     defs["package.MessageName"] = schema
-    
+
     // Generate field schemas...
-    
+
     return &jsonschema.Schema{Ref: "#/$defs/package.MessageName"}
 }
 ```
@@ -541,6 +551,7 @@ Note: WKTs are now handled like normal messages (no special cases needed).
 ### Circular References
 
 The plugin handles circular message references through:
+
 1. Registering schema in `defs` BEFORE processing fields
 2. Checking `visited` map to avoid re-processing
 3. Returning `$ref` pointers instead of inline definitions
@@ -553,10 +564,11 @@ The plugin handles circular message references through:
 **Solution**: The force logic ensures that when a parent message has `generate = true`, all nested messages are forced to generate regardless of their own `generate` option. This is implemented in `getMessagesWithForce()` with `force=true` for nested message processing.
 
 **Example**:
+
 ```protobuf
 message Parent {
   option (alis.open.options.v1.message).json_schema.generate = true;
-  
+
   message Nested {
     option (alis.open.options.v1.message).json_schema.generate = false;  // Still generates!
     string value = 1;
@@ -570,12 +582,9 @@ message Parent {
 
 **Solution**: Field dependencies are forced to generate when the parent generates. This is implemented in `getMessagesWithForce()` with `force=true` for field dependency processing.
 
-### 64-bit Integer Precision
+### 64-bit Integer Handling
 
-JavaScript cannot safely represent integers beyond 2^53-1. The plugin:
-- Maps int64/uint64 to `"string"` type
-- Adds pattern `"^-?[0-9]+$"` for validation
-- This matches proto3 JSON encoding behavior
+64-bit integers (`int64`, `uint64`, `sint64`, `sfixed64`, `fixed64`) are mapped to JSON Schema `"integer"` type. While JavaScript has precision limitations for very large integers (beyond 2^53-1), the `"integer"` type provides better schema validation and works correctly for most use cases.
 
 ### WKT Handling
 
@@ -590,6 +599,7 @@ Well-Known Types (WKTs) are now treated like normal messages and generate schema
 **Problem**: Map fields with message value types (e.g., `map<string, Value>`) might not collect the value message as a dependency.
 
 **Solution**: The `getMessagesWithForce()` function now handles map fields specially:
+
 - For map fields, it extracts the value message from the synthetic map entry (field number 2)
 - This ensures WKT dependencies like `google.protobuf.Value` (used by `Struct.fields`) are properly collected
 
@@ -597,21 +607,21 @@ Well-Known Types (WKTs) are now treated like normal messages and generate schema
 
 ## File Locations Quick Reference
 
-| What | Where |
-|------|-------|
-| Plugin entry point | `cmd/protoc-gen-go-jsonschema/main.go` |
-| Generation logic | `plugin/functions.go` |
-| Type constants | `plugin/functions.go` (top of file) |
-| Message collection | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()` |
-| Force logic | `plugin/functions.go` → `getMessagesWithForce()` |
-| Field name helper | `plugin/functions.go` → `getFieldName()` |
-| WKT helpers | `plugin/functions.go` → `isWKT()`, `wktFunctionName()`, `fileNamePrefix()` |
-| WKT schema generation | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isWKT()`) |
-| Options extraction | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()` |
-| Test fixtures | `testdata/protos/users/v1/user.proto` |
-| Force logic tests | `testdata/protos/force_test/v1/force_test.proto` |
-| Golden files | `testdata/golden/*.golden` |
-| Base test suite | `plugin/suite_test.go` |
-| Force logic unit tests | `plugin/plugin_test.go` → `TestGetMessagesWithForce()` |
-| Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()` |
-| Debug tests (multi-file) | `debug/debug_test.go` |
+| What                          | Where                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                                     |
+| Generation logic              | `plugin/functions.go`                                                      |
+| Type constants                | `plugin/functions.go` (top of file)                                        |
+| Message collection            | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()`         |
+| Force logic                   | `plugin/functions.go` → `getMessagesWithForce()`                           |
+| Field name helper             | `plugin/functions.go` → `getFieldName()`                                   |
+| WKT helpers                   | `plugin/functions.go` → `isWKT()`, `wktFunctionName()`, `fileNamePrefix()` |
+| WKT schema generation         | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isWKT()`)    |
+| Options extraction            | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()`         |
+| Test fixtures                 | `testdata/protos/users/v1/user.proto`                                      |
+| Force logic tests             | `testdata/protos/force_test/v1/force_test.proto`                           |
+| Golden files                  | `testdata/golden/*.golden`                                                 |
+| Base test suite               | `plugin/suite_test.go`                                                     |
+| Force logic unit tests        | `plugin/plugin_test.go` → `TestGetMessagesWithForce()`                     |
+| Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()`                         |
+| Debug tests (multi-file)      | `debug/debug_test.go`                                                      |

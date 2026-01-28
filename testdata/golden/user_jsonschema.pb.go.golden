@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-23 15:59:27 UTC
+// Generated on: 2026-01-28 11:17:57 UTC
 
 package usersv1
 
@@ -461,10 +461,9 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["user_id"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Unique user ID as a 64-bit integer.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["score"] = &jsonschema.Schema{
@@ -474,10 +473,9 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["account_number"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Account number as an unsigned 64-bit integer.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["signed_score"] = &jsonschema.Schema{
@@ -487,10 +485,9 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["signed_id"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Signed ID using zigzag encoding.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["fixed_uint"] = &jsonschema.Schema{
@@ -500,10 +497,9 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["fixed_ulong"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Fixed-width unsigned 64-bit integer.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["sfixed_int"] = &jsonschema.Schema{
@@ -513,10 +509,9 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["sfixed_long"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Fixed-width signed 64-bit integer.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["rating"] = &jsonschema.Schema{
@@ -759,10 +754,9 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["user_number"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "User number as identifier.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["credit_card"] = &jsonschema.Schema{
@@ -1224,8 +1218,7 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 		Title:       "",
 		Description: "List of user numbers to retrieve.",
 		Items: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -1577,8 +1570,7 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Title:       "",
 		Description: "List of 64-bit integers.",
 		Items: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -1596,8 +1588,7 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Title:       "",
 		Description: "List of unsigned 64-bit integers.",
 		Items: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -1615,8 +1606,7 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Title:       "",
 		Description: "List of signed 64-bit integers (zigzag encoded).",
 		Items: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -1634,8 +1624,7 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Title:       "",
 		Description: "List of fixed-width unsigned 64-bit integers.",
 		Items: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -1653,8 +1642,7 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Title:       "",
 		Description: "List of fixed-width signed 64-bit integers.",
 		Items: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -1786,8 +1774,7 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 		Title:       "",
 		Description: "Map of string to 64-bit integer.",
 		AdditionalProperties: &jsonschema.Schema{
-			Type:    "string",
-			Pattern: "^-?[0-9]+$",
+			Type: "integer",
 		},
 	}
 
@@ -2288,10 +2275,9 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 	defs["google.protobuf.Timestamp"] = schema
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Represents seconds of UTC time since Unix epoch\n 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n 9999-12-31T23:59:59Z inclusive.",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{
@@ -2334,10 +2320,9 @@ func user_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsche
 	defs["google.protobuf.Duration"] = schema
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Signed seconds of the span of time. Must be from -315,576,000,000\n to +315,576,000,000 inclusive. Note: these bounds are computed from:\n 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years",
-		Pattern:     "^-?[0-9]+$",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{

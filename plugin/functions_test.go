@@ -102,14 +102,14 @@ func (s *FunctionsTestSuite) TestGetKindTypeName() {
 
 		// Comprehensive types from ComprehensiveUser
 		{"ComprehensiveUser", "is_active", jsBoolean},
-		{"ComprehensiveUser", "age", jsInteger},           // int32
-		{"ComprehensiveUser", "user_id", jsString},        // int64 -> string
-		{"ComprehensiveUser", "score", jsInteger},         // uint32
-		{"ComprehensiveUser", "account_number", jsString}, // uint64 -> string
-		{"ComprehensiveUser", "rating", jsNumber},         // float
-		{"ComprehensiveUser", "balance", jsNumber},        // double
-		{"ComprehensiveUser", "avatar", jsString},         // bytes
-		{"ComprehensiveUser", "address", jsObject},        // message
+		{"ComprehensiveUser", "age", jsInteger},            // int32
+		{"ComprehensiveUser", "user_id", jsInteger},        // int64
+		{"ComprehensiveUser", "score", jsInteger},          // uint32
+		{"ComprehensiveUser", "account_number", jsInteger}, // uint64
+		{"ComprehensiveUser", "rating", jsNumber},          // float
+		{"ComprehensiveUser", "balance", jsNumber},         // double
+		{"ComprehensiveUser", "avatar", jsString},          // bytes
+		{"ComprehensiveUser", "address", jsObject},         // message
 	}
 
 	for _, tt := range tests {
@@ -141,15 +141,15 @@ func (s *FunctionsTestSuite) TestGetKindTypeNameAllKinds() {
 	}{
 		{"is_active", protoreflect.BoolKind, jsBoolean},
 		{"age", protoreflect.Int32Kind, jsInteger},
-		{"user_id", protoreflect.Int64Kind, jsString},
+		{"user_id", protoreflect.Int64Kind, jsInteger},
 		{"score", protoreflect.Uint32Kind, jsInteger},
-		{"account_number", protoreflect.Uint64Kind, jsString},
+		{"account_number", protoreflect.Uint64Kind, jsInteger},
 		{"signed_score", protoreflect.Sint32Kind, jsInteger},
-		{"signed_id", protoreflect.Sint64Kind, jsString},
+		{"signed_id", protoreflect.Sint64Kind, jsInteger},
 		{"fixed_uint", protoreflect.Fixed32Kind, jsInteger},
-		{"fixed_ulong", protoreflect.Fixed64Kind, jsString},
+		{"fixed_ulong", protoreflect.Fixed64Kind, jsInteger},
 		{"sfixed_int", protoreflect.Sfixed32Kind, jsInteger},
-		{"sfixed_long", protoreflect.Sfixed64Kind, jsString},
+		{"sfixed_long", protoreflect.Sfixed64Kind, jsInteger},
 		{"rating", protoreflect.FloatKind, jsNumber},
 		{"balance", protoreflect.DoubleKind, jsNumber},
 		{"id", protoreflect.StringKind, jsString},
@@ -283,8 +283,8 @@ func (s *FunctionsTestSuite) TestGetMessageSchemaConfigWKTs() {
 	msg := s.FindMessage("WellKnownTypesDemo")
 
 	tests := []struct {
-		fieldName      string
-		expectedRef    string
+		fieldName        string
+		expectedRef      string
 		expectMessageRef bool
 	}{
 		{"created_at", "google_protobuf_Timestamp_JsonSchema_WithDefs(defs)", true},   // Timestamp
@@ -325,7 +325,7 @@ func (s *FunctionsTestSuite) TestGetScalarSchemaConfig() {
 		{"id", jsString, false, ""},
 		{"is_active", jsBoolean, false, ""},
 		{"age", jsInteger, false, ""},
-		{"user_id", jsString, false, "^-?[0-9]+$"}, // int64 -> string with pattern
+		{"user_id", jsInteger, false, ""}, // int64
 		{"rating", jsNumber, false, ""},
 		{"avatar", jsString, true, ""},  // bytes
 		{"status", jsString, false, ""}, // enum
@@ -362,7 +362,7 @@ func (s *FunctionsTestSuite) TestGetArraySchemaConfig() {
 	}{
 		{"string_list", jsString, false, "", false, false},
 		{"int_list", jsInteger, false, "", false, false},
-		{"long_list", jsString, false, "^-?[0-9]+$", false, false}, // int64
+		{"long_list", jsInteger, false, "", false, false}, // int64
 		{"bool_list", jsBoolean, false, "", false, false},
 		{"bytes_list", jsString, true, "", false, false},
 		{"enum_list", jsString, false, "", true, false},

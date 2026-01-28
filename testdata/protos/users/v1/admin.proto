@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "alis/open/options/v1/options.proto";
+import "google/protobuf/wrappers.proto";
 
 option go_package = "github.com/newtonnthiga/users/v1;usersv1";
 
@@ -30,4 +31,11 @@ message Admin {
   optional string nickname = 15;
   optional int32 optional_age = 16;
   optional bool optional_flag = 17;
+  google.protobuf.Int32Value optional_int32_value = 18;
+  google.protobuf.Int64Value optional_int64_value = 19;
+  google.protobuf.StringValue optional_string_value = 20;
+  google.protobuf.BoolValue optional_bool_value = 21;
+  google.protobuf.DoubleValue optional_double_value = 22;
+  google.protobuf.FloatValue optional_float_value = 23;
+  google.protobuf.BytesValue optional_bytes_value = 24;
 }

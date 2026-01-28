@@ -198,18 +198,18 @@ message User {
 
 ### Type Conversions
 
-| Proto Type                                         | JSON Schema Type | Notes                                |
-| -------------------------------------------------- | ---------------- | ------------------------------------ |
-| `string`                                           | `string`         |                                      |
-| `bool`                                             | `boolean`        |                                      |
-| `int32`, `sint32`, `uint32`, `fixed32`, `sfixed32` | `integer`        |                                      |
-| `int64`, `sint64`, `uint64`, `fixed64`, `sfixed64` | `string`         | Pattern: `^-?[0-9]+$` (JS precision) |
-| `float`, `double`                                  | `number`         |                                      |
-| `bytes`                                            | `string`         | contentEncoding: "base64"            |
-| `enum`                                             | `string`         | With `enum` constraint               |
-| `message`                                          | `object`         | Or `$ref` to definition              |
-| `repeated T`                                       | `array`          | With `items` schema                  |
-| `map<K, V>`                                        | `object`         | With `additionalProperties`          |
+| Proto Type                                         | JSON Schema Type | Notes                       |
+| -------------------------------------------------- | ---------------- | --------------------------- |
+| `string`                                           | `string`         |                             |
+| `bool`                                             | `boolean`        |                             |
+| `int32`, `sint32`, `uint32`, `fixed32`, `sfixed32` | `integer`        |                             |
+| `int64`, `sint64`, `uint64`, `fixed64`, `sfixed64` | `integer`        |                             |
+| `float`, `double`                                  | `number`         |                             |
+| `bytes`                                            | `string`         | contentEncoding: "base64"   |
+| `enum`                                             | `string`         | With `enum` constraint      |
+| `message`                                          | `object`         | Or `$ref` to definition     |
+| `repeated T`                                       | `array`          | With `items` schema         |
+| `map<K, V>`                                        | `object`         | With `additionalProperties` |
 
 ## Well-Known Types
 

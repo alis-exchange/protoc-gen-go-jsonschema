@@ -24,7 +24,7 @@
 //
 // Protocol Buffer types are mapped to JSON Schema types following the proto3 JSON mapping:
 //   - Scalar types (int32, string, bool, etc.) → Corresponding JSON Schema types
-//   - 64-bit integers → string type with numeric pattern (JS precision limitation)
+//   - 64-bit integers → integer type
 //   - bytes → string with base64 contentEncoding
 //   - Enums → string type with enum constraint
 //   - Messages → object type with properties, or $ref for cross-references
@@ -73,7 +73,7 @@ const (
 	jsNull    = "null"    // JSON null type - used in nullable type unions
 	jsNumber  = "number"  // JSON number type - used for float/double fields
 	jsObject  = "object"  // JSON object type - used for messages and maps
-	jsString  = "string"  // JSON string type - used for strings, bytes, enums, and 64-bit integers
+	jsString  = "string"  // JSON string type - used for strings, bytes, and enums
 )
 
 // isWKT checks if a message is a Google Well-Known Type.
@@ -301,31 +301,31 @@ func (gr *Generator) getMessagesWithForce(messages []*protogen.Message, defaultG
 				visited[messageName] = true
 				results = append(results, message)
 
-			// Recursively collect dependencies: any message-type field must also
-			// generate a schema, otherwise the $ref in the parent would be broken.
-			// We force 'true' here because dependencies are required regardless
-			// of their own options.
-			for _, field := range message.Fields {
-				if field.Desc.Kind() == protoreflect.MessageKind {
-					// For map fields, we need to collect the value type, not the synthetic map entry
-					if field.Desc.IsMap() {
-						mapValue := field.Desc.MapValue()
-						if mapValue.Kind() == protoreflect.MessageKind {
-							// Find the value message from the synthetic map entry
-							for _, f := range field.Message.Fields {
-								if f.Desc.Number() == 2 && f.Message != nil { // Field 2 is the value
-									depMessages := gr.getMessagesWithForce([]*protogen.Message{f.Message}, true, true, visited)
-									results = append(results, depMessages...)
-									break
+				// Recursively collect dependencies: any message-type field must also
+				// generate a schema, otherwise the $ref in the parent would be broken.
+				// We force 'true' here because dependencies are required regardless
+				// of their own options.
+				for _, field := range message.Fields {
+					if field.Desc.Kind() == protoreflect.MessageKind {
+						// For map fields, we need to collect the value type, not the synthetic map entry
+						if field.Desc.IsMap() {
+							mapValue := field.Desc.MapValue()
+							if mapValue.Kind() == protoreflect.MessageKind {
+								// Find the value message from the synthetic map entry
+								for _, f := range field.Message.Fields {
+									if f.Desc.Number() == 2 && f.Message != nil { // Field 2 is the value
+										depMessages := gr.getMessagesWithForce([]*protogen.Message{f.Message}, true, true, visited)
+										results = append(results, depMessages...)
+										break
+									}
 								}
 							}
+						} else {
+							depMessages := gr.getMessagesWithForce([]*protogen.Message{field.Message}, true, true, visited)
+							results = append(results, depMessages...)
 						}
-					} else {
-						depMessages := gr.getMessagesWithForce([]*protogen.Message{field.Message}, true, true, visited)
-						results = append(results, depMessages...)
 					}
 				}
-			}
 			}
 
 			// --- Process Nested Messages (ONLY when parent generates) ---
@@ -408,7 +408,7 @@ type schemaFieldConfig struct {
 	format string
 
 	// pattern is a regex pattern for string validation.
-	// Used for 64-bit integers ("^-?[0-9]+$") and custom field patterns.
+	// Used for custom field patterns.
 	pattern string
 
 	// propertyNamesPattern is a regex pattern for validating map keys.
@@ -663,7 +663,6 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 //   - Messages: References to other message schemas
 //   - Enums: String type with enum values
 //   - Bytes: String type with base64 encoding
-//   - 64-bit integers: String type with numeric pattern
 func (sg *MessageSchemaGenerator) getArraySchemaConfig(field *protogen.Field, title, description string) schemaFieldConfig {
 	kindTypeName, _ := sg.getKindTypeName(field.Desc)
 
@@ -689,12 +688,8 @@ func (sg *MessageSchemaGenerator) getArraySchemaConfig(field *protogen.Field, ti
 		// Bytes elements: string type with base64 encoding.
 		cfg.nested = &schemaFieldConfig{typeName: kindTypeName, isBytes: true}
 
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-		// 64-bit integers: string type with numeric pattern (JS precision limitation).
-		cfg.nested = &schemaFieldConfig{typeName: jsString, pattern: "^-?[0-9]+$"}
-
 	default:
-		// All other scalar types: use the direct JSON Schema type mapping.
+		// All other scalar types (including 64-bit integers): use the direct JSON Schema type mapping.
 		cfg.nested = &schemaFieldConfig{typeName: kindTypeName}
 	}
 
@@ -771,12 +766,8 @@ func (sg *MessageSchemaGenerator) getMapSchemaConfig(field *protogen.Field, titl
 		// Bytes values: string type with base64 encoding.
 		cfg.nested = &schemaFieldConfig{typeName: kindTypeName, isBytes: true}
 
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-		// 64-bit integer values: string type with numeric pattern.
-		cfg.nested = &schemaFieldConfig{typeName: jsString, pattern: "^-?[0-9]+$"}
-
 	default:
-		// All other scalar types: direct JSON Schema type mapping.
+		// All other scalar types (including 64-bit integers): direct JSON Schema type mapping.
 		cfg.nested = &schemaFieldConfig{typeName: kindTypeName}
 	}
 
@@ -792,7 +783,6 @@ func (sg *MessageSchemaGenerator) getMapSchemaConfig(field *protogen.Field, titl
 //   - Messages: Merges config from getMessageSchemaConfig (may be WKT or reference)
 //   - Enums: Adds enum value constraints
 //   - Bytes: Marks for base64 contentEncoding
-//   - 64-bit integers: Adds numeric string pattern
 //   - Other primitives: Direct type mapping
 func (sg *MessageSchemaGenerator) getScalarSchemaConfig(field *protogen.Field, title, description string) schemaFieldConfig {
 	kindTypeName, _ := sg.getKindTypeName(field.Desc)
@@ -826,10 +816,6 @@ func (sg *MessageSchemaGenerator) getScalarSchemaConfig(field *protogen.Field, t
 	case protoreflect.BytesKind:
 		// Bytes fields: flag for base64 encoding.
 		cfg.isBytes = true
-
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-		// 64-bit integers: validate as numeric string.
-		cfg.pattern = "^-?[0-9]+$"
 	}
 
 	return cfg
@@ -1101,7 +1087,6 @@ func getFieldName(field *protogen.Field) string {
 // getKindTypeName maps Protocol Buffer field kinds to JSON Schema type names.
 //
 // This follows the proto3 JSON mapping specification, with special handling:
-//   - 64-bit integers → "string" (JavaScript number precision limitation)
 //   - bytes → "string" (will be base64 encoded)
 //   - enums → "string" (JSON uses enum name strings)
 //
@@ -1121,9 +1106,8 @@ func (sg *MessageSchemaGenerator) getKindTypeName(desc protoreflect.FieldDescrip
 		return jsInteger, nil
 
 	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind, protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
-		// 64-bit integers must be strings to preserve precision in JavaScript.
-		// JSON numbers are IEEE 754 doubles with only 53 bits of integer precision.
-		return jsString, nil
+		// 64-bit integers fit safely in JavaScript numbers.
+		return jsInteger, nil
 
 	case protoreflect.FloatKind, protoreflect.DoubleKind:
 		// Floating point numbers map directly to JSON numbers.
