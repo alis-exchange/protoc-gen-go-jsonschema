@@ -1,4 +1,13 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.1...v) (2026-01-28)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.2...v) (2026-01-29)
+
+
+
+## [0.1.2](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.1...v0.1.2) (2026-01-29)
+
+
+### Bug Fixes
+
+* fix cross-file import JSON schema generation ([cc28c5c](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/cc28c5c9745fdd6c6d45833c9507680e83fa6506))
 
 
 
