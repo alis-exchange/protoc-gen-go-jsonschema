@@ -3,7 +3,7 @@
 // Source: users/v1/admin.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-29 14:46:44 UTC
+// Generated on: 2026-01-29 15:25:16 UTC
 
 package usersv1
 
@@ -707,4 +707,119 @@ func admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs map[string]*jsons
 	}
 
 	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BytesValue"}
+}
+
+// admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema returns the JSON schema for the ServiceAccountKey message.
+func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	_ = admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
+	root := defs["google.iam.admin.v1.ServiceAccountKey"]
+	delete(defs, "google.iam.admin.v1.ServiceAccountKey")
+	root.Defs = defs
+	return root
+}
+
+func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["google.iam.admin.v1.ServiceAccountKey"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	}
+
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Title:       "Represents a service account key.",
+		Description: "A service account has two sets of key-pairs: user-managed, and\n system-managed.\n\n User-managed key-pairs can be created and deleted by users.  Users are\n responsible for rotating these keys periodically to ensure security of\n their service accounts.  Users retain the private key of these key-pairs,\n and Google retains ONLY the public key.\n\n System-managed keys are automatically rotated by Google, and are used for\n signing for a maximum of two weeks. The rotation process is probabilistic,\n and usage of the new key will gradually ramp up and down over the key's\n lifetime.\n\n If you cache the public key set for a service account, we recommend that you\n update the cache every 15 minutes. User-managed keys can be added and removed\n at any time, so it is important to update the cache frequently. For\n Google-managed keys, Google will publish a key at least 6 hours before it is\n first used for signing and will keep publishing it for at least 6 hours after\n it was last used for signing.\n\n Public keys for all service accounts are also published at the OAuth2\n Service Account API.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"name",
+			"private_key_type",
+			"key_algorithm",
+			"private_key_data",
+			"public_key_data",
+			"valid_after_time",
+			"valid_before_time",
+			"key_origin",
+			"key_type",
+			"disabled",
+		},
+	}
+
+	// Register schema BEFORE processing fields to handle self-references.
+	// This prevents infinite recursion when a message contains itself.
+	defs["google.iam.admin.v1.ServiceAccountKey"] = schema
+
+	schema.Properties["name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "The resource name of the service account key in the following format\n `projects/{PROJECT_ID}/serviceAccounts/{ACCOUNT}/keys/{key}`.",
+	}
+
+	schema.Properties["private_key_type"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "The output format for the private key.\n Only provided in `CreateServiceAccountKey` responses, not\n in `GetServiceAccountKey` or `ListServiceAccountKey` responses.",
+		Description: "Google never exposes system-managed private keys, and never retains\n user-managed private keys.",
+		Enum: []any{
+			"TYPE_UNSPECIFIED",
+			"TYPE_PKCS12_FILE",
+			"TYPE_GOOGLE_CREDENTIALS_FILE",
+		},
+	}
+
+	schema.Properties["key_algorithm"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "Specifies the algorithm (and possibly key size) for the key.",
+		Enum: []any{
+			"KEY_ALG_UNSPECIFIED",
+			"KEY_ALG_RSA_1024",
+			"KEY_ALG_RSA_2048",
+		},
+	}
+
+	schema.Properties["private_key_data"] = &jsonschema.Schema{
+		Type:            "string",
+		Title:           "",
+		Description:     "The private key data. Only provided in `CreateServiceAccountKey`\n responses. Make sure to keep the private key data secure because it\n allows for the assertion of the service account identity.\n When base64 decoded, the private key data can be used to authenticate with\n Google API client libraries and with\n <a href=\"/sdk/gcloud/reference/auth/activate-service-account\">gcloud\n auth activate-service-account</a>.",
+		ContentEncoding: "base64",
+	}
+
+	schema.Properties["public_key_data"] = &jsonschema.Schema{
+		Type:            "string",
+		Title:           "",
+		Description:     "The public key data. Only provided in `GetServiceAccountKey` responses.",
+		ContentEncoding: "base64",
+	}
+
+	schema.Properties["valid_after_time"] = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+
+	schema.Properties["valid_before_time"] = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+
+	schema.Properties["key_origin"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "The key origin.",
+		Enum: []any{
+			"ORIGIN_UNSPECIFIED",
+			"USER_PROVIDED",
+			"GOOGLE_PROVIDED",
+		},
+	}
+
+	schema.Properties["key_type"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "The key type.",
+		Enum: []any{
+			"KEY_TYPE_UNSPECIFIED",
+			"USER_MANAGED",
+			"SYSTEM_MANAGED",
+		},
+	}
+
+	schema.Properties["disabled"] = &jsonschema.Schema{
+		Type:        "boolean",
+		Title:       "",
+		Description: "The key status.",
+	}
+
+	return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
 }

@@ -17,7 +17,7 @@
 //
 // For each message, two functions are generated:
 //   - JsonSchema() - Public method that returns a complete schema with definitions
-//     (or standalone function for WKTs: google_protobuf_Timestamp_JsonSchema())
+//     (or standalone function for Google types: google_protobuf_Timestamp_JsonSchema())
 //   - <MessageName>_JsonSchema_WithDefs() - Internal function for recursive schema building
 //
 // # Type Mapping
@@ -31,11 +31,11 @@
 //   - Repeated fields → array type
 //   - Map fields → object type with additionalProperties
 //
-// # Well-Known Types
+// # Google Types
 //
-// Google's well-known types (WKTs) are handled like normal messages, generating
-// standalone functions (not methods) since they're imported types. WKT schemas
-// are generated in the file where they're referenced.
+// All Google types (google.protobuf.*, google.type.*, google.api.*, google.iam.*, etc.)
+// are handled like normal messages, generating standalone functions (not methods) since
+// they're imported types. Google type schemas are generated in the file where they're referenced.
 //
 // # Options
 //
@@ -76,15 +76,19 @@ const (
 	jsString  = "string"  // JSON string type - used for strings, bytes, and enums
 )
 
-// isWKT checks if a message is a Google Well-Known Type.
-func isWKT(msg *protogen.Message) bool {
-	return strings.HasPrefix(string(msg.Desc.FullName()), "google.protobuf.")
+// isGoogleType checks if a message is from a Google package (google.*).
+// This includes well-known types (google.protobuf.*), common types (google.type.*),
+// API types (google.api.*), IAM types (google.iam.*), and any other google.* packages.
+// These are treated specially because we cannot add methods to imported types,
+// so we generate standalone functions with file prefixes instead.
+func isGoogleType(msg *protogen.Message) bool {
+	return strings.HasPrefix(string(msg.Desc.FullName()), "google.")
 }
 
-// wktFunctionName converts a WKT's full name to a valid Go function name with a file prefix.
-// The prefix ensures uniqueness when multiple files in the same package import the same WKTs.
+// googleTypeFunctionName converts a Google type's full name to a valid Go function name with a file prefix.
+// The prefix ensures uniqueness when multiple files in the same package import the same Google types.
 // Example: "google.protobuf.Timestamp" with prefix "admin" -> "admin_google_protobuf_Timestamp"
-func wktFunctionName(msg *protogen.Message, filePrefix string) string {
+func googleTypeFunctionName(msg *protogen.Message, filePrefix string) string {
 	fullName := string(msg.Desc.FullName())
 	baseName := strings.ReplaceAll(fullName, ".", "_")
 	if filePrefix != "" {
@@ -93,7 +97,7 @@ func wktFunctionName(msg *protogen.Message, filePrefix string) string {
 	return baseName
 }
 
-// fileNamePrefix extracts a prefix from the proto file path for use in WKT function names.
+// fileNamePrefix extracts a prefix from the proto file path for use in Google type function names.
 // Example: "users/v1/admin.proto" -> "admin"
 func fileNamePrefix(file *protogen.File) string {
 	// Get the base name without extension
@@ -161,23 +165,23 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 	// Messages from other proto files (even in the same Go package) are just referenced
 	// by their _WithDefs function name - they will be generated in their own file.
 	// Cross-package messages are automatically referenced via QualifiedGoIdent.
-	// WKTs are generated in the file where they're referenced (with file prefix).
+	// Google types are generated in the file where they're referenced (with file prefix).
 	var localMessages []*protogen.Message
-	var wktMessages []*protogen.Message
+	var googleTypeMessages []*protogen.Message
 	for _, msg := range targetMessages {
 		// Include only messages DEFINED in this proto file (not just same Go package)
 		// Note: Use Path() not FullName() - FullName() returns the package name for files
 		if msg.Desc.ParentFile().Path() == file.Desc.Path() {
 			localMessages = append(localMessages, msg)
-		} else if isWKT(msg) {
-			// Include WKTs that are referenced (they'll be generated as standalone functions)
-			wktMessages = append(wktMessages, msg)
+		} else if isGoogleType(msg) {
+			// Include Google types that are referenced (they'll be generated as standalone functions)
+			googleTypeMessages = append(googleTypeMessages, msg)
 		}
 	}
 
-	// Skip file generation entirely if no local messages or WKTs need schemas.
+	// Skip file generation entirely if no local messages or Google types need schemas.
 	// This avoids creating empty or import-only files.
-	if len(localMessages) == 0 && len(wktMessages) == 0 {
+	if len(localMessages) == 0 && len(googleTypeMessages) == 0 {
 		return nil, nil
 	}
 
@@ -210,11 +214,11 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 		g.P()
 	}
 
-	// --- Generate Message Schemas (LOCAL MESSAGES AND REFERENCED WKTs) ---
+	// --- Generate Message Schemas (LOCAL MESSAGES AND REFERENCED GOOGLE TYPES) ---
 	// Process each local message, creating a fresh MessageSchemaGenerator
 	// for each to ensure clean visited state tracking.
 	// Cross-package messages are referenced (not generated) via QualifiedGoIdent.
-	// WKTs are generated as standalone functions in the file where they're referenced.
+	// Google types are generated as standalone functions in the file where they're referenced.
 	prefix := fileNamePrefix(file)
 	for _, msg := range localMessages {
 		sg := &MessageSchemaGenerator{
@@ -229,8 +233,8 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 		g.P()
 	}
 
-	// Generate WKT schemas as standalone functions
-	for _, msg := range wktMessages {
+	// Generate Google type schemas as standalone functions
+	for _, msg := range googleTypeMessages {
 		sg := &MessageSchemaGenerator{
 			gr:         gr,
 			gen:        g,
@@ -253,7 +257,7 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 //   - Respects message-level options that can override the default generation flag
 //   - Automatically includes message dependencies (fields that reference other messages)
 //   - Recursively processes nested message definitions
-//   - Includes Well-Known Types (WKTs) when referenced
+//   - Includes Google types (google.*) when referenced
 //
 // Parameters:
 //   - messages: The list of messages to process (top-level or nested)
@@ -376,8 +380,8 @@ type MessageSchemaGenerator struct {
 	// generating duplicate schema definitions.
 	visited map[string]bool
 
-	// filePrefix is used to generate unique WKT function names when multiple
-	// files in the same package import the same WKTs. Derived from the proto file name.
+	// filePrefix is used to generate unique Google type function names when multiple
+	// files in the same package import the same Google types. Derived from the proto file name.
 	filePrefix string
 }
 
@@ -391,7 +395,7 @@ type MessageSchemaGenerator struct {
 //  3. Map fields: typeName is "object" with nested config for additionalProperties
 //
 // For message-type fields, either messageRef is set (for cross-references to other
-// messages) or the nested config contains the inline schema (for WKTs).
+// messages) or the nested config contains the inline schema (for Google types).
 type schemaFieldConfig struct {
 	// fieldName is the field name used in the JSON schema (proto field name in snake_case,
 	// or json_name option if explicitly set).
@@ -450,7 +454,7 @@ type schemaFieldConfig struct {
 //   - Scalar fields: Direct schema with type and constraints
 //   - Array fields: Schema with Items sub-schema
 //   - Map fields: Schema with AdditionalProperties sub-schema
-//   - Message references: Either direct function call or inline schema for WKTs
+//   - Message references: Either direct function call or inline schema for Google types
 //
 // Options from the proto field definition can override default values for:
 //   - Metadata: title, description
@@ -614,7 +618,7 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 			// Message reference: emit direct function call for the nested schema.
 			sg.gen.P(fmt.Sprintf(`%s: %s,`, targetField, cfg.nested.messageRef))
 		} else {
-			// Inline schema: emit full schema definition for scalar items, WKTs, etc.
+			// Inline schema: emit full schema definition for scalar items, Google types, etc.
 			sg.gen.P(fmt.Sprintf(`%s: &jsonschema.Schema{`, targetField))
 
 			// Emit type for the nested schema.
@@ -679,7 +683,7 @@ func (sg *MessageSchemaGenerator) getArraySchemaConfig(field *protogen.Field, ti
 	// Create the nested config based on the element type.
 	switch field.Desc.Kind() {
 	case protoreflect.MessageKind:
-		// Message elements: delegate to getMessageSchemaConfig for WKT handling or reference.
+		// Message elements: delegate to getMessageSchemaConfig for Google type handling or reference.
 		nestedCfg := sg.getMessageSchemaConfig(field.Message)
 		cfg.nested = &nestedCfg
 
@@ -780,10 +784,10 @@ func (sg *MessageSchemaGenerator) getMapSchemaConfig(field *protogen.Field, titl
 // getScalarSchemaConfig creates a schema configuration for non-repeated, non-map fields.
 //
 // "Scalar" here includes both primitive types and singular message fields. For message
-// fields, it delegates to getMessageSchemaConfig which handles WKTs specially.
+// fields, it delegates to getMessageSchemaConfig which handles Google types specially.
 //
 // Type-specific handling:
-//   - Messages: Merges config from getMessageSchemaConfig (may be WKT or reference)
+//   - Messages: Merges config from getMessageSchemaConfig (may be Google type or reference)
 //   - Enums: Adds enum value constraints
 //   - Bytes: Marks for base64 contentEncoding
 //   - Other primitives: Direct type mapping
@@ -800,7 +804,7 @@ func (sg *MessageSchemaGenerator) getScalarSchemaConfig(field *protogen.Field, t
 	switch field.Desc.Kind() {
 	case protoreflect.MessageKind:
 		// For message fields, get the config from getMessageSchemaConfig and merge it.
-		// This handles WKTs (returning inline schemas) and user messages (returning refs).
+		// This handles Google types (returning inline schemas) and user messages (returning refs).
 		nestedCfg := sg.getMessageSchemaConfig(field.Message)
 		cfg.typeName = nestedCfg.typeName
 		cfg.format = nestedCfg.format
@@ -826,7 +830,7 @@ func (sg *MessageSchemaGenerator) getScalarSchemaConfig(field *protogen.Field, t
 
 // getMessageSchemaConfig creates a schema configuration for message-type fields.
 //
-// All messages (including WKTs) are handled as references to schema generation functions.
+// All messages (including Google types) are handled as references to schema generation functions.
 func (sg *MessageSchemaGenerator) getMessageSchemaConfig(msg *protogen.Message) schemaFieldConfig {
 	// Return a reference to the message's schema generation function.
 	return schemaFieldConfig{messageRef: sg.referenceName(msg)}
@@ -836,12 +840,12 @@ func (sg *MessageSchemaGenerator) getMessageSchemaConfig(msg *protogen.Message) 
 //
 // For same-package messages: "MessageName_JsonSchema_WithDefs(defs)"
 // For cross-package messages: "otherpkg.MessageName_JsonSchema_WithDefs(defs)"
-// For WKTs: "admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)" (standalone function with file prefix)
+// For Google types: "admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)" (standalone function with file prefix)
 func (sg *MessageSchemaGenerator) referenceName(msg *protogen.Message) string {
-	// Check if this is a WKT
-	if isWKT(msg) {
-		// For WKTs, use the standalone function name format with file prefix
-		funcName := wktFunctionName(msg, sg.filePrefix) + "_JsonSchema_WithDefs"
+	// Check if this is a Google type
+	if isGoogleType(msg) {
+		// For Google types, use the standalone function name format with file prefix
+		funcName := googleTypeFunctionName(msg, sg.filePrefix) + "_JsonSchema_WithDefs"
 		return funcName + "(defs)"
 	}
 
@@ -888,14 +892,14 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	title, description := sg.gr.getTitleAndDescription(message.Desc)
 
 	// --- Generate Public Entry Point ---
-	// For WKTs, generate standalone functions instead of methods (since we can't add methods to imported types).
-	// The file prefix ensures unique function names when multiple files in the same package import WKTs.
-	if isWKT(message) {
-		wktFuncName := wktFunctionName(message, sg.filePrefix)
-		sg.gen.P(fmt.Sprintf("// %s_JsonSchema returns the JSON schema for the %s message.", wktFuncName, message.Desc.Name()))
-		sg.gen.P(fmt.Sprintf("func %s_JsonSchema() *jsonschema.Schema {", wktFuncName))
+	// For Google types, generate standalone functions instead of methods (since we can't add methods to imported types).
+	// The file prefix ensures unique function names when multiple files in the same package import Google types.
+	if isGoogleType(message) {
+		googleFuncName := googleTypeFunctionName(message, sg.filePrefix)
+		sg.gen.P(fmt.Sprintf("// %s_JsonSchema returns the JSON schema for the %s message.", googleFuncName, message.Desc.Name()))
+		sg.gen.P(fmt.Sprintf("func %s_JsonSchema() *jsonschema.Schema {", googleFuncName))
 		sg.gen.P("defs := make(map[string]*jsonschema.Schema)")
-		sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", wktFuncName))
+		sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", googleFuncName))
 		sg.gen.P(fmt.Sprintf("root := defs[\"%s\"]", message.Desc.FullName()))
 		sg.gen.P(fmt.Sprintf("delete(defs, \"%s\")", message.Desc.FullName()))
 		sg.gen.P("root.Defs = defs")
@@ -920,10 +924,10 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	// This function populates the shared definitions map and returns a $ref.
 	// The early return on existing defs prevents infinite recursion.
 	{
-		// Use WKT function name (with file prefix) for WKTs, regular Go name for others
+		// Use Google type function name (with file prefix) for Google types, regular Go name for others
 		var helperFuncName string
-		if isWKT(message) {
-			helperFuncName = wktFunctionName(message, sg.filePrefix) + "_JsonSchema_WithDefs"
+		if isGoogleType(message) {
+			helperFuncName = googleTypeFunctionName(message, sg.filePrefix) + "_JsonSchema_WithDefs"
 		} else {
 			helperFuncName = goName + "_JsonSchema_WithDefs"
 		}

@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-29 14:46:44 UTC
+// Generated on: 2026-01-29 15:25:16 UTC
 
 package usersv1
 
@@ -39,6 +39,7 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 			"state",
 			"zip",
 			"country",
+			"service_account_key",
 		},
 	}
 
@@ -100,5 +101,167 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 		Description: "",
 	}
 
+	schema.Properties["service_account_key"] = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
+
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Common"}
+}
+
+// common_google_iam_admin_v1_ServiceAccountKey_JsonSchema returns the JSON schema for the ServiceAccountKey message.
+func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	_ = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
+	root := defs["google.iam.admin.v1.ServiceAccountKey"]
+	delete(defs, "google.iam.admin.v1.ServiceAccountKey")
+	root.Defs = defs
+	return root
+}
+
+func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["google.iam.admin.v1.ServiceAccountKey"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	}
+
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Title:       "Represents a service account key.",
+		Description: "A service account has two sets of key-pairs: user-managed, and\n system-managed.\n\n User-managed key-pairs can be created and deleted by users.  Users are\n responsible for rotating these keys periodically to ensure security of\n their service accounts.  Users retain the private key of these key-pairs,\n and Google retains ONLY the public key.\n\n System-managed keys are automatically rotated by Google, and are used for\n signing for a maximum of two weeks. The rotation process is probabilistic,\n and usage of the new key will gradually ramp up and down over the key's\n lifetime.\n\n If you cache the public key set for a service account, we recommend that you\n update the cache every 15 minutes. User-managed keys can be added and removed\n at any time, so it is important to update the cache frequently. For\n Google-managed keys, Google will publish a key at least 6 hours before it is\n first used for signing and will keep publishing it for at least 6 hours after\n it was last used for signing.\n\n Public keys for all service accounts are also published at the OAuth2\n Service Account API.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"name",
+			"private_key_type",
+			"key_algorithm",
+			"private_key_data",
+			"public_key_data",
+			"valid_after_time",
+			"valid_before_time",
+			"key_origin",
+			"key_type",
+			"disabled",
+		},
+	}
+
+	// Register schema BEFORE processing fields to handle self-references.
+	// This prevents infinite recursion when a message contains itself.
+	defs["google.iam.admin.v1.ServiceAccountKey"] = schema
+
+	schema.Properties["name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "The resource name of the service account key in the following format\n `projects/{PROJECT_ID}/serviceAccounts/{ACCOUNT}/keys/{key}`.",
+	}
+
+	schema.Properties["private_key_type"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "The output format for the private key.\n Only provided in `CreateServiceAccountKey` responses, not\n in `GetServiceAccountKey` or `ListServiceAccountKey` responses.",
+		Description: "Google never exposes system-managed private keys, and never retains\n user-managed private keys.",
+		Enum: []any{
+			"TYPE_UNSPECIFIED",
+			"TYPE_PKCS12_FILE",
+			"TYPE_GOOGLE_CREDENTIALS_FILE",
+		},
+	}
+
+	schema.Properties["key_algorithm"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "Specifies the algorithm (and possibly key size) for the key.",
+		Enum: []any{
+			"KEY_ALG_UNSPECIFIED",
+			"KEY_ALG_RSA_1024",
+			"KEY_ALG_RSA_2048",
+		},
+	}
+
+	schema.Properties["private_key_data"] = &jsonschema.Schema{
+		Type:            "string",
+		Title:           "",
+		Description:     "The private key data. Only provided in `CreateServiceAccountKey`\n responses. Make sure to keep the private key data secure because it\n allows for the assertion of the service account identity.\n When base64 decoded, the private key data can be used to authenticate with\n Google API client libraries and with\n <a href=\"/sdk/gcloud/reference/auth/activate-service-account\">gcloud\n auth activate-service-account</a>.",
+		ContentEncoding: "base64",
+	}
+
+	schema.Properties["public_key_data"] = &jsonschema.Schema{
+		Type:            "string",
+		Title:           "",
+		Description:     "The public key data. Only provided in `GetServiceAccountKey` responses.",
+		ContentEncoding: "base64",
+	}
+
+	schema.Properties["valid_after_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+
+	schema.Properties["valid_before_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+
+	schema.Properties["key_origin"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "The key origin.",
+		Enum: []any{
+			"ORIGIN_UNSPECIFIED",
+			"USER_PROVIDED",
+			"GOOGLE_PROVIDED",
+		},
+	}
+
+	schema.Properties["key_type"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "The key type.",
+		Enum: []any{
+			"KEY_TYPE_UNSPECIFIED",
+			"USER_MANAGED",
+			"SYSTEM_MANAGED",
+		},
+	}
+
+	schema.Properties["disabled"] = &jsonschema.Schema{
+		Type:        "boolean",
+		Title:       "",
+		Description: "The key status.",
+	}
+
+	return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+}
+
+// common_google_protobuf_Timestamp_JsonSchema returns the JSON schema for the Timestamp message.
+func common_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	_ = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	root := defs["google.protobuf.Timestamp"]
+	delete(defs, "google.protobuf.Timestamp")
+	root.Defs = defs
+	return root
+}
+
+func common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["google.protobuf.Timestamp"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
+	}
+
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
+		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A proto3 JSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a proto3 JSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"seconds",
+			"nanos",
+		},
+	}
+
+	// Register schema BEFORE processing fields to handle self-references.
+	// This prevents infinite recursion when a message contains itself.
+	defs["google.protobuf.Timestamp"] = schema
+
+	schema.Properties["seconds"] = &jsonschema.Schema{
+		Type:        "integer",
+		Title:       "",
+		Description: "Represents seconds of UTC time since Unix epoch\n 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n 9999-12-31T23:59:59Z inclusive.",
+	}
+
+	schema.Properties["nanos"] = &jsonschema.Schema{
+		Type:        "integer",
+		Title:       "",
+		Description: "Non-negative fractions of a second at nanosecond resolution. Negative\n second values with fractions must still have non-negative nanos values\n that count forward in time. Must be from 0 to 999,999,999\n inclusive.",
+	}
+
+	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
 }

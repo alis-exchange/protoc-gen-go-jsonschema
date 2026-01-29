@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "alis/open/options/v1/options.proto";
+import "google/iam/admin/v1/iam.proto";
 
 option go_package = "github.com/newtonnthiga/users/v1;usersv1";
 
@@ -22,4 +23,5 @@ message Common {
   string state = 7;
   string zip = 8;
   string country = 9;
+  google.iam.admin.v1.ServiceAccountKey service_account_key = 11;
 }

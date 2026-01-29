@@ -272,8 +272,8 @@ func (s *FunctionsTestSuite) TestGetEnumValuesFromDescriptor() {
 	s.Equal("USER_STATUS_UNSPECIFIED", enumValues[0], "First enum value should be USER_STATUS_UNSPECIFIED")
 }
 
-// TestGetMessageSchemaConfigWKTs tests well-known type handling.
-func (s *FunctionsTestSuite) TestGetMessageSchemaConfigWKTs() {
+// TestGetMessageSchemaConfigGoogleTypes tests Google type handling.
+func (s *FunctionsTestSuite) TestGetMessageSchemaConfigGoogleTypes() {
 	sg := &MessageSchemaGenerator{
 		gr:      &Generator{},
 		visited: make(map[string]bool),

@@ -110,7 +110,7 @@ func (s *PluginGeneratorTestSuite) TestGetMessages() {
 	s.Run("includes google types when referenced", func() {
 		messages := gr.getMessages(s.file.Messages, true, make(map[string]bool))
 
-		// Check if any WKTs are included (they should be if referenced)
+		// Check if any Google types are included (they should be if referenced)
 		// This test just verifies the logic doesn't crash - actual inclusion depends on references
 		s.NotNil(messages, "Messages should be returned")
 	})
@@ -251,10 +251,10 @@ func (s *PluginGeneratorTestSuite) TestGeneratedCodeStructure() {
 			// Check for import of jsonschema
 			s.Contains(content, "jsonschema", "Missing jsonschema import")
 
-			// Check for JsonSchema method or standalone function (for WKTs)
+			// Check for JsonSchema method or standalone function (for Google types)
 			hasMethod := strings.Contains(content, "func (x *") && strings.Contains(content, "JsonSchema()")
-			hasWKTFunction := strings.Contains(content, "google_protobuf_") && strings.Contains(content, "_JsonSchema()")
-			s.True(hasMethod || hasWKTFunction, "Missing JsonSchema method or WKT function pattern")
+			hasGoogleTypeFunction := strings.Contains(content, "google_protobuf_") && strings.Contains(content, "_JsonSchema()")
+			s.True(hasMethod || hasGoogleTypeFunction, "Missing JsonSchema method or Google type function pattern")
 
 			// Check for WithDefs function
 			s.Contains(content, "_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema)",
@@ -340,23 +340,23 @@ func (s *PluginGeneratorTestSuite) TestOneOfHandling() {
 	}
 }
 
-// TestWellKnownTypesHandling tests WKT handling in generated code.
-func (s *PluginGeneratorTestSuite) TestWellKnownTypesHandling() {
+// TestGoogleTypesHandling tests Google type handling in generated code.
+func (s *PluginGeneratorTestSuite) TestGoogleTypesHandling() {
 	content := s.GetGeneratedContent()
 
-	// WKTs should now generate standalone functions with $ref instead of inline schemas
-	// Check for WKT function generation (e.g., google_protobuf_Timestamp_JsonSchema)
-	hasWKTFunctions := strings.Contains(content, "google_protobuf_") && 
+	// Google types should generate standalone functions with $ref instead of inline schemas
+	// Check for Google type function generation (e.g., google_protobuf_Timestamp_JsonSchema)
+	hasGoogleTypeFunctions := strings.Contains(content, "google_protobuf_") &&
 		strings.Contains(content, "_JsonSchema()")
-	
-	// If WKTs are referenced, they should generate functions
-	// Check for $ref usage in schemas (WKTs use $ref now)
+
+	// If Google types are referenced, they should generate functions
+	// Check for $ref usage in schemas (Google types use $ref now)
 	hasRefs := strings.Contains(content, "Ref: \"#/$defs/")
-	
-	// At least one of these should be true if WKTs are used
+
+	// At least one of these should be true if Google types are used
 	if strings.Contains(content, "Timestamp") || strings.Contains(content, "Duration") {
-		s.True(hasWKTFunctions || hasRefs, 
-			"WKTs should generate standalone functions or use $ref, found neither")
+		s.True(hasGoogleTypeFunctions || hasRefs,
+			"Google types should generate standalone functions or use $ref, found neither")
 	}
 }
 

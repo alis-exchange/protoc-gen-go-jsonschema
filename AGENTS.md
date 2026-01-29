@@ -146,7 +146,7 @@ Stateful per-message schema builder:
 - `gr` - Reference to parent Generator
 - `gen` - Output file writer (`*protogen.GeneratedFile`)
 - `visited` - Map tracking processed messages (prevents infinite recursion)
-- `filePrefix` - Proto file name prefix for unique WKT function names
+- `filePrefix` - Proto file name prefix for unique Google type function names
 
 Key methods:
 
@@ -156,7 +156,7 @@ Key methods:
 - `getArraySchemaConfig()` - Creates config for repeated fields
 - `getMapSchemaConfig()` - Creates config for map fields
 - `getScalarSchemaConfig()` - Creates config for scalar/message fields
-- `getMessageSchemaConfig()` - Handles WKTs and message references
+- `getMessageSchemaConfig()` - Handles Google types and message references
 - `getKindTypeName()` - Maps proto kinds to JSON Schema types
 
 #### `schemaFieldConfig` (plugin/functions.go)
@@ -241,13 +241,21 @@ Map keys are always strings in JSON. Non-string proto keys use `propertyNames` v
 
 ---
 
-## Well-Known Types (WKTs)
+## Google Types
 
-Google's well-known types (WKTs) are treated like normal messages and generate schemas with `$ref` definitions. Since WKTs are imported types (we can't add methods to them), the plugin generates **standalone functions** instead of methods.
+All Google types (any message in a `google.*` package) are treated like normal messages and generate schemas with `$ref` definitions. Since Google types are imported types (we can't add methods to them), the plugin generates **standalone functions** instead of methods.
 
-### WKT Function Naming
+This includes:
 
-WKT functions include a **file prefix** to ensure uniqueness when multiple proto files in the same package import the same WKTs:
+- Well-known types: `google.protobuf.*` (Timestamp, Duration, Any, Struct, etc.)
+- Common types: `google.type.*` (Date, LatLng, Money, etc.)
+- API types: `google.api.*` (HttpBody, ResourceDescriptor, etc.)
+- IAM types: `google.iam.*` (ServiceAccountKey, Policy, etc.)
+- Any other `google.*` packages
+
+### Google Type Function Naming
+
+Google type functions include a **file prefix** to ensure uniqueness when multiple proto files in the same package import the same types:
 
 ```go
 // From user.proto
@@ -257,21 +265,24 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 // From admin.proto (same package)
 func admin_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
 func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
+
+// IAM types also work the same way
+func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema { ... }
 ```
 
 The prefix is derived from the proto file name (e.g., `users/v1/admin.proto` → `admin`).
 
-### WKT Helper Functions
+### Google Type Helper Functions
 
 Located in `plugin/functions.go`:
 
-- `isWKT(msg)` - Checks if a message is a Google WKT (`google.protobuf.*`)
-- `wktFunctionName(msg, filePrefix)` - Generates the function name with file prefix
+- `isGoogleType(msg)` - Checks if a message is from a Google package (`google.*`)
+- `googleTypeFunctionName(msg, filePrefix)` - Generates the function name with file prefix
 - `fileNamePrefix(file)` - Extracts prefix from proto file path
 
 ### MessageSchemaGenerator.filePrefix
 
-The `MessageSchemaGenerator` struct includes a `filePrefix` field that is set during file generation and used for WKT function naming.
+The `MessageSchemaGenerator` struct includes a `filePrefix` field that is set during file generation and used for Google type function naming.
 
 ---
 
@@ -536,7 +547,7 @@ func MessageName_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 2. Add handling in appropriate config builder (`getScalarSchemaConfig`, `getArraySchemaConfig`, or `getMapSchemaConfig`)
 3. Add tests in `functions_test.go`
 
-Note: WKTs are now handled like normal messages (no special cases needed).
+Note: Google types are now handled like normal messages (no special cases needed).
 
 ### Adding New Option Support
 
@@ -586,13 +597,13 @@ message Parent {
 
 64-bit integers (`int64`, `uint64`, `sint64`, `sfixed64`, `fixed64`) are mapped to JSON Schema `"integer"` type. While JavaScript has precision limitations for very large integers (beyond 2^53-1), the `"integer"` type provides better schema validation and works correctly for most use cases.
 
-### WKT Handling
+### Google Type Handling
 
-Well-Known Types (WKTs) are now treated like normal messages and generate schemas with `$ref` definitions. Key differences from user messages:
+All Google types (`google.*`) are treated like normal messages and generate schemas with `$ref` definitions. Key differences from user messages:
 
-1. **Standalone functions**: WKTs generate standalone functions (not methods) since we can't add methods to imported types
-2. **File prefix**: WKT function names include a file prefix (e.g., `user_google_protobuf_Timestamp_JsonSchema`) to avoid duplicate function names when multiple files in the same package import the same WKTs
-3. **Recursive dependencies**: WKT dependencies (including map value types) are properly collected via `getMessagesWithForce()`
+1. **Standalone functions**: Google types generate standalone functions (not methods) since we can't add methods to imported types
+2. **File prefix**: Google type function names include a file prefix (e.g., `user_google_protobuf_Timestamp_JsonSchema`) to avoid duplicate function names when multiple files in the same package import the same types
+3. **Recursive dependencies**: Google type dependencies (including map value types) are properly collected via `getMessagesWithForce()`
 
 ### Map Value Dependencies
 
@@ -601,7 +612,7 @@ Well-Known Types (WKTs) are now treated like normal messages and generate schema
 **Solution**: The `getMessagesWithForce()` function now handles map fields specially:
 
 - For map fields, it extracts the value message from the synthetic map entry (field number 2)
-- This ensures WKT dependencies like `google.protobuf.Value` (used by `Struct.fields`) are properly collected
+- This ensures Google type dependencies like `google.protobuf.Value` (used by `Struct.fields`) are properly collected
 
 ### Multi-File Packages
 
@@ -621,21 +632,21 @@ Well-Known Types (WKTs) are now treated like normal messages and generate schema
 
 ## File Locations Quick Reference
 
-| What                          | Where                                                                      |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                                     |
-| Generation logic              | `plugin/functions.go`                                                      |
-| Type constants                | `plugin/functions.go` (top of file)                                        |
-| Message collection            | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()`         |
-| Force logic                   | `plugin/functions.go` → `getMessagesWithForce()`                           |
-| Field name helper             | `plugin/functions.go` → `getFieldName()`                                   |
-| WKT helpers                   | `plugin/functions.go` → `isWKT()`, `wktFunctionName()`, `fileNamePrefix()` |
-| WKT schema generation         | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isWKT()`)    |
-| Options extraction            | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()`         |
-| Test fixtures                 | `testdata/protos/users/v1/user.proto`                                      |
-| Force logic tests             | `testdata/protos/force_test/v1/force_test.proto`                           |
-| Golden files                  | `testdata/golden/*.golden`                                                 |
-| Base test suite               | `plugin/suite_test.go`                                                     |
-| Force logic unit tests        | `plugin/plugin_test.go` → `TestGetMessagesWithForce()`                     |
-| Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()`                         |
-| Debug tests (multi-file)      | `debug/debug_test.go`                                                      |
+| What                          | Where                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                                                   |
+| Generation logic              | `plugin/functions.go`                                                                    |
+| Type constants                | `plugin/functions.go` (top of file)                                                      |
+| Message collection            | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()`                       |
+| Force logic                   | `plugin/functions.go` → `getMessagesWithForce()`                                         |
+| Field name helper             | `plugin/functions.go` → `getFieldName()`                                                 |
+| Google type helpers           | `plugin/functions.go` → `isGoogleType()`, `googleTypeFunctionName()`, `fileNamePrefix()` |
+| Google type schema generation | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isGoogleType()`)           |
+| Options extraction            | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()`                       |
+| Test fixtures                 | `testdata/protos/users/v1/user.proto`                                                    |
+| Force logic tests             | `testdata/protos/force_test/v1/force_test.proto`                                         |
+| Golden files                  | `testdata/golden/*.golden`                                                               |
+| Base test suite               | `plugin/suite_test.go`                                                                   |
+| Force logic unit tests        | `plugin/plugin_test.go` → `TestGetMessagesWithForce()`                                   |
+| Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()`                                       |
+| Debug tests (multi-file)      | `debug/debug_test.go`                                                                    |

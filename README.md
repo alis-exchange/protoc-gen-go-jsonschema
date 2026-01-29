@@ -10,7 +10,7 @@ A Protocol Buffers compiler (protoc) plugin that generates Go code for creating 
 - **JSON Schema Draft 2020-12** - Generates schemas following the latest JSON Schema specification
 - **Runtime Schema Generation** - Each message gets a `JsonSchema()` method that returns a `*jsonschema.Schema`
 - **Full Proto3 Support** - Handles all proto3 types including maps, repeated fields, oneofs, and enums
-- **Well-Known Types** - Proper handling of Google's WKTs (Timestamp, Duration, Struct, Any, etc.)
+- **Google Types** - Proper handling of all Google types (google.protobuf._, google.type._, google.api._, google.iam._, etc.)
 - **Cross-References** - Messages reference each other using JSON Schema `$defs` and `$ref`
 - **Customizable** - Proto options allow fine-grained control over schema generation and validation constraints
 
@@ -211,16 +211,16 @@ message User {
 | `repeated T`                                       | `array`          | With `items` schema         |
 | `map<K, V>`                                        | `object`         | With `additionalProperties` |
 
-## Well-Known Types
+## Google Types
 
-Google's well-known types (WKTs) are handled like normal messages - they generate schemas based on their actual proto field structure, not the special JSON encoding used by `protojson`. This is designed for use with standard `json.Marshal`.
+All Google types (`google.*` packages including `google.protobuf.*`, `google.type.*`, `google.api.*`, `google.iam.*`, etc.) are handled like normal messages - they generate schemas based on their actual proto field structure, not the special JSON encoding used by `protojson`. This is designed for use with standard `json.Marshal`.
 
-Since WKTs are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness:
+Since Google types are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness:
 
 ```go
-// Generated for WKTs (standalone functions, not methods)
+// Generated for Google types (standalone functions, not methods)
 func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
-func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
+func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema { ... }
 ```
 
 ## Dependencies
