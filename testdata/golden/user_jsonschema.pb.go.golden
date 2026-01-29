@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-28 11:17:57 UTC
+// Generated on: 2026-01-29 14:46:44 UTC
 
 package usersv1
 
@@ -429,6 +429,7 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 			"session_duration",
 			"extra_data",
 			"dynamic_data",
+			"common",
 		},
 	}
 
@@ -823,6 +824,8 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["optional_address"] = Address_JsonSchema_WithDefs(defs)
+
+	schema.Properties["common"] = Common_JsonSchema_WithDefs(defs)
 
 	schema.AllOf = []*jsonschema.Schema{
 		{

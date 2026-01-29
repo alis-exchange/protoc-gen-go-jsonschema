@@ -151,20 +151,23 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 	// This includes cross-package messages to ensure the defs map is complete.
 	targetMessages := gr.getMessages(file.Messages, generateAll, make(map[string]bool))
 
-	// --- CRITICAL: Filter to only messages from THIS file's package ---
+	// --- CRITICAL: Filter to only messages DEFINED in THIS proto file ---
 	//
-	// Why: When multiple files in the same Go package reference messages with
-	// the same Go name from different proto packages, we would generate duplicate
-	// function definitions.
+	// Why: When multiple proto files share the same Go package and import each other
+	// (or import the same shared protos), we would generate duplicate function
+	// definitions if we filter by Go package instead of proto file.
 	//
-	// Solution: Only generate schema functions for messages belonging to this file.
+	// Solution: Only generate schema functions for messages defined in THIS proto file.
+	// Messages from other proto files (even in the same Go package) are just referenced
+	// by their _WithDefs function name - they will be generated in their own file.
 	// Cross-package messages are automatically referenced via QualifiedGoIdent.
-	// WKTs are also generated in the file where they're referenced.
+	// WKTs are generated in the file where they're referenced (with file prefix).
 	var localMessages []*protogen.Message
 	var wktMessages []*protogen.Message
 	for _, msg := range targetMessages {
-		// Include messages that belong to this file's Go package
-		if msg.GoIdent.GoImportPath == file.GoImportPath {
+		// Include only messages DEFINED in this proto file (not just same Go package)
+		// Note: Use Path() not FullName() - FullName() returns the package name for files
+		if msg.Desc.ParentFile().Path() == file.Desc.Path() {
 			localMessages = append(localMessages, msg)
 		} else if isWKT(msg) {
 			// Include WKTs that are referenced (they'll be generated as standalone functions)

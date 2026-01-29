@@ -138,6 +138,8 @@ type MapFieldsDemo struct{}
 type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
 type Address_AddressDetails struct{}
+type Common struct{}
+type Admin struct{}
 `
 	stubPath := filepath.Join(pkgDir, "stub_types.go")
 	err = os.WriteFile(stubPath, []byte(stubContent), 0o644)
@@ -388,6 +390,8 @@ type MapFieldsDemo struct{}
 type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
 type Address_AddressDetails struct{}
+type Common struct{}
+type Admin struct{}
 `
 	stubPath := filepath.Join(pkgDir, "stub_types.go")
 	err = os.WriteFile(stubPath, []byte(stubContent), 0o644)
@@ -911,6 +915,8 @@ type RepeatedFieldsDemo struct{}
 type MapFieldsDemo struct{}
 type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
+type Common struct{}
+type Admin struct{}
 `
 	err = os.WriteFile(filepath.Join(tmpDir, "stub_types.go"), []byte(stubContent), 0o644)
 	s.Require().NoError(err)

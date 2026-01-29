@@ -603,6 +603,20 @@ Well-Known Types (WKTs) are now treated like normal messages and generate schema
 - For map fields, it extracts the value message from the synthetic map entry (field number 2)
 - This ensures WKT dependencies like `google.protobuf.Value` (used by `Struct.fields`) are properly collected
 
+### Multi-File Packages
+
+**Problem**: When multiple proto files share the same Go package (e.g., `common.proto`, `admin.proto`, `user.proto` all using `go_package = "github.com/example/users/v1;usersv1"`), you must compile all proto files together.
+
+**Solution**: The plugin filters messages by their source proto file using `msg.Desc.ParentFile().Path()`. Each proto file generates schemas only for messages **defined in that file**. Messages from other files in the same package are referenced by their `_WithDefs` function name.
+
+**Example**:
+
+- `common.proto` generates `Common_JsonSchema_WithDefs` in `common_jsonschema.pb.go`
+- `admin.proto` generates `Admin_JsonSchema_WithDefs` in `admin_jsonschema.pb.go`
+- `admin_jsonschema.pb.go` calls `Common_JsonSchema_WithDefs(defs)` to reference Common
+
+**Important**: All proto files in a shared Go package must be compiled together so that cross-file references can be resolved at compile time.
+
 ---
 
 ## File Locations Quick Reference

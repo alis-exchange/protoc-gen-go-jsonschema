@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package users.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "alis/open/options/v1/options.proto";
+
+option go_package = "github.com/newtonnthiga/users/v1;usersv1";
+
+option (alis.open.options.v1.file).json_schema.generate = true;
+
+message Common {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+  string city = 6;
+  string state = 7;
+  string zip = 8;
+  string country = 9;
+}

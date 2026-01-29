@@ -7,6 +7,7 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "alis/open/options/v1/options.proto";
+import "users/v1/common.proto";
 
 option go_package = "github.com/newtonnthiga/users/v1;usersv1";
 
@@ -307,6 +308,9 @@ message ComprehensiveUser {
   // Reserved fields (for future use)
   reserved 100 to 200;
   reserved "future_field_1", "future_field_2";
+
+  // Common fields section
+  Common common = 57;
 }
 
 // UserService provides operations for managing users.

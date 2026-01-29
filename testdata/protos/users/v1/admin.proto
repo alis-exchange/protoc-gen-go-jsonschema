@@ -8,6 +8,7 @@ import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
 import "alis/open/options/v1/options.proto";
 import "google/protobuf/wrappers.proto";
+import "users/v1/common.proto";
 
 option go_package = "github.com/newtonnthiga/users/v1;usersv1";
 
@@ -38,4 +39,5 @@ message Admin {
   google.protobuf.DoubleValue optional_double_value = 22;
   google.protobuf.FloatValue optional_float_value = 23;
   google.protobuf.BytesValue optional_bytes_value = 24;
+  Common common = 25;
 }

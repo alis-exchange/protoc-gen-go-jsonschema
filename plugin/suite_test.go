@@ -92,11 +92,13 @@ func (s *PluginTestSuite) findWorkspaceRoot() string {
 	}
 }
 
-// regenerateDescriptorSet generates the FileDescriptorSet from the proto file.
-// This ensures tests always use fresh descriptors matching the current proto.
+// regenerateDescriptorSet generates the FileDescriptorSet from the proto files.
+// This ensures tests always use fresh descriptors matching the current protos.
+// Includes all proto files in the users/v1 package to support multi-file scenarios.
 func (s *PluginTestSuite) regenerateDescriptorSet() {
 	protoPath := filepath.Join(s.workspaceRoot, "testdata", "protos")
-	protoFile := "users/v1/user.proto"
+	// Include all proto files in the package - user.proto imports common.proto
+	protoFiles := []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto"}
 	outputPath := filepath.Join(s.workspaceRoot, "testdata", "descriptors", "user.pb")
 
 	// Create output directory if it doesn't exist
@@ -120,8 +122,8 @@ func (s *PluginTestSuite) regenerateDescriptorSet() {
 		}
 	}
 
-	// Add the proto file
-	args = append(args, protoFile)
+	// Add all proto files
+	args = append(args, protoFiles...)
 
 	// Run protoc
 	cmd := exec.Command("protoc", args...)
@@ -146,9 +148,12 @@ func (s *PluginTestSuite) loadDescriptorSetFromPath(path string) *descriptorpb.F
 }
 
 // loadPlugin creates a fresh protogen.Plugin instance and finds the target file.
+// Includes all proto files in the users/v1 package to generate all schemas together.
 func (s *PluginTestSuite) loadPlugin() {
 	req := &pluginpb.CodeGeneratorRequest{
-		FileToGenerate: []string{"users/v1/user.proto"},
+		// Include all proto files in the package - they share the same Go package
+		// and reference each other, so they must be generated together
+		FileToGenerate: []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto"},
 		ProtoFile:      s.fds.File,
 	}
 
@@ -225,13 +230,33 @@ func (s *PluginTestSuite) RunGenerate() map[string]string {
 	return result
 }
 
-// GetGeneratedContent is a convenience method that returns the first generated file's content.
+// GetGeneratedContent is a convenience method that returns the user.proto generated file's content.
+// This is the primary test file that contains most message types.
 func (s *PluginTestSuite) GetGeneratedContent() string {
 	contents := s.RunGenerate()
+	// Return the user.proto generated content specifically
+	for name, content := range contents {
+		if strings.HasSuffix(name, "user_jsonschema.pb.go") {
+			return content
+		}
+	}
+	// Fallback to first file if user_jsonschema.pb.go not found
 	for _, content := range contents {
 		return content
 	}
 	s.T().Fatal("No generated content found")
+	return ""
+}
+
+// GetGeneratedContentForFile returns the generated content for a specific proto file.
+func (s *PluginTestSuite) GetGeneratedContentForFile(suffix string) string {
+	contents := s.RunGenerate()
+	for name, content := range contents {
+		if strings.HasSuffix(name, suffix) {
+			return content
+		}
+	}
+	s.T().Fatalf("No generated content found for %s", suffix)
 	return ""
 }
 
