@@ -1,8 +1,13 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.3...v) (2026-01-29)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.4...v) (2026-01-30)
+
+
+
+## [0.1.4](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.3...v0.1.4) (2026-01-30)
 
 
 ### Bug Fixes
 
+* refine required fields logic in JSON schema generation for repeated and maps ([d260717](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/d2607178d3aa0ecd11e1d68329c23187dabbb24f))
 * update handling of Google types in JSON schema generation ([c35ac84](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/c35ac847bc59ede8547d6b44f2c6ed388f13e78e))
 
 
