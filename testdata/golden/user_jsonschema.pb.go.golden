@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-29 15:25:16 UTC
+// Generated on: 2026-01-30 06:17:18 UTC
 
 package usersv1
 
@@ -182,8 +182,6 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 			"zip_code",
 			"country",
 			"nested_address_details",
-			"repeated_address_details",
-			"map_address_details",
 		},
 	}
 
@@ -270,7 +268,6 @@ func ContactInfo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 			"phone",
 			"mobile",
 			"fax",
-			"emails",
 		},
 	}
 
@@ -329,8 +326,6 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 		Description: "Metadata contains additional key-value metadata for resources.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
-			"tags",
-			"numeric_tags",
 			"extra_data",
 		},
 	}
@@ -407,23 +402,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 			"address",
 			"contact",
 			"metadata",
-			"tags",
-			"scores",
-			"flags",
-			"ratings",
-			"balances",
-			"images",
-			"status_history",
-			"priorities",
-			"addresses",
-			"contacts",
-			"attributes",
-			"numeric_attributes",
-			"string_to_int",
-			"string_to_bool",
-			"address_map",
-			"status_map",
-			"address_details_map",
 			"created_at",
 			"updated_at",
 			"session_duration",
@@ -1145,8 +1123,6 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"user",
-			"metadata",
-			"tags",
 		},
 	}
 
@@ -1196,11 +1172,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 		Type:        "object",
 		Description: "BatchGetUsersRequest contains criteria for retrieving multiple users.",
 		Properties:  make(map[string]*jsonschema.Schema),
-		Required: []string{
-			"ids",
-			"user_numbers",
-			"filters",
-		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
@@ -1287,7 +1258,6 @@ func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schem
 		Description: "BatchGetUsersResponse contains the results of a batch user retrieval.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
-			"users",
 			"total_count",
 			"has_more",
 			"query_timestamp",
@@ -1343,8 +1313,6 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"user",
-			"shipping_addresses",
-			"contact_methods",
 			"custom_data",
 		},
 	}
@@ -1405,7 +1373,6 @@ func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			"first_name",
 			"last_name",
 			"date_of_birth",
-			"interests",
 		},
 	}
 
@@ -1462,8 +1429,6 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			"company_name",
 			"tax_id",
 			"business_address",
-			"departments",
-			"employee_counts",
 		},
 	}
 
@@ -1525,25 +1490,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Type:        "object",
 		Description: "RepeatedFieldsDemo demonstrates all repeated field types.",
 		Properties:  make(map[string]*jsonschema.Schema),
-		Required: []string{
-			"string_list",
-			"int_list",
-			"long_list",
-			"uint_list",
-			"ulong_list",
-			"sint_list",
-			"slong_list",
-			"fixed_uint_list",
-			"fixed_ulong_list",
-			"sfixed_int_list",
-			"sfixed_long_list",
-			"float_list",
-			"double_list",
-			"bool_list",
-			"bytes_list",
-			"enum_list",
-			"message_list",
-		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
@@ -1731,23 +1677,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 		Type:        "object",
 		Description: "MapFieldsDemo demonstrates all map field types.",
 		Properties:  make(map[string]*jsonschema.Schema),
-		Required: []string{
-			"string_map",
-			"string_int_map",
-			"string_long_map",
-			"string_bool_map",
-			"string_float_map",
-			"string_double_map",
-			"string_bytes_map",
-			"string_enum_map",
-			"string_message_map",
-			"int_string_map",
-			"long_string_map",
-			"uint_string_map",
-			"bool_string_map",
-			"int_int_map",
-			"string_timestamp_map",
-		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
@@ -2063,8 +1992,6 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 			"any_field",
 			"struct_field",
 			"value_field",
-			"timestamps",
-			"timestamp_map",
 		},
 	}
 
@@ -2121,9 +2048,6 @@ func user_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschema
 		Title:       "`Struct` represents a structured data value, consisting of fields\n which map to dynamically typed values. In some languages, `Struct`\n might be supported by a native representation. For example, in\n scripting languages like JS a struct is represented as an\n object. The details of that representation are described together\n with the proto support for the language.",
 		Description: "The JSON representation for `Struct` is JSON object.",
 		Properties:  make(map[string]*jsonschema.Schema),
-		Required: []string{
-			"fields",
-		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
@@ -2228,9 +2152,6 @@ func user_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsch
 		Title:       "`ListValue` is a wrapper around a repeated field of values.",
 		Description: "The JSON representation for `ListValue` is JSON array.",
 		Properties:  make(map[string]*jsonschema.Schema),
-		Required: []string{
-			"values",
-		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.

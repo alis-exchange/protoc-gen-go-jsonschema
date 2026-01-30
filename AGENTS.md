@@ -229,6 +229,17 @@ The `getFieldName()` helper function returns the proto field name directly via `
 | `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
 | `oneof`      | —                | `oneOf` constraint with `required` for each option |
 
+### Required Fields
+
+A field is added to the JSON Schema `required` array only if **all** of the following are true:
+
+- Not in a `oneof` group
+- Not marked with the `optional` keyword
+- Not a `repeated` field (array)
+- Not a `map` field
+
+This means repeated fields and map fields are always optional in the generated schema, which aligns with how these types work in practice (an empty array `[]` or empty object `{}` is valid).
+
 ### Map Key Handling
 
 Map keys are always strings in JSON. Non-string proto keys use `propertyNames` validation:

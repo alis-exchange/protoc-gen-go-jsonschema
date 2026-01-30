@@ -955,7 +955,8 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	}
 
 	// --- Collect Required Fields ---
-	// A field is required if it's not in a oneof and doesn't have the optional keyword.
+	// A field is required only if it's a singular scalar/message field that is not optional.
+	// Fields are NOT required if they are: in a oneof, marked optional, repeated (arrays), or maps.
 	// Note: In proto3, all singular fields are implicitly optional unless explicitly required.
 	var requiredFields []string
 	for _, field := range message.Fields {
@@ -963,8 +964,8 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		if opts.GetIgnore() {
 			continue
 		}
-		// Fields in oneofs or marked optional are not required.
-		if field.Oneof == nil && !field.Desc.HasOptionalKeyword() {
+		// Fields in oneofs, marked optional, repeated (arrays), or maps are not required.
+		if field.Oneof == nil && !field.Desc.HasOptionalKeyword() && !field.Desc.IsList() && !field.Desc.IsMap() {
 			requiredFields = append(requiredFields, getFieldName(field))
 		}
 	}
