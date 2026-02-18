@@ -1,4 +1,6 @@
-package plugin
+//go:build plugintest
+
+package plugintest
 
 import (
 	"os"
@@ -6,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/alis-exchange/protoc-gen-go-jsonschema/plugin"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
@@ -34,11 +37,8 @@ type PluginTestSuite struct {
 	// file is the target proto file within the plugin
 	file *protogen.File
 
-	// generator is a Generator instance for tests that need it
-	generator *Generator
-
-	// generatedFile is a GeneratedFile for tests that need message schema generation
-	generatedFile *protogen.GeneratedFile
+	// helper exposes internal plugin functionality for testing
+	helper plugin.TestingHelper
 }
 
 // SetupSuite runs once before all tests in the suite.
@@ -158,12 +158,15 @@ func (s *PluginTestSuite) loadPlugin() {
 	}
 
 	opts := protogen.Options{}
-	plugin, err := opts.New(req)
+	p, err := opts.New(req)
 	s.Require().NoError(err, "Failed to create protogen.Plugin")
 
-	s.plugin = plugin
+	s.plugin = p
 	s.file = s.findFile("user.proto")
-	s.generator = &Generator{}
+
+	helper, err := plugin.NewTestingHelper(s.plugin, s.file)
+	s.Require().NoError(err, "Failed to create TestingHelper")
+	s.helper = helper
 }
 
 // findFile finds a file in the plugin by path suffix.
@@ -199,23 +202,14 @@ func (s *PluginTestSuite) FindField(msg *protogen.Message, name string) *protoge
 	return nil
 }
 
-// CreateMessageSchemaGenerator creates a MessageSchemaGenerator for testing.
-// This is useful for tests that need to test schema generation methods.
-func (s *PluginTestSuite) CreateMessageSchemaGenerator() *MessageSchemaGenerator {
-	// Generate the file first to get a GeneratedFile
-	genFile, err := s.generator.generateFile(s.plugin, s.file)
-	s.Require().NoError(err, "Failed to generate file for MessageSchemaGenerator")
-
-	return &MessageSchemaGenerator{
-		gr:      s.generator,
-		gen:     genFile,
-		visited: make(map[string]bool),
-	}
+// TestingHelper returns the TestingHelper instance.
+func (s *PluginTestSuite) TestingHelper() plugin.TestingHelper {
+	return s.helper
 }
 
 // RunGenerate runs the Generate function and returns the generated content.
 func (s *PluginTestSuite) RunGenerate() map[string]string {
-	err := Generate(s.plugin, "test")
+	err := plugin.Generate(s.plugin, "test")
 	s.Require().NoError(err, "Generate failed")
 
 	resp := s.plugin.Response()
@@ -290,9 +284,4 @@ func (s *PluginTestSuite) Plugin() *protogen.Plugin {
 // File returns the current target file.
 func (s *PluginTestSuite) File() *protogen.File {
 	return s.file
-}
-
-// Generator returns the Generator instance.
-func (s *PluginTestSuite) Generator() *Generator {
-	return s.generator
 }

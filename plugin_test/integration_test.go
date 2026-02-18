@@ -1,4 +1,6 @@
-package plugin
+//go:build plugintest
+
+package plugintest
 
 import (
 	"os"
@@ -7,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alis-exchange/protoc-gen-go-jsonschema/plugin"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
@@ -67,11 +70,11 @@ func (s *IntegrationTestSuite) buildPlugin() {
 // TestGoldenFile tests that generated output matches the golden file.
 func (s *IntegrationTestSuite) TestGoldenFile() {
 	contents := s.RunGenerate()
+	goldenBase := filepath.Join(s.WorkspaceRoot(), "testdata", "golden")
 
 	for name, content := range contents {
-		// Construct golden file path
 		baseName := filepath.Base(name)
-		goldenPath := filepath.Join(goldenDir(), baseName+".golden")
+		goldenPath := filepath.Join(goldenBase, baseName+".golden")
 
 		assertGoldenFile(s.T(), content, goldenPath, *updateGolden)
 	}
@@ -1182,14 +1185,14 @@ func (s *IntegrationTestSuite) TestWeatherForecastSchemaValidation() {
 	}
 
 	// Create plugin
-	plugin, err := protogen.Options{}.New(req)
+	p, err := protogen.Options{}.New(req)
 	s.Require().NoError(err, "Failed to create plugin for weather proto")
 
 	// Generate schema code
-	err = Generate(plugin, "test")
+	err = plugin.Generate(p, "test")
 	s.Require().NoError(err, "Failed to generate weather schema")
 
-	resp := plugin.Response()
+	resp := p.Response()
 	s.Require().Empty(resp.GetError(), "Generate response error: %s", resp.GetError())
 
 	// Get generated content
@@ -1833,14 +1836,14 @@ func (s *IntegrationTestSuite) TestNoJsonSchemaOptionsProto() {
 	}
 
 	// Create plugin
-	plugin, err := protogen.Options{}.New(req)
+	p, err := protogen.Options{}.New(req)
 	s.Require().NoError(err, "Failed to create plugin for no_options proto")
 
 	// Generate schema code
-	err = Generate(plugin, "test")
+	err = plugin.Generate(p, "test")
 	s.Require().NoError(err, "Generate should not fail even when no schemas are generated")
 
-	resp := plugin.Response()
+	resp := p.Response()
 	s.Require().Empty(resp.GetError(), "Generate response should have no error: %s", resp.GetError())
 
 	// CRITICAL CHECK: Verify NO jsonschema files were generated

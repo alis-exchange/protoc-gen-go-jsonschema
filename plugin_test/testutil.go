@@ -1,4 +1,6 @@
-package plugin
+//go:build plugintest
+
+package plugintest
 
 import (
 	"flag"
@@ -14,11 +16,21 @@ import (
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
+// JSON Schema type constants (mirror plugin package for test assertions).
+const (
+	jsArray   = "array"
+	jsBoolean = "boolean"
+	jsInteger = "integer"
+	jsNumber  = "number"
+	jsObject  = "object"
+	jsString  = "string"
+)
+
 // updateGolden is a flag to update golden files instead of comparing against them.
 // Usage: go test -update
 var updateGolden = flag.Bool("update", false, "update golden files")
 
-// testdataDir returns the path to the testdata directory relative to the plugin package.
+// testdataDir returns the path to the testdata directory relative to the plugin_test package.
 func testdataDir() string {
 	return filepath.Join("..", "testdata")
 }
@@ -65,12 +77,12 @@ func createTestPlugin(t *testing.T, fds *descriptorpb.FileDescriptorSet, filesTo
 	}
 
 	opts := protogen.Options{}
-	plugin, err := opts.New(req)
+	p, err := opts.New(req)
 	if err != nil {
 		t.Fatalf("Failed to create protogen.Plugin: %v", err)
 	}
 
-	return plugin
+	return p
 }
 
 // generateDescriptorSet runs protoc to generate a FileDescriptorSet.
@@ -189,10 +201,10 @@ func findWorkspaceRoot(t *testing.T) string {
 }
 
 // getGeneratedContent extracts the generated content from a protogen.Plugin response.
-func getGeneratedContent(t *testing.T, plugin *protogen.Plugin) map[string]string {
+func getGeneratedContent(t *testing.T, p *protogen.Plugin) map[string]string {
 	t.Helper()
 
-	resp := plugin.Response()
+	resp := p.Response()
 	if resp.GetError() != "" {
 		t.Fatalf("Plugin response error: %s", resp.GetError())
 	}
@@ -207,10 +219,10 @@ func getGeneratedContent(t *testing.T, plugin *protogen.Plugin) map[string]strin
 }
 
 // mustFindFile finds a file in the plugin by path suffix.
-func mustFindFile(t *testing.T, plugin *protogen.Plugin, pathSuffix string) *protogen.File {
+func mustFindFile(t *testing.T, p *protogen.Plugin, pathSuffix string) *protogen.File {
 	t.Helper()
 
-	for _, f := range plugin.Files {
+	for _, f := range p.Files {
 		if strings.HasSuffix(f.Desc.Path(), pathSuffix) {
 			return f
 		}

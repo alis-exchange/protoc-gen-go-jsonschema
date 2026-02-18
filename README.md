@@ -235,6 +235,17 @@ Add this to your project:
 go get github.com/google/jsonschema-go
 ```
 
+## Testing
+
+Tests live in the `plugin_test/` package and require the `plugintest` build tag:
+
+```shell
+go test -tags=plugintest ./plugin_test/...
+
+# Update golden files
+go test -tags=plugintest ./plugin_test/... -update
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests.

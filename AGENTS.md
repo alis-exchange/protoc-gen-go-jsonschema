@@ -65,11 +65,13 @@ protoc-gen-go-jsonschema/
 ├── plugin/
 │   ├── plugin.go                # Generate() function - main entry point
 │   ├── functions.go             # Core schema generation logic (~1200 lines)
-│   ├── suite_test.go            # Base test suite with shared fixtures
+│   ├── testutils.go             # TestingHelper (build-tagged plugintest)
+├── plugin_test/
+│   ├── suite.go                 # PluginTestSuite, IntegrationTestSuite base
+│   ├── testutil.go              # assertGoldenFile, loadDescriptorSet, etc.
 │   ├── integration_test.go      # End-to-end integration tests
 │   ├── plugin_test.go           # Generator and plugin tests
-│   ├── functions_test.go        # Unit tests for helper functions
-│   └── testutil_test.go         # Test utility functions
+│   └── functions_test.go        # Unit tests for helper functions
 ├── testdata/
 │   ├── protos/                  # Sample proto files for testing
 │   │   ├── users/v1/user.proto
@@ -403,7 +405,7 @@ PluginTestSuite (base)
 
 ### Base Test Suite (`PluginTestSuite`)
 
-Located in `plugin/suite_test.go`. Provides:
+Located in `plugin_test/suite.go`. Provides:
 
 - **Setup**: Finds workspace root, regenerates descriptor sets from proto files
 - **Fixtures**: `fds` (FileDescriptorSet), `plugin` (protogen.Plugin), `file` (target file)
@@ -658,7 +660,7 @@ All Google types (`google.*`) are treated like normal messages and generate sche
 | Test fixtures                 | `testdata/protos/users/v1/user.proto`                                                    |
 | Force logic tests             | `testdata/protos/force_test/v1/force_test.proto`                                         |
 | Golden files                  | `testdata/golden/*.golden`                                                               |
-| Base test suite               | `plugin/suite_test.go`                                                                   |
-| Force logic unit tests        | `plugin/plugin_test.go` → `TestGetMessagesWithForce()`                                   |
-| Force logic integration tests | `plugin/integration_test.go` → `TestForceLogic*()`                                       |
+| Base test suite               | `plugin_test/suite.go`                                                                   |
+| Force logic unit tests        | `plugin_test/plugin_test.go` → `TestGetMessagesWithForce()`                             |
+| Force logic integration tests | `plugin_test/integration_test.go` → `TestForceLogic*()`                                  |
 | Debug tests (multi-file)      | `debug/debug_test.go`                                                                    |

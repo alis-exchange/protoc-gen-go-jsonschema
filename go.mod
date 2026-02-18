@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	google.golang.org/protobuf v1.36.11
-	open.alis.services/protobuf v1.200.9
+	open.alis.services/protobuf v1.200.13
 )
 
 require (
