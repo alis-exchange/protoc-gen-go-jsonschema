@@ -1,4 +1,9 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.4...v) (2026-01-30)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.5...v) (2026-02-18)
+
+
+### Bug Fixes
+
+* switch to the ref-as-root to fix definition references for recursive messages ([e485a27](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/e485a2791f0bb943328bed16280719cbb5c0fbea))
 
 
 
