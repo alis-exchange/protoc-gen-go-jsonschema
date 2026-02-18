@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-01-30 06:17:18 UTC
+// Generated on: 2026-02-18 09:01:16 UTC
 
 package usersv1
 
@@ -15,8 +15,7 @@ import (
 func (x *Common) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = Common_JsonSchema_WithDefs(defs)
-	root := defs["users.v1.Common"]
-	delete(defs, "users.v1.Common")
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Common"}
 	root.Defs = defs
 	return root
 }
@@ -110,8 +109,7 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
-	root := defs["google.iam.admin.v1.ServiceAccountKey"]
-	delete(defs, "google.iam.admin.v1.ServiceAccountKey")
+	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
 	root.Defs = defs
 	return root
 }
@@ -225,8 +223,7 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 func common_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-	root := defs["google.protobuf.Timestamp"]
-	delete(defs, "google.protobuf.Timestamp")
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
 	root.Defs = defs
 	return root
 }

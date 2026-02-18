@@ -422,9 +422,9 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 		return nil, fmt.Errorf("schema cannot be nil")
 	}
 
-	// Step 2: Ensure type is "object" (MCP requirement)
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" (got %q)", schema.Type)
+	// Step 2: Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema must have type \"object\" or be a $ref (got type %q)", schema.Type)
 	}
 
 	// Step 3: Verify all $ref pointers can be resolved
@@ -463,8 +463,9 @@ func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema
 		return nil, fmt.Errorf("schema %q: cannot be nil", name)
 	}
 
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" (got %q)", name, schema.Type)
+	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
 	}
 
 	// Verify all $ref pointers exist
@@ -544,23 +545,16 @@ func extractRefKey(ref string) string {
 
 // TestSchemaCanBeSerialized verifies that calling JsonSchema() and then
 // json.Marshal() does not cause a stack overflow from circular references.
-// This test will fail with a stack overflow if the generated code has
-// the circular reference bug (root schema in defs, then defs assigned to root.Defs).
+// Ref-as-root enables recursive types like AddressDetails to work correctly.
 func TestSchemaCanBeSerialized(t *testing.T) {
-	// NOTE: AddressDetails is excluded because it's a self-referencing message
-	// (contains itself as a field). Self-referencing schemas have a known limitation:
-	// the root is deleted from $defs, but the root's self-reference $ref still points there.
-	// This is a fundamental limitation of how we generate schemas for self-referencing types
-	// when called directly via JsonSchema(). When accessed through a parent schema,
-	// self-references work correctly.
 	testCases := []struct {
 		name   string
 		schema func() *jsonschema.Schema
 	}{
 		{"Address", func() *jsonschema.Schema { return (&Address{}).JsonSchema() }},
+		{"AddressDetails", func() *jsonschema.Schema { return (&AddressDetails{}).JsonSchema() }},
 		{"User", func() *jsonschema.Schema { return (&User{}).JsonSchema() }},
 		{"ComprehensiveUser", func() *jsonschema.Schema { return (&ComprehensiveUser{}).JsonSchema() }},
-		// {"AddressDetails", ...} - Excluded: self-referencing message
 		{"ContactInfo", func() *jsonschema.Schema { return (&ContactInfo{}).JsonSchema() }},
 		{"Metadata", func() *jsonschema.Schema { return (&Metadata{}).JsonSchema() }},
 		{"UserProfile", func() *jsonschema.Schema { return (&UserProfile{}).JsonSchema() }},
@@ -607,16 +601,10 @@ func TestSchemaCanBeSerialized(t *testing.T) {
 }
 
 // TestSelfReferencingSchemaSerializable tests that self-referential messages
-// can at least serialize to JSON (even if validation may fail for direct calls).
-//
-// NOTE: Self-referencing schemas have a known limitation when called directly via JsonSchema():
-// The root is deleted from $defs to prevent circular references during marshaling,
-// but this breaks the self-reference $ref. This is a design trade-off.
-// When self-referencing messages are accessed through a PARENT schema (as a field),
-// they work correctly because the parent's $defs contains all necessary definitions.
+// (like AddressDetails) work with ref-as-root: the schema stays in $defs so
+// self-reference $refs resolve correctly.
 func TestSelfReferencingSchemaSerializable(t *testing.T) {
-	// Skip AddressDetails direct validation since it has a known limitation.
-	// Instead, test that Address (which CONTAINS AddressDetails) works correctly.
+	// Test Address (contains AddressDetails) and AddressDetails directly (ref-as-root supports recursive types)
 	schema := (&Address{}).JsonSchema()
 	if schema == nil {
 		t.Fatal("Address.JsonSchema() returned nil")
@@ -651,9 +639,7 @@ func TestSelfReferencingSchemaSerializable(t *testing.T) {
 
 // TestSchemaDefinitionsAreSerializable tests that when Definitions (defs) is
 // populated and assigned to the root schema, serialization still works.
-// This specifically tests the circular reference scenario where:
-//   root = defs["key"]
-//   root.Defs = defs  // defs contains root!
+// With ref-as-root, root is a $ref wrapper so root != defs[key] (no pointer cycle).
 func TestSchemaDefinitionsAreSerializable(t *testing.T) {
 	schema := (&User{}).JsonSchema()
 	if schema == nil {
@@ -670,12 +656,12 @@ func TestSchemaDefinitionsAreSerializable(t *testing.T) {
 	}
 	t.Log("User schema is valid and resolved successfully")
 	
-	// Verify Defs is not nil (the bug only occurs when Defs is set)
+	// Verify Defs is not nil
 	if schema.Defs == nil {
 		t.Fatal("Expected schema.Defs to be non-nil")
 	}
 	
-	// Check that definitions contains entries
+	// Check that definitions contains entries (ref-as-root keeps schema in defs)
 	if len(schema.Defs) == 0 {
 		t.Fatal("Expected schema.Defs to have entries")
 	}
@@ -685,19 +671,14 @@ func TestSchemaDefinitionsAreSerializable(t *testing.T) {
 		t.Logf("  - %s", key)
 	}
 	
-	// CRITICAL CHECK: Verify the root schema is NOT in its own definitions
-	// This is the circular reference that causes stack overflow!
-	// The generated code does: root := defs["key"]; root.Defs = defs
-	// If defs still contains the root, we have: root -> Defs -> root (cycle!)
-	if _, hasRoot := schema.Defs["users.v1.User"]; hasRoot {
-		t.Error("CIRCULAR REFERENCE DETECTED: Root schema 'users.v1.User' is in its own Definitions!")
-		t.Error("This WILL cause a stack overflow when marshaling to JSON with some library versions.")
-		t.Error("The fix is to delete the root from defs before assigning: delete(defs, key)")
+	// Ref-as-root: the actual schema IS in defs (root is a $ref to it). No pointer cycle.
+	if _, hasRoot := schema.Defs["users.v1.User"]; !hasRoot {
+		t.Error("Expected users.v1.User in Defs (ref-as-root pattern)")
 	} else {
-		t.Log("Good: Root schema is not in its own Definitions (no circular reference)")
+		t.Log("Good: Ref-as-root pattern - schema in Defs, root is $ref wrapper")
 	}
 	
-	// Now serialize - this is where the circular reference would cause stack overflow
+	// Serialize - must not cause stack overflow (ref-as-root avoids cycle)
 	data, err := json.Marshal(schema)
 	if err != nil {
 		t.Fatalf("Failed to marshal schema with definitions: %v", err)
@@ -755,12 +736,12 @@ func TestCircularReferenceDetection(t *testing.T) {
 				t.Fatalf("Unmarshal failed: %v", err)
 			}
 			
-			// Check $defs for circular reference
+			// Ref-as-root: the schema is in $defs (root is a $ref). No pointer cycle.
 			if defs, ok := parsed["$defs"].(map[string]interface{}); ok {
-				if _, hasRoot := defs[tc.fullName]; hasRoot {
-					t.Errorf("CIRCULAR REFERENCE: %s is in its own $defs!", tc.fullName)
+				if _, hasSchema := defs[tc.fullName]; !hasSchema {
+					t.Errorf("Expected %s in $defs (ref-as-root pattern)", tc.fullName)
 				} else {
-					t.Logf("Good: %s is not in its own $defs", tc.fullName)
+					t.Logf("Good: %s in $defs (ref-as-root)", tc.fullName)
 				}
 			}
 			
@@ -797,39 +778,20 @@ func TestCircularReferenceDetection(t *testing.T) {
 }
 
 // TestNoCircularReferenceInGeneratedCode checks that the generated code
-// properly removes the root schema from defs before assigning to Definitions.
-// This is a static check that the fix for the circular reference bug is present.
+// uses the ref-as-root pattern to avoid circular references.
 func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
 	content := s.GetGeneratedContent()
 
-	// The fix should include a delete statement to remove the root from defs
-	// before assigning defs to root.Defs
-	//
-	// Pattern we're looking for:
-	//   delete(defs, "...")
-	//   root.Defs = defs
-	//
-	// Or alternative fix patterns that prevent circular references
+	// Ref-as-root pattern: root := &jsonschema.Schema{Ref: "#/$defs/..."}
+	// This avoids root.Defs containing root (no pointer cycle).
+	hasRefAsRoot := strings.Contains(content, `root := &jsonschema.Schema{Ref:`)
+	hasDefsAssignment := strings.Contains(content, "root.Defs = defs")
 
-	hasAssignment := strings.Contains(content, "root.Defs = defs")
-
-	if hasAssignment {
-		// If we assign defs to root.Defs, we need to ensure root is not in defs
-		// Check for the delete pattern
-		hasDelete := strings.Contains(content, "delete(defs,")
-
-		if !hasDelete {
-			// Alternative: check if using a reference wrapper pattern
-			// e.g., returning &jsonschema.Schema{Ref: ..., Definitions: defs}
-			// instead of modifying root
-
-			// For now, we warn but don't fail - the runtime test will catch the actual bug
-			s.T().Log("WARNING: Generated code assigns defs to root.Defs without deleting root from defs.")
-			s.T().Log("This may cause a circular reference and stack overflow when serializing to JSON.")
-			s.T().Log("See REPORT.md for details on the fix.")
-		} else {
-			s.T().Log("Generated code properly removes root from defs before assignment (circular reference fix present)")
-		}
+	if hasDefsAssignment && hasRefAsRoot {
+		s.T().Log("Generated code uses ref-as-root pattern (circular reference fix present)")
+	} else if hasDefsAssignment && !hasRefAsRoot {
+		s.T().Log("WARNING: Generated code assigns defs but may not use ref-as-root pattern.")
+		s.T().Log("Ref-as-root avoids circular references for recursive types.")
 	}
 }
 
@@ -945,9 +907,9 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 		return nil, fmt.Errorf("schema cannot be nil")
 	}
 
-	// Step 2: Ensure type is "object" (MCP requirement)
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" (got %q)", schema.Type)
+	// Step 2: Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema must have type \"object\" or be a $ref (got type %q)", schema.Type)
 	}
 
 	// Step 3: Verify all $ref pointers can be resolved
@@ -986,8 +948,9 @@ func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema
 		return nil, fmt.Errorf("schema %q: cannot be nil", name)
 	}
 
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" (got %q)", name, schema.Type)
+	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
 	}
 
 	// Verify all $ref pointers exist
@@ -1300,9 +1263,9 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 		return nil, fmt.Errorf("schema cannot be nil")
 	}
 
-	// Step 2: Ensure type is "object" (MCP requirement)
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" (got %q)", schema.Type)
+	// Step 2: Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema must have type \"object\" or be a $ref (got type %q)", schema.Type)
 	}
 
 	// Step 3: Verify all $ref pointers can be resolved
@@ -1393,8 +1356,9 @@ func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema
 		return nil, fmt.Errorf("schema %q: cannot be nil", name)
 	}
 
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" (got %q)", name, schema.Type)
+	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
 	}
 
 	// Verify all $ref pointers exist
@@ -1450,17 +1414,24 @@ func TestWeatherForecastRequestSchemaMarshalling(t *testing.T) {
 		t.Fatalf("Marshalled schema is not valid JSON: %v", err)
 	}
 
-	// Verify key schema properties exist
-	if _, ok := jsonMap["type"]; !ok {
-		t.Error("Schema missing 'type' property")
+	// With ref-as-root, root has $ref; type/properties are in $defs
+	if _, ok := jsonMap["$ref"]; !ok {
+		t.Error("Schema missing '$ref' property (ref-as-root)")
 	}
-	if _, ok := jsonMap["properties"]; !ok {
-		t.Error("Schema missing 'properties' property")
-	}
-	// Check for either $defs or definitions (jsonschema library may use different property name)
 	if _, ok := jsonMap["$defs"]; !ok {
 		if _, ok := jsonMap["definitions"]; !ok {
 			t.Error("Schema missing '$defs' or 'definitions' property")
+		}
+	}
+	// Verify root schema in $defs has type and properties
+	if defs, ok := jsonMap["$defs"].(map[string]interface{}); ok {
+		if root, ok := defs["weather.v1.GetWeatherForecastRequest"].(map[string]interface{}); ok {
+			if _, ok := root["type"]; !ok {
+				t.Error("Root schema in $defs missing 'type'")
+			}
+			if _, ok := root["properties"]; !ok {
+				t.Error("Root schema in $defs missing 'properties'")
+			}
 		}
 	}
 
@@ -1547,13 +1518,18 @@ func TestNestedMessageSchemasInDefs(t *testing.T) {
 		}
 	}
 
-	// Verify location_preferences property references the nested message
-	if prop, ok := schema.Properties["location_preferences"]; ok {
+	// With ref-as-root, root schema is in Defs - get it to check Properties
+	rootKey := "weather.v1.GetWeatherForecastRequest"
+	rootSchema, ok := schema.Defs[rootKey]
+	if !ok {
+		t.Fatalf("Expected root schema %q in Defs", rootKey)
+	}
+	if prop, ok := rootSchema.Properties["location_preferences"]; ok {
 		if prop.Ref == "" {
 			t.Error("location_preferences property should have a $ref")
 		}
 	} else {
-		t.Error("Schema should have location_preferences property")
+		t.Error("Root schema should have location_preferences property")
 	}
 }
 
@@ -1602,17 +1578,23 @@ func TestSchemaUnmarshalling(t *testing.T) {
 		t.Fatalf("Failed to unmarshal schema: %v", err)
 	}
 
-	// Verify key properties
-	if unmarshalled.Type != "object" {
-		t.Errorf("Expected type 'object', got %q", unmarshalled.Type)
-	}
-
-	if unmarshalled.Properties == nil {
-		t.Error("Unmarshalled schema missing Properties")
+	// With ref-as-root, root has $ref and $defs
+	if unmarshalled.Ref == "" {
+		t.Error("Unmarshalled schema should have $ref (ref-as-root)")
 	}
 
 	if unmarshalled.Defs == nil {
 		t.Error("Unmarshalled schema missing Defs")
+	}
+
+	// The actual schema is in Defs
+	rootKey := "weather.v1.GetWeatherForecastRequest"
+	if rootSchema, ok := unmarshalled.Defs[rootKey]; !ok {
+		t.Errorf("Expected root schema %q in Defs", rootKey)
+	} else if rootSchema.Type != "object" {
+		t.Errorf("Expected root schema type 'object', got %q", rootSchema.Type)
+	} else if rootSchema.Properties == nil {
+		t.Error("Root schema in Defs missing Properties")
 	}
 }
 

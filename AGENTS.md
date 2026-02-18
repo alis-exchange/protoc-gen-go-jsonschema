@@ -43,12 +43,12 @@ For each targeted proto message, the plugin generates:
 2. **`<Message>_JsonSchema_WithDefs()` function** - Internal helper for recursive schema building with shared definitions
 
 ```go
-// Generated code example
+// Generated code example (ref-as-root pattern)
 func (x *User) JsonSchema() *jsonschema.Schema {
     defs := make(map[string]*jsonschema.Schema)
     _ = User_JsonSchema_WithDefs(defs)
-    root := defs["package.User"]
-    root.Definitions = defs
+    root := &jsonschema.Schema{Ref: "#/$defs/package.User"}
+    root.Defs = defs
     return root
 }
 ```
@@ -521,12 +521,12 @@ protoc --plugin=protoc-gen-go-jsonschema=./protoc-gen-go-jsonschema \
 Each message generates two functions:
 
 ```go
-// Public entry point - returns complete schema with bundled definitions
+// Public entry point - returns ref-as-root schema with bundled definitions
 func (x *MessageName) JsonSchema() *jsonschema.Schema {
     defs := make(map[string]*jsonschema.Schema)
     _ = MessageName_JsonSchema_WithDefs(defs)
-    root := defs["package.MessageName"]
-    root.Definitions = defs
+    root := &jsonschema.Schema{Ref: "#/$defs/package.MessageName"}
+    root.Defs = defs
     return root
 }
 
@@ -570,14 +570,14 @@ Note: Google types are now handled like normal messages (no special cases needed
 
 ## Common Issues and Solutions
 
-### Circular References
+### Circular References and Recursive Types
 
-The plugin handles circular message references through:
+The plugin handles circular/recursive message references through:
 
 1. Registering schema in `defs` BEFORE processing fields
 2. Checking `visited` map to avoid re-processing
 3. Returning `$ref` pointers instead of inline definitions
-4. **CRITICAL**: Removing root schema from `defs` before assigning to `root.Definitions` (prevents stack overflow on JSON marshaling)
+4. **Ref-as-root pattern**: The `JsonSchema()` method returns a `$ref` wrapper (`root := &jsonschema.Schema{Ref: "#/$defs/..."}`) with `root.Defs = defs`. The actual schema stays in `defs`, so `root != defs[key]` (no pointer cycle). This both prevents stack overflow on JSON marshaling and enables recursive types like `AddressDetails` whose properties reference `#/$defs/AddressDetails` (the def must exist for refs to resolve).
 
 ### Nested Messages with generate=false
 
@@ -647,6 +647,7 @@ All Google types (`google.*`) are treated like normal messages and generate sche
 | ----------------------------- | ---------------------------------------------------------------------------------------- |
 | Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                                                   |
 | Generation logic              | `plugin/functions.go`                                                                    |
+| Ref-as-root generation        | `plugin/functions.go` → `generateMessageJSONSchema()` (root := &jsonschema.Schema{Ref: ...}) |
 | Type constants                | `plugin/functions.go` (top of file)                                                      |
 | Message collection            | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()`                       |
 | Force logic                   | `plugin/functions.go` → `getMessagesWithForce()`                                         |

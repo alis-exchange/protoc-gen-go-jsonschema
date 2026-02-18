@@ -894,14 +894,16 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	// --- Generate Public Entry Point ---
 	// For Google types, generate standalone functions instead of methods (since we can't add methods to imported types).
 	// The file prefix ensures unique function names when multiple files in the same package import Google types.
+	// Ref-as-root pattern: return a $ref wrapper with full defs. This avoids circular
+	// references when marshaling (root != defs[key]) and enables recursive types.
+	defKey := string(message.Desc.FullName())
 	if isGoogleType(message) {
 		googleFuncName := googleTypeFunctionName(message, sg.filePrefix)
 		sg.gen.P(fmt.Sprintf("// %s_JsonSchema returns the JSON schema for the %s message.", googleFuncName, message.Desc.Name()))
 		sg.gen.P(fmt.Sprintf("func %s_JsonSchema() *jsonschema.Schema {", googleFuncName))
 		sg.gen.P("defs := make(map[string]*jsonschema.Schema)")
 		sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", googleFuncName))
-		sg.gen.P(fmt.Sprintf("root := defs[\"%s\"]", message.Desc.FullName()))
-		sg.gen.P(fmt.Sprintf("delete(defs, \"%s\")", message.Desc.FullName()))
+		sg.gen.P(fmt.Sprintf("root := &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
 		sg.gen.P("root.Defs = defs")
 		sg.gen.P("return root")
 		sg.gen.P("}")
@@ -912,8 +914,7 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		sg.gen.P(fmt.Sprintf("func (x *%s) JsonSchema() *jsonschema.Schema {", goName))
 		sg.gen.P("defs := make(map[string]*jsonschema.Schema)")
 		sg.gen.P(fmt.Sprintf("_ = %s_JsonSchema_WithDefs(defs)", goName))
-		sg.gen.P(fmt.Sprintf("root := defs[\"%s\"]", message.Desc.FullName()))
-		sg.gen.P(fmt.Sprintf("delete(defs, \"%s\")", message.Desc.FullName()))
+		sg.gen.P(fmt.Sprintf("root := &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
 		sg.gen.P("root.Defs = defs")
 		sg.gen.P("return root")
 		sg.gen.P("}")
@@ -932,7 +933,6 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 			helperFuncName = goName + "_JsonSchema_WithDefs"
 		}
 		sg.gen.P(fmt.Sprintf("func %s(defs map[string]*jsonschema.Schema) *jsonschema.Schema {", helperFuncName))
-		defKey := string(message.Desc.FullName())
 
 		// Return early if already defined (handles circular references).
 		sg.gen.P(fmt.Sprintf("if _, ok := defs[\"%s\"]; ok {", defKey))
@@ -982,7 +982,6 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	sg.gen.P()
 
 	// Register schema in definitions before processing fields to handle self-references.
-	defKey := string(message.Desc.FullName())
 	sg.gen.P(`// Register schema BEFORE processing fields to handle self-references.`)
 	sg.gen.P(`// This prevents infinite recursion when a message contains itself.`)
 	sg.gen.P(fmt.Sprintf("defs[\"%s\"] = schema", defKey))
