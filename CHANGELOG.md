@@ -1,8 +1,13 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.5...v) (2026-02-18)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.6...v) (2026-02-18)
+
+
+
+## [0.1.6](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.5...v0.1.6) (2026-02-18)
 
 
 ### Bug Fixes
 
+* change enum fields to use integer instead of string ([9a07b41](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/9a07b41c48d1e6a7c7bc1aa1c811242be01d4dc0))
 * switch to the ref-as-root to fix definition references for recursive messages ([e485a27](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/e485a2791f0bb943328bed16280719cbb5c0fbea))
 
 
