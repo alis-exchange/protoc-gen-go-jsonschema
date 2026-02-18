@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-02-18 09:01:16 UTC
+// Generated on: 2026-02-18 13:10:54 UTC
 
 package usersv1
 
@@ -149,24 +149,24 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 	}
 
 	schema.Properties["private_key_type"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "The output format for the private key.\n Only provided in `CreateServiceAccountKey` responses, not\n in `GetServiceAccountKey` or `ListServiceAccountKey` responses.",
 		Description: "Google never exposes system-managed private keys, and never retains\n user-managed private keys.",
 		Enum: []any{
-			"TYPE_UNSPECIFIED",
-			"TYPE_PKCS12_FILE",
-			"TYPE_GOOGLE_CREDENTIALS_FILE",
+			0,
+			1,
+			2,
 		},
 	}
 
 	schema.Properties["key_algorithm"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Specifies the algorithm (and possibly key size) for the key.",
 		Enum: []any{
-			"KEY_ALG_UNSPECIFIED",
-			"KEY_ALG_RSA_1024",
-			"KEY_ALG_RSA_2048",
+			0,
+			1,
+			2,
 		},
 	}
 
@@ -189,24 +189,24 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 	schema.Properties["valid_before_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "The key origin.",
 		Enum: []any{
-			"ORIGIN_UNSPECIFIED",
-			"USER_PROVIDED",
-			"GOOGLE_PROVIDED",
+			0,
+			1,
+			2,
 		},
 	}
 
 	schema.Properties["key_type"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "The key type.",
 		Enum: []any{
-			"KEY_TYPE_UNSPECIFIED",
-			"USER_MANAGED",
-			"SYSTEM_MANAGED",
+			0,
+			1,
+			2,
 		},
 	}
 

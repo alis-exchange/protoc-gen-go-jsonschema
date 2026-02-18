@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-02-18 09:01:16 UTC
+// Generated on: 2026-02-18 13:10:54 UTC
 
 package usersv1
 
@@ -514,27 +514,27 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["status"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Current status of the user account.",
 		Enum: []any{
-			"USER_STATUS_UNSPECIFIED",
-			"USER_STATUS_ACTIVE",
-			"USER_STATUS_INACTIVE",
-			"USER_STATUS_SUSPENDED",
-			"USER_STATUS_DELETED",
+			0,
+			1,
+			2,
+			3,
+			4,
 		},
 	}
 
 	schema.Properties["account_type"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Type of account subscription.",
 		Enum: []any{
-			"ACCOUNT_TYPE_UNSPECIFIED",
-			"ACCOUNT_TYPE_FREE",
-			"ACCOUNT_TYPE_PREMIUM",
-			"ACCOUNT_TYPE_ENTERPRISE",
+			0,
+			1,
+			2,
+			3,
 		},
 	}
 
@@ -604,13 +604,13 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		Title:       "",
 		Description: "History of user status changes.",
 		Items: &jsonschema.Schema{
-			Type: "string",
+			Type: "integer",
 			Enum: []any{
-				"USER_STATUS_UNSPECIFIED",
-				"USER_STATUS_ACTIVE",
-				"USER_STATUS_INACTIVE",
-				"USER_STATUS_SUSPENDED",
-				"USER_STATUS_DELETED",
+				0,
+				1,
+				2,
+				3,
+				4,
 			},
 		},
 	}
@@ -620,13 +620,13 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		Title:       "",
 		Description: "List of priority levels assigned to the user.",
 		Items: &jsonschema.Schema{
-			Type: "string",
+			Type: "integer",
 			Enum: []any{
-				"PRIORITY_UNSPECIFIED",
-				"PRIORITY_LOW",
-				"PRIORITY_MEDIUM",
-				"PRIORITY_HIGH",
-				"PRIORITY_URGENT",
+				0,
+				1,
+				2,
+				3,
+				4,
 			},
 		},
 	}
@@ -696,13 +696,13 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		Title:       "",
 		Description: "Map of string keys to UserStatus enum values.",
 		AdditionalProperties: &jsonschema.Schema{
-			Type: "string",
+			Type: "integer",
 			Enum: []any{
-				"USER_STATUS_UNSPECIFIED",
-				"USER_STATUS_ACTIVE",
-				"USER_STATUS_INACTIVE",
-				"USER_STATUS_SUSPENDED",
-				"USER_STATUS_DELETED",
+				0,
+				1,
+				2,
+				3,
+				4,
 			},
 		},
 	}
@@ -783,15 +783,15 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["optional_status"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Optional status override.",
 		Enum: []any{
-			"USER_STATUS_UNSPECIFIED",
-			"USER_STATUS_ACTIVE",
-			"USER_STATUS_INACTIVE",
-			"USER_STATUS_SUSPENDED",
-			"USER_STATUS_DELETED",
+			0,
+			1,
+			2,
+			3,
+			4,
 		},
 	}
 
@@ -881,15 +881,15 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 	}
 
 	schema.Properties["status"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Current status of the user account.",
 		Enum: []any{
-			"USER_STATUS_UNSPECIFIED",
-			"USER_STATUS_ACTIVE",
-			"USER_STATUS_INACTIVE",
-			"USER_STATUS_SUSPENDED",
-			"USER_STATUS_DELETED",
+			0,
+			1,
+			2,
+			3,
+			4,
 		},
 	}
 
@@ -1204,15 +1204,15 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 	}
 
 	schema.Properties["status_filter"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Filter users by status.",
 		Enum: []any{
-			"USER_STATUS_UNSPECIFIED",
-			"USER_STATUS_ACTIVE",
-			"USER_STATUS_INACTIVE",
-			"USER_STATUS_SUSPENDED",
-			"USER_STATUS_DELETED",
+			0,
+			1,
+			2,
+			3,
+			4,
 		},
 	}
 
@@ -1618,13 +1618,13 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Title:       "",
 		Description: "List of UserStatus enum values.",
 		Items: &jsonschema.Schema{
-			Type: "string",
+			Type: "integer",
 			Enum: []any{
-				"USER_STATUS_UNSPECIFIED",
-				"USER_STATUS_ACTIVE",
-				"USER_STATUS_INACTIVE",
-				"USER_STATUS_SUSPENDED",
-				"USER_STATUS_DELETED",
+				0,
+				1,
+				2,
+				3,
+				4,
 			},
 		},
 	}
@@ -1732,13 +1732,13 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 		Title:       "",
 		Description: "Map of string to UserStatus enum.",
 		AdditionalProperties: &jsonschema.Schema{
-			Type: "string",
+			Type: "integer",
 			Enum: []any{
-				"USER_STATUS_UNSPECIFIED",
-				"USER_STATUS_ACTIVE",
-				"USER_STATUS_INACTIVE",
-				"USER_STATUS_SUSPENDED",
-				"USER_STATUS_DELETED",
+				0,
+				1,
+				2,
+				3,
+				4,
 			},
 		},
 	}
@@ -1869,40 +1869,40 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 	schema.Properties["metadata"] = Metadata_JsonSchema_WithDefs(defs)
 
 	schema.Properties["status"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "UserStatus enum option.",
 		Enum: []any{
-			"USER_STATUS_UNSPECIFIED",
-			"USER_STATUS_ACTIVE",
-			"USER_STATUS_INACTIVE",
-			"USER_STATUS_SUSPENDED",
-			"USER_STATUS_DELETED",
+			0,
+			1,
+			2,
+			3,
+			4,
 		},
 	}
 
 	schema.Properties["account"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "AccountType enum option.",
 		Enum: []any{
-			"ACCOUNT_TYPE_UNSPECIFIED",
-			"ACCOUNT_TYPE_FREE",
-			"ACCOUNT_TYPE_PREMIUM",
-			"ACCOUNT_TYPE_ENTERPRISE",
+			0,
+			1,
+			2,
+			3,
 		},
 	}
 
 	schema.Properties["priority"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Priority enum option.",
 		Enum: []any{
-			"PRIORITY_UNSPECIFIED",
-			"PRIORITY_LOW",
-			"PRIORITY_MEDIUM",
-			"PRIORITY_HIGH",
-			"PRIORITY_URGENT",
+			0,
+			1,
+			2,
+			3,
+			4,
 		},
 	}
 
@@ -2067,11 +2067,11 @@ func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.
 	defs["google.protobuf.Value"] = schema
 
 	schema.Properties["null_value"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Represents a null value.",
 		Enum: []any{
-			"NULL_VALUE",
+			0,
 		},
 	}
 
@@ -2320,24 +2320,24 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 	}
 
 	schema.Properties["private_key_type"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "The output format for the private key.\n Only provided in `CreateServiceAccountKey` responses, not\n in `GetServiceAccountKey` or `ListServiceAccountKey` responses.",
 		Description: "Google never exposes system-managed private keys, and never retains\n user-managed private keys.",
 		Enum: []any{
-			"TYPE_UNSPECIFIED",
-			"TYPE_PKCS12_FILE",
-			"TYPE_GOOGLE_CREDENTIALS_FILE",
+			0,
+			1,
+			2,
 		},
 	}
 
 	schema.Properties["key_algorithm"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "Specifies the algorithm (and possibly key size) for the key.",
 		Enum: []any{
-			"KEY_ALG_UNSPECIFIED",
-			"KEY_ALG_RSA_1024",
-			"KEY_ALG_RSA_2048",
+			0,
+			1,
+			2,
 		},
 	}
 
@@ -2360,24 +2360,24 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 	schema.Properties["valid_before_time"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "The key origin.",
 		Enum: []any{
-			"ORIGIN_UNSPECIFIED",
-			"USER_PROVIDED",
-			"GOOGLE_PROVIDED",
+			0,
+			1,
+			2,
 		},
 	}
 
 	schema.Properties["key_type"] = &jsonschema.Schema{
-		Type:        "string",
+		Type:        "integer",
 		Title:       "",
 		Description: "The key type.",
 		Enum: []any{
-			"KEY_TYPE_UNSPECIFIED",
-			"USER_MANAGED",
-			"SYSTEM_MANAGED",
+			0,
+			1,
+			2,
 		},
 	}
 

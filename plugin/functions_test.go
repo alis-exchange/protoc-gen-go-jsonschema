@@ -98,7 +98,7 @@ func (s *FunctionsTestSuite) TestGetKindTypeName() {
 		// Basic types from User message
 		{"User", "id", jsString},
 		{"User", "name", jsString},
-		{"User", "status", jsString}, // enum
+		{"User", "status", jsInteger}, // enum
 
 		// Comprehensive types from ComprehensiveUser
 		{"ComprehensiveUser", "is_active", jsBoolean},
@@ -154,7 +154,7 @@ func (s *FunctionsTestSuite) TestGetKindTypeNameAllKinds() {
 		{"balance", protoreflect.DoubleKind, jsNumber},
 		{"id", protoreflect.StringKind, jsString},
 		{"avatar", protoreflect.BytesKind, jsString},
-		{"status", protoreflect.EnumKind, jsString},
+		{"status", protoreflect.EnumKind, jsInteger},
 		{"address", protoreflect.MessageKind, jsObject},
 	}
 
@@ -236,13 +236,7 @@ func (s *FunctionsTestSuite) TestGetEnumValues() {
 
 	enumValues := sg.getEnumValues(statusField)
 
-	expectedValues := []string{
-		"USER_STATUS_UNSPECIFIED",
-		"USER_STATUS_ACTIVE",
-		"USER_STATUS_INACTIVE",
-		"USER_STATUS_SUSPENDED",
-		"USER_STATUS_DELETED",
-	}
+	expectedValues := []int32{0, 1, 2, 3, 4} // UserStatus: UNSPECIFIED, ACTIVE, INACTIVE, SUSPENDED, DELETED
 
 	s.Require().Len(enumValues, len(expectedValues), "Expected %d enum values", len(expectedValues))
 
@@ -269,7 +263,7 @@ func (s *FunctionsTestSuite) TestGetEnumValuesFromDescriptor() {
 	enumValues := sg.getEnumValuesFromDescriptor(mapValue.Enum())
 
 	s.Require().NotEmpty(enumValues, "Expected enum values")
-	s.Equal("USER_STATUS_UNSPECIFIED", enumValues[0], "First enum value should be USER_STATUS_UNSPECIFIED")
+	s.Equal(int32(0), enumValues[0], "First enum value should be 0 (USER_STATUS_UNSPECIFIED)")
 }
 
 // TestGetMessageSchemaConfigGoogleTypes tests Google type handling.
@@ -328,7 +322,7 @@ func (s *FunctionsTestSuite) TestGetScalarSchemaConfig() {
 		{"user_id", jsInteger, false, ""}, // int64
 		{"rating", jsNumber, false, ""},
 		{"avatar", jsString, true, ""},  // bytes
-		{"status", jsString, false, ""}, // enum
+		{"status", jsInteger, false, ""}, // enum
 	}
 
 	for _, tt := range tests {
@@ -365,7 +359,7 @@ func (s *FunctionsTestSuite) TestGetArraySchemaConfig() {
 		{"long_list", jsInteger, false, "", false, false}, // int64
 		{"bool_list", jsBoolean, false, "", false, false},
 		{"bytes_list", jsString, true, "", false, false},
-		{"enum_list", jsString, false, "", true, false},
+		{"enum_list", jsInteger, false, "", true, false},
 		{"message_list", "", false, "", false, true}, // Address message
 	}
 
@@ -411,7 +405,7 @@ func (s *FunctionsTestSuite) TestGetMapSchemaConfig() {
 		{"string_map", "", jsString, false, false},                    // map<string, string>
 		{"string_int_map", "", jsInteger, false, false},               // map<string, int32>
 		{"string_bool_map", "", jsBoolean, false, false},              // map<string, bool>
-		{"string_enum_map", "", jsString, true, false},                // map<string, UserStatus>
+		{"string_enum_map", "", jsInteger, true, false},               // map<string, UserStatus>
 		{"string_message_map", "", "", false, true},                   // map<string, Address>
 		{"int_string_map", "^-?[0-9]+$", jsString, false, false},      // map<int32, string>
 		{"bool_string_map", "^(true|false)$", jsString, false, false}, // map<bool, string>

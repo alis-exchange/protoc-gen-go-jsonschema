@@ -26,7 +26,7 @@
 //   - Scalar types (int32, string, bool, etc.) → Corresponding JSON Schema types
 //   - 64-bit integers → integer type
 //   - bytes → string with base64 contentEncoding
-//   - Enums → string type with enum constraint
+//   - Enums → integer type with enum constraint (numeric values for encoding/json compatibility)
 //   - Messages → object type with properties, or $ref for cross-references
 //   - Repeated fields → array type
 //   - Map fields → object type with additionalProperties
@@ -73,7 +73,7 @@ const (
 	jsNull    = "null"    // JSON null type - used in nullable type unions
 	jsNumber  = "number"  // JSON number type - used for float/double fields
 	jsObject  = "object"  // JSON object type - used for messages and maps
-	jsString  = "string"  // JSON string type - used for strings, bytes, and enums
+	jsString  = "string"  // JSON string type - used for strings and bytes
 )
 
 // isGoogleType checks if a message is from a Google package (google.*).
@@ -422,8 +422,8 @@ type schemaFieldConfig struct {
 	// Used when map keys are integers or booleans (serialized as strings in JSON).
 	propertyNamesPattern string
 
-	// enumValues contains the allowed string values for enum fields.
-	enumValues []string
+	// enumValues contains the allowed integer values for enum fields.
+	enumValues []int32
 
 	// isBytes indicates if the field is a bytes type, requiring base64 contentEncoding.
 	isBytes bool
@@ -599,7 +599,7 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 		if len(c.enumValues) > 0 {
 			sg.gen.P(`Enum: []any{`)
 			for _, enumValue := range c.enumValues {
-				sg.gen.P(fmt.Sprintf(`"%s",`, enumValue))
+				sg.gen.P(fmt.Sprintf(`%d,`, enumValue))
 			}
 			sg.gen.P(`},`)
 		}
@@ -668,7 +668,7 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 //
 // Special handling for specific element types:
 //   - Messages: References to other message schemas
-//   - Enums: String type with enum values
+//   - Enums: Integer type with enum values
 //   - Bytes: String type with base64 encoding
 func (sg *MessageSchemaGenerator) getArraySchemaConfig(field *protogen.Field, title, description string) schemaFieldConfig {
 	kindTypeName, _ := sg.getKindTypeName(field.Desc)
@@ -688,7 +688,7 @@ func (sg *MessageSchemaGenerator) getArraySchemaConfig(field *protogen.Field, ti
 		cfg.nested = &nestedCfg
 
 	case protoreflect.EnumKind:
-		// Enum elements: string type with allowed values.
+		// Enum elements: integer type with allowed values.
 		cfg.nested = &schemaFieldConfig{typeName: kindTypeName, enumValues: sg.getEnumValues(field)}
 
 	case protoreflect.BytesKind:
@@ -817,7 +817,7 @@ func (sg *MessageSchemaGenerator) getScalarSchemaConfig(field *protogen.Field, t
 		}
 
 	case protoreflect.EnumKind:
-		// Enum fields: add the allowed string values.
+		// Enum fields: add the allowed integer values.
 		cfg.enumValues = sg.getEnumValues(field)
 
 	case protoreflect.BytesKind:
@@ -1095,7 +1095,7 @@ func getFieldName(field *protogen.Field) string {
 //
 // This follows the proto3 JSON mapping specification, with special handling:
 //   - bytes → "string" (will be base64 encoded)
-//   - enums → "string" (JSON uses enum name strings)
+//   - enums → "integer" (numeric values for encoding/json compatibility)
 //
 // Note: The returned type is the base JSON Schema type. Additional constraints
 // (patterns, formats, etc.) are added by the caller based on context.
@@ -1105,8 +1105,8 @@ func (sg *MessageSchemaGenerator) getKindTypeName(desc protoreflect.FieldDescrip
 		return jsBoolean, nil
 
 	case protoreflect.EnumKind:
-		// Enums are serialized as their string names in proto3 JSON.
-		return jsString, nil
+		// Enums use integer type for encoding/json compatibility (numeric values).
+		return jsInteger, nil
 
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind, protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind:
 		// 32-bit integers fit safely in JavaScript numbers.
@@ -1193,32 +1193,32 @@ func (gr *Generator) getTitleAndDescription(desc protoreflect.Descriptor) (title
 	return title, description
 }
 
-// getEnumValues extracts the list of allowed enum value names from a field.
+// getEnumValues extracts the list of allowed enum numeric values from a field.
 //
 // This is used for enum fields where we have access to the full protogen.Field,
 // which includes the Enum member with its Values slice.
 //
-// Returns enum names (not numeric values) since proto3 JSON uses string names.
-// Example: ["STATUS_UNSPECIFIED", "STATUS_ACTIVE", "STATUS_INACTIVE"]
-func (sg *MessageSchemaGenerator) getEnumValues(field *protogen.Field) []string {
-	var enumValues []string
+// Returns numeric values (int32) for encoding/json compatibility.
+// Example: [0, 1, 2, 3, 4] for UserStatus enum
+func (sg *MessageSchemaGenerator) getEnumValues(field *protogen.Field) []int32 {
+	var enumValues []int32
 	for _, value := range field.Enum.Values {
-		enumValues = append(enumValues, string(value.Desc.Name()))
+		enumValues = append(enumValues, int32(value.Desc.Number()))
 	}
 	return enumValues
 }
 
-// getEnumValuesFromDescriptor extracts enum value names from a descriptor.
+// getEnumValuesFromDescriptor extracts enum numeric values from a descriptor.
 //
 // This is used for map value enums where we only have the EnumDescriptor
 // (from MapValue().Enum()) rather than a full protogen.Field.
 //
-// Returns enum names (not numeric values) since proto3 JSON uses string names.
-func (sg *MessageSchemaGenerator) getEnumValuesFromDescriptor(enumDesc protoreflect.EnumDescriptor) []string {
-	var enumValues []string
+// Returns numeric values (int32) for encoding/json compatibility.
+func (sg *MessageSchemaGenerator) getEnumValuesFromDescriptor(enumDesc protoreflect.EnumDescriptor) []int32 {
+	var enumValues []int32
 	values := enumDesc.Values()
 	for i := 0; i < values.Len(); i++ {
-		enumValues = append(enumValues, string(values.Get(i).Name()))
+		enumValues = append(enumValues, int32(values.Get(i).Number()))
 	}
 	return enumValues
 }

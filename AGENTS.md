@@ -172,7 +172,7 @@ type schemaFieldConfig struct {
     format               string  // Format annotation ("date-time", "email", etc.)
     pattern              string  // Regex pattern
     propertyNamesPattern string  // Pattern for map keys
-    enumValues           []string // Allowed enum values
+    enumValues           []int32  // Allowed enum values (numeric for encoding/json compatibility)
     isBytes              bool    // Requires base64 contentEncoding
     messageRef           string  // Reference function call for messages
     nested               *schemaFieldConfig // For array items / map values
@@ -216,7 +216,7 @@ The `getFieldName()` helper function returns the proto field name directly via `
 | `float`                       | `"number"`       | —                                 |
 | `double`                      | `"number"`       | —                                 |
 | `bytes`                       | `"string"`       | `contentEncoding: "base64"`       |
-| `enum`                        | `"string"`       | `enum: ["VALUE1", "VALUE2", ...]` |
+| `enum`                        | `"integer"`      | `enum: [0, 1, 2, ...]` (numeric values for encoding/json) |
 
 **Note**: 64-bit integers are mapped to `"integer"` type for simplicity. While JavaScript has precision limitations for large integers (beyond 2^53-1), most use cases don't require values that large, and using `"integer"` provides better schema validation.
 

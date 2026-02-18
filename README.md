@@ -206,7 +206,7 @@ message User {
 | `int64`, `sint64`, `uint64`, `fixed64`, `sfixed64` | `integer`        |                             |
 | `float`, `double`                                  | `number`         |                             |
 | `bytes`                                            | `string`         | contentEncoding: "base64"   |
-| `enum`                                             | `string`         | With `enum` constraint      |
+| `enum`                                             | `integer`        | With `enum` constraint      |
 | `message`                                          | `object`         | Or `$ref` to definition     |
 | `repeated T`                                       | `array`          | With `items` schema         |
 | `map<K, V>`                                        | `object`         | With `additionalProperties` |
