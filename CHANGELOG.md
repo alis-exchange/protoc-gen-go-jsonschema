@@ -1,4 +1,8 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.6...v) (2026-02-18)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.7...v) (2026-02-25)
+
+
+
+## [0.1.7](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.6...v0.1.7) (2026-02-25)
 
 
 
