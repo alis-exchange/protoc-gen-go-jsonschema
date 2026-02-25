@@ -47,7 +47,7 @@ For each targeted proto message, the plugin generates:
 func (x *User) JsonSchema() *jsonschema.Schema {
     defs := make(map[string]*jsonschema.Schema)
     _ = User_JsonSchema_WithDefs(defs)
-    root := &jsonschema.Schema{Ref: "#/$defs/package.User"}
+    root := &jsonschema.Schema{Ref: "#/$defs/package.User", Type: "object"}
     root.Defs = defs
     return root
 }
@@ -527,7 +527,7 @@ Each message generates two functions:
 func (x *MessageName) JsonSchema() *jsonschema.Schema {
     defs := make(map[string]*jsonschema.Schema)
     _ = MessageName_JsonSchema_WithDefs(defs)
-    root := &jsonschema.Schema{Ref: "#/$defs/package.MessageName"}
+    root := &jsonschema.Schema{Ref: "#/$defs/package.MessageName", Type: "object"}
     root.Defs = defs
     return root
 }

@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-02-18 13:10:54 UTC
+// Generated on: 2026-02-25 09:09:21 UTC
 
 package usersv1
 
@@ -15,7 +15,7 @@ import (
 func (x *Address) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = Address_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Address"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Address", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -94,7 +94,7 @@ func Address_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema
 func (x *Address_AddressDetails) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = Address_AddressDetails_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Address.AddressDetails"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Address.AddressDetails", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -158,7 +158,7 @@ func Address_AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Sche
 func (x *AddressDetails) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = AddressDetails_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -246,7 +246,7 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 func (x *ContactInfo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = ContactInfo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ContactInfo"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ContactInfo", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -306,7 +306,7 @@ func ContactInfo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 func (x *Metadata) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = Metadata_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Metadata"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Metadata", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -359,7 +359,7 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 func (x *ComprehensiveUser) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = ComprehensiveUser_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ComprehensiveUser"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ComprehensiveUser", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -828,7 +828,7 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 func (x *User) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = User_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.User"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.User", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -902,7 +902,7 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 func (x *CreateUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = CreateUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateUserRequest"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateUserRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -954,7 +954,7 @@ func CreateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 func (x *GetUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = GetUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.GetUserRequest"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.GetUserRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -990,7 +990,7 @@ func GetUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 func (x *UpdateUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = UpdateUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.UpdateUserRequest"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.UpdateUserRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1022,7 +1022,7 @@ func UpdateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 func (x *DeleteUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = DeleteUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserRequest"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1058,7 +1058,7 @@ func DeleteUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 func (x *DeleteUserResponse) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = DeleteUserResponse_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserResponse"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserResponse", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1094,7 +1094,7 @@ func DeleteUserResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 func (x *CreateComprehensiveUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateComprehensiveUserRequest"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateComprehensiveUserRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1144,7 +1144,7 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 func (x *BatchGetUsersRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = BatchGetUsersRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1228,7 +1228,7 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 func (x *BatchGetUsersResponse) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = BatchGetUsersResponse_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersResponse"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersResponse", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1281,7 +1281,7 @@ func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schem
 func (x *UserProfile) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = UserProfile_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1338,7 +1338,7 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 func (x *PersonalProfile) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = PersonalProfile_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.PersonalProfile"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.PersonalProfile", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1393,7 +1393,7 @@ func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 func (x *BusinessProfile) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = BusinessProfile_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BusinessProfile"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BusinessProfile", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1457,7 +1457,7 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 func (x *RepeatedFieldsDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = RepeatedFieldsDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.RepeatedFieldsDemo"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.RepeatedFieldsDemo", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1643,7 +1643,7 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 func (x *MapFieldsDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = MapFieldsDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.MapFieldsDemo"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.MapFieldsDemo", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1824,7 +1824,7 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 func (x *OneOfDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = OneOfDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.OneOfDemo"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.OneOfDemo", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -1949,7 +1949,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 func (x *WellKnownTypesDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = WellKnownTypesDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.WellKnownTypesDemo"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.WellKnownTypesDemo", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2010,7 +2010,7 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 func user_google_protobuf_Struct_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2045,7 +2045,7 @@ func user_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschema
 func user_google_protobuf_Value_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_protobuf_Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2112,7 +2112,7 @@ func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.
 func user_google_protobuf_ListValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2147,7 +2147,7 @@ func user_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsch
 func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2191,7 +2191,7 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 func user_google_protobuf_Duration_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2235,7 +2235,7 @@ func user_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsche
 func user_google_protobuf_Any_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -2280,7 +2280,7 @@ func user_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey", Type: "object"}
 	root.Defs = defs
 	return root
 }

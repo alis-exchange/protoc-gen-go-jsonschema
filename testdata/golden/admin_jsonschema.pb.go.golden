@@ -3,7 +3,7 @@
 // Source: users/v1/admin.proto
 // Plugin version: test
 //
-// Generated on: 2026-02-18 13:10:54 UTC
+// Generated on: 2026-02-25 09:09:21 UTC
 
 package usersv1
 
@@ -15,7 +15,7 @@ import (
 func (x *Admin) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = Admin_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Admin"}
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Admin", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -163,7 +163,7 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 func admin_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -207,7 +207,7 @@ func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsc
 func admin_google_protobuf_Duration_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Duration_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -251,7 +251,7 @@ func admin_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsch
 func admin_google_protobuf_Any_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Any_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -296,7 +296,7 @@ func admin_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.S
 func admin_google_protobuf_Struct_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -331,7 +331,7 @@ func admin_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschem
 func admin_google_protobuf_Value_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -398,7 +398,7 @@ func admin_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema
 func admin_google_protobuf_ListValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -433,7 +433,7 @@ func admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsc
 func admin_google_protobuf_Int32Value_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int32Value"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int32Value", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -470,7 +470,7 @@ func admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs map[string]*jsons
 func admin_google_protobuf_Int64Value_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int64Value"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int64Value", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -507,7 +507,7 @@ func admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs map[string]*jsons
 func admin_google_protobuf_StringValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.StringValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.StringValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -544,7 +544,7 @@ func admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs map[string]*json
 func admin_google_protobuf_BoolValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BoolValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BoolValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -581,7 +581,7 @@ func admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs map[string]*jsonsc
 func admin_google_protobuf_DoubleValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.DoubleValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.DoubleValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -618,7 +618,7 @@ func admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs map[string]*json
 func admin_google_protobuf_FloatValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.FloatValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.FloatValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -655,7 +655,7 @@ func admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs map[string]*jsons
 func admin_google_protobuf_BytesValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BytesValue"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BytesValue", Type: "object"}
 	root.Defs = defs
 	return root
 }
@@ -693,7 +693,7 @@ func admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs map[string]*jsons
 func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey", Type: "object"}
 	root.Defs = defs
 	return root
 }
