@@ -559,6 +559,49 @@ message MapFieldsDemo {
   map<string, google.protobuf.Timestamp> string_timestamp_map = 15;
 }
 
+// ConstraintDemo exercises every jsonschema constraint option that maps
+// to a pointer-typed field in github.com/google/jsonschema-go. Regression
+// coverage for the pointer-type fix.
+message ConstraintDemo {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  // String with length and pattern bounds.
+  string short_name = 1 [ (alis.open.options.v1.field).json_schema = {
+    min_length : 2,
+    max_length : 32,
+    pattern : "^[a-z][a-z0-9-]*$"
+  } ];
+
+  // Integer with inclusive numeric bounds.
+  int32 page_size = 2 [ (alis.open.options.v1.field).json_schema = {
+    minimum : 1,
+    maximum : 1000
+  } ];
+
+  // Double with exclusive numeric bounds — verifies the draft 2020-12
+  // semantic swap (ExclusiveMinimum/Maximum replace Minimum/Maximum).
+  double ratio = 3 [ (alis.open.options.v1.field).json_schema = {
+    minimum : 0,
+    maximum : 1,
+    exclusive_minimum : true,
+    exclusive_maximum : true
+  } ];
+
+  // Bounded, unique array.
+  repeated string tags = 4 [ (alis.open.options.v1.field).json_schema = {
+    min_items : 1,
+    max_items : 5,
+    unique_items : true
+  } ];
+
+  // Map with property bounds.
+  map<string, string> attributes = 5
+      [ (alis.open.options.v1.field).json_schema = {
+        min_properties : 1,
+        max_properties : 10
+      } ];
+}
+
 // OneOfDemo demonstrates multiple oneof field groups.
 message OneOfDemo {
   // First oneof group - can be string, int, or bool value.

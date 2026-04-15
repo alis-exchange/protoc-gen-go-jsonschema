@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-02-25 09:09:21 UTC
+// Generated on: 2026-04-15 12:41:47 UTC
 
 package usersv1
 
@@ -1818,6 +1818,86 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 	}
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.MapFieldsDemo"}
+}
+
+// JsonSchema returns the JSON schema for the ConstraintDemo message.
+func (x *ConstraintDemo) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	_ = ConstraintDemo_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo", Type: "object"}
+	root.Defs = defs
+	return root
+}
+
+func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["users.v1.ConstraintDemo"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo"}
+	}
+
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "ConstraintDemo exercises every jsonschema constraint option that maps\n to a pointer-typed field in github.com/google/jsonschema-go. Regression\n coverage for the pointer-type fix.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"short_name",
+			"page_size",
+			"ratio",
+		},
+	}
+
+	// Register schema BEFORE processing fields to handle self-references.
+	// This prevents infinite recursion when a message contains itself.
+	defs["users.v1.ConstraintDemo"] = schema
+
+	schema.Properties["short_name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "",
+		Description: "String with length and pattern bounds.",
+		Pattern:     "^[a-z][a-z0-9-]*$",
+		MinLength:   &[]int{2}[0],
+		MaxLength:   &[]int{32}[0],
+	}
+
+	schema.Properties["page_size"] = &jsonschema.Schema{
+		Type:        "integer",
+		Title:       "",
+		Description: "Integer with inclusive numeric bounds.",
+		Minimum:     &[]float64{1}[0],
+		Maximum:     &[]float64{1000}[0],
+	}
+
+	schema.Properties["ratio"] = &jsonschema.Schema{
+		Type:             "number",
+		Title:            "",
+		Description:      "Double with exclusive numeric bounds — verifies the draft 2020-12\n semantic swap (ExclusiveMinimum/Maximum replace Minimum/Maximum).",
+		ExclusiveMinimum: &[]float64{0}[0],
+		ExclusiveMaximum: &[]float64{1}[0],
+	}
+
+	schema.Properties["tags"] = &jsonschema.Schema{
+		Type:        "array",
+		Title:       "",
+		Description: "Bounded, unique array.",
+		MinItems:    &[]int{1}[0],
+		MaxItems:    &[]int{5}[0],
+		UniqueItems: true,
+		Items: &jsonschema.Schema{
+			Type: "string",
+		},
+	}
+
+	schema.Properties["attributes"] = &jsonschema.Schema{
+		Type:          "object",
+		Title:         "",
+		Description:   "Map with property bounds.",
+		MinProperties: &[]int{1}[0],
+		MaxProperties: &[]int{10}[0],
+		AdditionalProperties: &jsonschema.Schema{
+			Type: "string",
+		},
+	}
+
+	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo"}
 }
 
 // JsonSchema returns the JSON schema for the OneOfDemo message.
