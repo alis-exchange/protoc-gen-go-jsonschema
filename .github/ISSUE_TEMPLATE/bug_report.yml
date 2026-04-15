@@ -1,0 +1,83 @@
+name: Bug report
+description: Report incorrect generated code, schema output, or plugin behavior
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The most actionable reports include a **minimal repro** (proto + `protoc` flags) and **expected vs actual** output.
+
+        See [CONTRIBUTING.md](https://github.com/alis-exchange/protoc-gen-go-jsonschema/blob/main/.github/CONTRIBUTING.md) for environment setup and how to run tests locally.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you thought should happen (schema shape, generated Go, options applied, etc.).
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead. Paste generated `*_jsonschema.pb.go` snippets, JSON Schema fragments, or error messages.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: |
+        Minimal steps: proto definitions (or link to a gist), `protoc` invocation including `--go-jsonschema_out` / opts, and any relevant `alis.open.options.v1` options.
+      placeholder: |
+        ```protobuf
+        // minimal .proto
+        ```
+        ```shell
+        protoc ...
+        ```
+    validations:
+      required: true
+
+  - type: input
+    id: go_version
+    attributes:
+      label: Go version
+      description: Output of `go version` when building or running the plugin.
+      placeholder: e.g. go version go1.25.0 darwin/arm64
+    validations:
+      required: true
+
+  - type: input
+    id: protoc_version
+    attributes:
+      label: protoc version (if relevant)
+      description: Output of `protoc --version` if the issue involves code generation from protos.
+      placeholder: e.g. libprotoc 29.0
+
+  - type: input
+    id: plugin_version
+    attributes:
+      label: Plugin version / commit
+      description: Release tag, `go install` version, or git SHA if built from source.
+      placeholder: e.g. v0.x.y or abc1234
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of conduct
+      description: By submitting this issue, you follow the project's contribution expectations.
+      options:
+        - label: I have read [CONTRIBUTING.md](https://github.com/alis-exchange/protoc-gen-go-jsonschema/blob/main/.github/CONTRIBUTING.md) and agree to be respectful and constructive.
+          required: true
