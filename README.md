@@ -172,8 +172,8 @@ message User {
 | `pattern`            | string | Regex pattern for string validation              |
 | `minimum`            | double | Minimum value for numbers                        |
 | `maximum`            | double | Maximum value for numbers                        |
-| `exclusive_minimum`  | bool   | Make minimum exclusive                           |
-| `exclusive_maximum`  | bool   | Make maximum exclusive                           |
+| `exclusive_minimum`  | bool   | Make minimum exclusive (see note below)          |
+| `exclusive_maximum`  | bool   | Make maximum exclusive (see note below)          |
 | `min_length`         | uint64 | Minimum string length                            |
 | `max_length`         | uint64 | Maximum string length                            |
 | `min_items`          | uint64 | Minimum array length                             |
@@ -183,6 +183,15 @@ message User {
 | `max_properties`     | uint64 | Maximum object properties                        |
 | `content_encoding`   | string | Content encoding (e.g., "base64")                |
 | `content_media_type` | string | Content media type                               |
+
+> [!NOTE]
+> **`exclusive_minimum` / `exclusive_maximum` semantics (JSON Schema draft 2020-12)**
+>
+> Setting `exclusive_minimum: true` alongside `minimum: N` emits `ExclusiveMinimum: N` on the generated schema (and *does not* emit `Minimum`). Under draft 2020-12 the exclusive variants are standalone numeric values that replace — rather than modify — the inclusive bound. The same applies to `exclusive_maximum`/`maximum`. If you're coming from an older draft where these were boolean modifiers, note that you only get one or the other per bound.
+
+## Compatibility
+
+The generated code targets [`github.com/google/jsonschema-go`](https://pkg.go.dev/github.com/google/jsonschema-go) **v0.4.x**. Downstream consumers should pin a compatible version in their `go.mod`. If upstream schema-struct field types change in a later major, the plugin will need to be updated — please file an issue if you hit a compile error against a newer `jsonschema-go`.
 
 ## Type Mapping
 

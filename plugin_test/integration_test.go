@@ -138,6 +138,7 @@ type PersonalProfile struct{}
 type BusinessProfile struct{}
 type RepeatedFieldsDemo struct{}
 type MapFieldsDemo struct{}
+type ConstraintDemo struct{}
 type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
 type Address_AddressDetails struct{}
@@ -390,6 +391,7 @@ type PersonalProfile struct{}
 type BusinessProfile struct{}
 type RepeatedFieldsDemo struct{}
 type MapFieldsDemo struct{}
+type ConstraintDemo struct{}
 type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
 type Address_AddressDetails struct{}
@@ -878,6 +880,7 @@ type PersonalProfile struct{}
 type BusinessProfile struct{}
 type RepeatedFieldsDemo struct{}
 type MapFieldsDemo struct{}
+type ConstraintDemo struct{}
 type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
 type Common struct{}

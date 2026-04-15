@@ -462,7 +462,6 @@ type schemaFieldConfig struct {
 //   - Value constraints: format, pattern, contentEncoding, min/max, minLength/maxLength
 func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *protogen.Field) {
 	opts := getFieldJsonSchemaOptions(field)
-	jsonNumberType := protogen.GoIdent{GoImportPath: "encoding/json", GoName: "Number"}
 
 	// --- Optimization: Direct Message Reference ---
 	// If this is a simple message reference with no custom options, we can emit
@@ -506,19 +505,19 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 	// and maps (minProperties, maxProperties).
 	{
 		if opts.GetMinItems() != 0 {
-			sg.gen.P(fmt.Sprintf(`MinItems: %d,`, opts.GetMinItems()))
+			sg.gen.P(fmt.Sprintf(`MinItems: &[]int{%d}[0],`, opts.GetMinItems()))
 		}
 		if opts.GetMaxItems() != 0 {
-			sg.gen.P(fmt.Sprintf(`MaxItems: %d,`, opts.GetMaxItems()))
+			sg.gen.P(fmt.Sprintf(`MaxItems: &[]int{%d}[0],`, opts.GetMaxItems()))
 		}
 		if opts.GetUniqueItems() {
 			sg.gen.P(`UniqueItems: true,`)
 		}
 		if opts.GetMinProperties() != 0 {
-			sg.gen.P(fmt.Sprintf(`MinProperties: %d,`, opts.GetMinProperties()))
+			sg.gen.P(fmt.Sprintf(`MinProperties: &[]int{%d}[0],`, opts.GetMinProperties()))
 		}
 		if opts.GetMaxProperties() != 0 {
-			sg.gen.P(fmt.Sprintf(`MaxProperties: %d,`, opts.GetMaxProperties()))
+			sg.gen.P(fmt.Sprintf(`MaxProperties: &[]int{%d}[0],`, opts.GetMaxProperties()))
 		}
 	}
 
@@ -568,29 +567,42 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 
 		// --- Numeric Constraints ---
 		// Minimum/maximum values with optional exclusive bounds.
+		//
+		// Per JSON Schema draft 2020-12, ExclusiveMinimum/ExclusiveMaximum are
+		// standalone numeric values that replace (not supplement) the inclusive
+		// bounds. The proto option model pairs a bool exclusive flag with a
+		// float value, so we translate: when exclusive_minimum=true we emit
+		// ExclusiveMinimum with the minimum value (even if that value is 0)
+		// and skip Minimum. Otherwise we emit Minimum only when the value is
+		// non-zero — proto3 scalar defaults give us no way to distinguish an
+		// unset minimum from an explicit minimum of 0 without the exclusive
+		// flag. Same logic for maximum.
 		{
-			if opts.GetMinimum() != 0 {
-				// Use QualifiedGoIdent to ensure encoding/json is imported only when needed.
-				sg.gen.P(fmt.Sprintf(`Minimum: %s("%g"),`, sg.gen.QualifiedGoIdent(jsonNumberType), opts.GetMinimum()))
+			minVal := opts.GetMinimum()
+			maxVal := opts.GetMaximum()
+
+			switch {
+			case opts.GetExclusiveMinimum():
+				sg.gen.P(fmt.Sprintf(`ExclusiveMinimum: &[]float64{%g}[0],`, minVal))
+			case minVal != 0:
+				sg.gen.P(fmt.Sprintf(`Minimum: &[]float64{%g}[0],`, minVal))
 			}
-			if opts.GetMaximum() != 0 {
-				sg.gen.P(fmt.Sprintf(`Maximum: %s("%g"),`, sg.gen.QualifiedGoIdent(jsonNumberType), opts.GetMaximum()))
-			}
-			if opts.GetExclusiveMinimum() {
-				sg.gen.P(`ExclusiveMinimum: true,`)
-			}
-			if opts.GetExclusiveMaximum() {
-				sg.gen.P(`ExclusiveMaximum: true,`)
+
+			switch {
+			case opts.GetExclusiveMaximum():
+				sg.gen.P(fmt.Sprintf(`ExclusiveMaximum: &[]float64{%g}[0],`, maxVal))
+			case maxVal != 0:
+				sg.gen.P(fmt.Sprintf(`Maximum: &[]float64{%g}[0],`, maxVal))
 			}
 		}
 
 		// --- String Length Constraints ---
 		{
 			if opts.GetMinLength() != 0 {
-				sg.gen.P(fmt.Sprintf(`MinLength: %d,`, opts.GetMinLength()))
+				sg.gen.P(fmt.Sprintf(`MinLength: &[]int{%d}[0],`, opts.GetMinLength()))
 			}
 			if opts.GetMaxLength() != 0 {
-				sg.gen.P(fmt.Sprintf(`MaxLength: %d,`, opts.GetMaxLength()))
+				sg.gen.P(fmt.Sprintf(`MaxLength: &[]int{%d}[0],`, opts.GetMaxLength()))
 			}
 		}
 
