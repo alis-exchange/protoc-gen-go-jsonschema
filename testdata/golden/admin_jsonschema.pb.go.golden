@@ -3,7 +3,7 @@
 // Source: users/v1/admin.proto
 // Plugin version: test
 //
-// Generated on: 2026-04-15 12:41:47 UTC
+// Generated on: 2026-05-11 07:51:00 UTC
 
 package usersv1
 
@@ -390,6 +390,14 @@ func admin_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema
 		{Required: []string{"bool_value"}},
 		{Required: []string{"struct_value"}},
 		{Required: []string{"list_value"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"null_value"}},
+			{Required: []string{"number_value"}},
+			{Required: []string{"string_value"}},
+			{Required: []string{"bool_value"}},
+			{Required: []string{"struct_value"}},
+			{Required: []string{"list_value"}},
+		}}},
 	}
 	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
 }

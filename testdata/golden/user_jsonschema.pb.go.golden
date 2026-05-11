@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-04-15 12:41:47 UTC
+// Generated on: 2026-05-11 07:51:00 UTC
 
 package usersv1
 
@@ -238,6 +238,9 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.OneOf = []*jsonschema.Schema{
 		{Required: []string{"oneof_address_details"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"oneof_address_details"}},
+		}}},
 	}
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
 }
@@ -804,6 +807,10 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 			OneOf: []*jsonschema.Schema{
 				{Required: []string{"contact_info"}},
 				{Required: []string{"mailing_address"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"contact_info"}},
+					{Required: []string{"mailing_address"}},
+				}}},
 			},
 		},
 		{
@@ -811,6 +818,11 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 				{Required: []string{"email"}},
 				{Required: []string{"username"}},
 				{Required: []string{"user_number"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"email"}},
+					{Required: []string{"username"}},
+					{Required: []string{"user_number"}},
+				}}},
 			},
 		},
 		{
@@ -818,6 +830,11 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 				{Required: []string{"credit_card"}},
 				{Required: []string{"bank_account"}},
 				{Required: []string{"crypto_wallet"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"credit_card"}},
+					{Required: []string{"bank_account"}},
+					{Required: []string{"crypto_wallet"}},
+				}}},
 			},
 		},
 	}
@@ -1220,6 +1237,11 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 		{Required: []string{"email_query"}},
 		{Required: []string{"name_query"}},
 		{Required: []string{"status_filter"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"email_query"}},
+			{Required: []string{"name_query"}},
+			{Required: []string{"status_filter"}},
+		}}},
 	}
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest"}
 }
@@ -1330,6 +1352,10 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 	schema.OneOf = []*jsonschema.Schema{
 		{Required: []string{"personal"}},
 		{Required: []string{"business"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"personal"}},
+			{Required: []string{"business"}},
+		}}},
 	}
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile"}
 }
@@ -1998,6 +2024,11 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 				{Required: []string{"string_value"}},
 				{Required: []string{"int_value"}},
 				{Required: []string{"bool_value"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"string_value"}},
+					{Required: []string{"int_value"}},
+					{Required: []string{"bool_value"}},
+				}}},
 			},
 		},
 		{
@@ -2005,6 +2036,11 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 				{Required: []string{"address"}},
 				{Required: []string{"contact"}},
 				{Required: []string{"metadata"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"address"}},
+					{Required: []string{"contact"}},
+					{Required: []string{"metadata"}},
+				}}},
 			},
 		},
 		{
@@ -2012,6 +2048,11 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 				{Required: []string{"status"}},
 				{Required: []string{"account"}},
 				{Required: []string{"priority"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"status"}},
+					{Required: []string{"account"}},
+					{Required: []string{"priority"}},
+				}}},
 			},
 		},
 		{
@@ -2019,6 +2060,11 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 				{Required: []string{"timestamp"}},
 				{Required: []string{"duration"}},
 				{Required: []string{"any_data"}},
+				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+					{Required: []string{"timestamp"}},
+					{Required: []string{"duration"}},
+					{Required: []string{"any_data"}},
+				}}},
 			},
 		},
 	}
@@ -2184,6 +2230,14 @@ func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.
 		{Required: []string{"bool_value"}},
 		{Required: []string{"struct_value"}},
 		{Required: []string{"list_value"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"null_value"}},
+			{Required: []string{"number_value"}},
+			{Required: []string{"string_value"}},
+			{Required: []string{"bool_value"}},
+			{Required: []string{"struct_value"}},
+			{Required: []string{"list_value"}},
+		}}},
 	}
 	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
 }
