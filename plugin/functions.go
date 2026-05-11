@@ -1022,7 +1022,10 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	}
 
 	// --- Generate OneOf Constraints ---
-	// Proto oneof fields are mutually exclusive. In JSON Schema:
+	// Proto3 oneof fields are mutually exclusive and optional (zero or one field set).
+	// Each oneof group becomes a oneOf constraint where one branch matches each
+	// alternative, plus a "none" branch (using not/anyOf) that matches when no
+	// field in the group is present. This faithfully reflects proto3 semantics.
 	// - Single oneof group: Use OneOf at the schema root
 	// - Multiple oneof groups: Use AllOf containing individual OneOf constraints
 	if len(oneofGroups) > 0 {
@@ -1034,15 +1037,14 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		sort.Strings(groupNames)
 
 		if len(groupNames) == 1 {
-			// Single oneof: Direct OneOf constraint.
 			fields := oneofGroups[groupNames[0]]
 			sg.gen.P(`schema.OneOf = []*jsonschema.Schema{`)
 			for _, f := range fields {
 				sg.gen.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
 			}
+			sg.emitOneOfNoneBranch(fields)
 			sg.gen.P(`}`)
 		} else {
-			// Multiple oneofs: Wrap each in AllOf for independent validation.
 			sg.gen.P(`schema.AllOf = []*jsonschema.Schema{`)
 			for _, name := range groupNames {
 				fields := oneofGroups[name]
@@ -1051,6 +1053,7 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 				for _, f := range fields {
 					sg.gen.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
 				}
+				sg.emitOneOfNoneBranch(fields)
 				sg.gen.P(`},`)
 				sg.gen.P(`},`)
 			}
@@ -1062,6 +1065,18 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	sg.gen.P(fmt.Sprintf("    return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
 	sg.gen.P("}")
 	return nil
+}
+
+// emitOneOfNoneBranch emits a "none present" branch for a oneOf group, making the
+// entire group optional. This matches proto3 semantics where a oneof does not require
+// any alternative to be set. The branch uses not/anyOf to match only when none of the
+// fields in the group are present.
+func (sg *MessageSchemaGenerator) emitOneOfNoneBranch(fields []string) {
+	sg.gen.P(`{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{`)
+	for _, f := range fields {
+		sg.gen.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
+	}
+	sg.gen.P(`}}},`)
 }
 
 // generateFieldJSONSchema generates the schema code for a single proto field.
