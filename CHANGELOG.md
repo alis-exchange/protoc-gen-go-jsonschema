@@ -1,9 +1,15 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.8...v) (2026-04-15)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.9...v) (2026-05-11)
 
 
 ### Bug Fixes
 
 * emit pointer types for numeric/length constraints ([d9c9212](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/d9c9212714752337ac4d162dc662c46dc47962b2))
+* enhance JSON schema generation for proto3 oneof fields ([3738f8e](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/3738f8ee4d39faded60c7ca5922e6f7b3bfa59e3))
+
+
+### Features
+
+* add contribution guidelines and issue templates ([7057691](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/705769144dc0ef9e20f6ae8203d29eafa769e5e0))
 
 ## [0.1.7](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.6...v0.1.7) (2026-02-25)
 
