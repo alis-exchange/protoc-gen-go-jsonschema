@@ -114,39 +114,9 @@ require (
 	err = os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0o644)
 	s.Require().NoError(err, "Failed to write go.mod")
 
-	// We also need to generate the regular protobuf Go code for the generated schema to compile
-	// For now, we'll create a stub file that satisfies the imports
-	stubContent := `package usersv1
-
-// Stub types for compilation test
-type Address struct{}
-type AddressDetails struct{}
-type ContactInfo struct{}
-type Metadata struct{}
-type ComprehensiveUser struct{}
-type User struct{}
-type CreateUserRequest struct{}
-type GetUserRequest struct{}
-type UpdateUserRequest struct{}
-type DeleteUserRequest struct{}
-type DeleteUserResponse struct{}
-type CreateComprehensiveUserRequest struct{}
-type BatchGetUsersRequest struct{}
-type BatchGetUsersResponse struct{}
-type UserProfile struct{}
-type PersonalProfile struct{}
-type BusinessProfile struct{}
-type RepeatedFieldsDemo struct{}
-type MapFieldsDemo struct{}
-type ConstraintDemo struct{}
-type OneOfDemo struct{}
-type WellKnownTypesDemo struct{}
-type Address_AddressDetails struct{}
-type Common struct{}
-type Admin struct{}
-`
+	// Create stub types that satisfy the generated schema code's type references
 	stubPath := filepath.Join(pkgDir, "stub_types.go")
-	err = os.WriteFile(stubPath, []byte(stubContent), 0o644)
+	err = os.WriteFile(stubPath, []byte(userStubTypes()), 0o644)
 	s.Require().NoError(err, "Failed to write stub file")
 
 	// Run go mod tidy and go build
@@ -369,37 +339,8 @@ require (
 	s.Require().NoError(err, "Failed to write go.mod")
 
 	// Create stub types for the proto messages
-	stubContent := `package usersv1
-
-// Stub types for serialization test
-type Address struct{}
-type AddressDetails struct{}
-type ContactInfo struct{}
-type Metadata struct{}
-type ComprehensiveUser struct{}
-type User struct{}
-type CreateUserRequest struct{}
-type GetUserRequest struct{}
-type UpdateUserRequest struct{}
-type DeleteUserRequest struct{}
-type DeleteUserResponse struct{}
-type CreateComprehensiveUserRequest struct{}
-type BatchGetUsersRequest struct{}
-type BatchGetUsersResponse struct{}
-type UserProfile struct{}
-type PersonalProfile struct{}
-type BusinessProfile struct{}
-type RepeatedFieldsDemo struct{}
-type MapFieldsDemo struct{}
-type ConstraintDemo struct{}
-type OneOfDemo struct{}
-type WellKnownTypesDemo struct{}
-type Address_AddressDetails struct{}
-type Common struct{}
-type Admin struct{}
-`
 	stubPath := filepath.Join(pkgDir, "stub_types.go")
-	err = os.WriteFile(stubPath, []byte(stubContent), 0o644)
+	err = os.WriteFile(stubPath, []byte(userStubTypes()), 0o644)
 	s.Require().NoError(err, "Failed to write stub file")
 
 	// Create a test file that verifies JSON serialization works
@@ -782,6 +723,214 @@ func TestCircularReferenceDetection(t *testing.T) {
 	s.T().Log("Schema JSON serialization tests passed - no circular reference detected")
 }
 
+// TestOneofJSONValidates verifies that nested PascalCase oneof JSON validates
+// against the generated schema and that multi-variant wrappers are rejected by oneOf.
+func (s *IntegrationTestSuite) TestOneofJSONValidates() {
+	if testing.Short() {
+		s.T().Skip("Skipping oneof JSON validation test in short mode")
+	}
+
+	contents := s.RunGenerate()
+
+	tmpDir := s.TempDir()
+	pkgDir := filepath.Join(tmpDir, "usersv1")
+	err := os.MkdirAll(pkgDir, 0o755)
+	s.Require().NoError(err)
+
+	for name, content := range contents {
+		filePath := filepath.Join(pkgDir, filepath.Base(name))
+		err := os.WriteFile(filePath, []byte(content), 0o644)
+		s.Require().NoError(err, "Failed to write file %s", filePath)
+	}
+
+	goMod := `module testoneof
+
+go 1.21
+
+require github.com/google/jsonschema-go v0.4.2
+`
+	s.Require().NoError(os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0o644))
+
+	// Replace the empty OneOfDemo stub with a faithful protoc-gen-go shape so the
+	// round-trip test below can marshal a real value and validate the whole document.
+	stub := strings.Replace(userStubTypes(), "type OneOfDemo struct{}\n", "", 1)
+	s.Require().NoError(os.WriteFile(filepath.Join(pkgDir, "stub_types.go"), []byte(stub), 0o644))
+	s.Require().NoError(os.WriteFile(filepath.Join(pkgDir, "oneof_real.go"), []byte(oneofDemoRealTypes()), 0o644))
+
+	testContent := `package usersv1
+
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/google/jsonschema-go/jsonschema"
+)
+
+func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
+	if schema == nil {
+		return nil, fmt.Errorf("schema %q: cannot be nil", name)
+	}
+	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{ValidateDefaults: true})
+	if err != nil {
+		return nil, fmt.Errorf("schema %q: invalid structure: %w", name, err)
+	}
+	return resolved, nil
+}
+
+func TestOneofNestedJSONValidates(t *testing.T) {
+	schema := (&OneOfDemo{}).JsonSchema()
+	resolved, err := ValidateSchemaWithName("OneOfDemo", schema)
+	if err != nil {
+		t.Fatalf("schema resolve failed: %v", err)
+	}
+
+	// Nested PascalCase oneof JSON should validate.
+	nested := map[string]any{
+		"Field1": map[string]any{"StringValue": "hello"},
+	}
+	if err := resolved.Validate(nested); err != nil {
+		t.Fatalf("nested oneof JSON should validate: %v", err)
+	}
+
+	// Multiple variants in one wrapper should fail (oneOf exclusivity).
+	multiVariant := map[string]any{
+		"Field1": map[string]any{"StringValue": "hello", "IntValue": 42},
+	}
+	if err := resolved.Validate(multiVariant); err == nil {
+		t.Fatal("multiple variants in one oneof wrapper should fail validation")
+	}
+
+	// Unset oneof: encoding/json always emits the wrapper key with a null value
+	// (the oneof interface field has no json tag). The schema must accept null.
+	nullWrapper := map[string]any{
+		"Field1": nil,
+	}
+	if err := resolved.Validate(nullWrapper); err != nil {
+		t.Fatalf("null oneof wrapper (unset oneof) should validate: %v", err)
+	}
+
+	// A non-object, non-null value must still be rejected.
+	badWrapper := map[string]any{
+		"Field1": 42,
+	}
+	if err := resolved.Validate(badWrapper); err == nil {
+		t.Fatal("scalar value for oneof wrapper should fail validation")
+	}
+}
+
+func TestOneofSchemaHasPascalCaseWrappers(t *testing.T) {
+	schema := (&OneOfDemo{}).JsonSchema()
+	def := schema.Defs["users.v1.OneOfDemo"]
+	if def == nil {
+		t.Fatal("OneOfDemo def missing")
+	}
+	for _, key := range []string{"Field1", "Field2", "Field3", "Field4"} {
+		if _, ok := def.Properties[key]; !ok {
+			t.Errorf("expected wrapper property %q", key)
+		}
+	}
+	content, err := json.Marshal(schema)
+	if err != nil {
+		t.Fatalf("marshal schema: %v", err)
+	}
+	if !strings.Contains(string(content), "\"Field1\"") {
+		t.Error("serialized schema should contain Field1 wrapper")
+	}
+}
+
+func TestComprehensiveUserOneofWrappers(t *testing.T) {
+	schema := (&ComprehensiveUser{}).JsonSchema()
+	def := schema.Defs["users.v1.ComprehensiveUser"]
+	if def == nil {
+		t.Fatal("ComprehensiveUser def missing")
+	}
+	for _, key := range []string{"Identifier", "PaymentMethod", "ContactPreference"} {
+		wrapper, ok := def.Properties[key]
+		if !ok {
+			t.Errorf("expected oneof wrapper property %q", key)
+			continue
+		}
+		// The wrapper is a oneOf of a null branch and an object branch (the object
+		// branch holds the variant oneOf). null is required because encoding/json
+		// emits the wrapper key as null when the oneof is unset.
+		if len(wrapper.OneOf) != 2 {
+			t.Errorf("wrapper %q should have 2 oneOf branches (null|object), got %d", key, len(wrapper.OneOf))
+			continue
+		}
+		hasNull, hasObject := false, false
+		for _, branch := range wrapper.OneOf {
+			switch branch.Type {
+			case "null":
+				hasNull = true
+			case "object":
+				hasObject = true
+			}
+		}
+		if !hasNull {
+			t.Errorf("wrapper %q should have a null branch for the unset oneof case", key)
+		}
+		if !hasObject {
+			t.Errorf("wrapper %q should have an object branch holding the variants", key)
+		}
+	}
+}
+
+// TestOneofRoundTrip marshals a real OneOfDemo value with encoding/json and
+// validates the whole document against the generated schema. This guards against
+// drift between marshal output and the schema for entire messages (not just
+// isolated wrappers). OneOfDemo is all-oneofs with no required fields, so an
+// unset value must validate.
+func TestOneofRoundTrip(t *testing.T) {
+	resolved, err := ValidateSchemaWithName("OneOfDemo", (&OneOfDemo{}).JsonSchema())
+	if err != nil {
+		t.Fatalf("schema resolve failed: %v", err)
+	}
+
+	marshalValidate := func(v *OneOfDemo) error {
+		raw, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("marshal: %w", err)
+		}
+		var doc any
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			return fmt.Errorf("unmarshal: %w", err)
+		}
+		return resolved.Validate(doc)
+	}
+
+	// Unset oneofs: encoding/json emits {"Field1":null,"Field2":null,...}.
+	unset := &OneOfDemo{}
+	raw, _ := json.Marshal(unset)
+	if !strings.Contains(string(raw), "\"Field1\":null") {
+		t.Fatalf("expected unset oneof to marshal Field1 as null, got: %s", string(raw))
+	}
+	if err := marshalValidate(unset); err != nil {
+		t.Fatalf("marshaled unset OneOfDemo should validate against its own schema: %v\njson: %s", err, string(raw))
+	}
+
+	// One scalar variant set: {"Field1":{"StringValue":"hi"},"Field2":null,...}.
+	set := &OneOfDemo{Field1: &OneOfDemo_StringValue{StringValue: "hi"}}
+	if err := marshalValidate(set); err != nil {
+		t.Fatalf("marshaled OneOfDemo with a set variant should validate: %v", err)
+	}
+}
+`
+	s.Require().NoError(os.WriteFile(filepath.Join(pkgDir, "oneof_test.go"), []byte(testContent), 0o644))
+
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tmpDir
+	output, err := cmd.CombinedOutput()
+	s.Require().NoError(err, "go mod tidy failed: %s", string(output))
+
+	cmd = exec.Command("go", "test", "-v", "-timeout", "30s", "./...")
+	cmd.Dir = tmpDir
+	output, err = cmd.CombinedOutput()
+	s.T().Logf("Oneof validation test output:\n%s", string(output))
+	s.Require().NoError(err, "oneof JSON validation tests failed: %s", string(output))
+}
+
 // TestNoCircularReferenceInGeneratedCode checks that the generated code
 // uses the ref-as-root pattern to avoid circular references.
 func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
@@ -855,38 +1004,7 @@ func (s *IntegrationTestSuite) TestForceLogicRuntime() {
 	}
 
 	// Write stub types
-	stubContent := `package usersv1
-
-type UserStatus int32
-type AccountType int32
-type Priority int32
-type Address struct{}
-type Address_AddressDetails struct{}
-type AddressDetails struct{}
-type ContactInfo struct{}
-type Metadata struct{}
-type ComprehensiveUser struct{}
-type User struct{}
-type CreateUserRequest struct{}
-type GetUserRequest struct{}
-type UpdateUserRequest struct{}
-type DeleteUserRequest struct{}
-type DeleteUserResponse struct{}
-type CreateComprehensiveUserRequest struct{}
-type BatchGetUsersRequest struct{}
-type BatchGetUsersResponse struct{}
-type UserProfile struct{}
-type PersonalProfile struct{}
-type BusinessProfile struct{}
-type RepeatedFieldsDemo struct{}
-type MapFieldsDemo struct{}
-type ConstraintDemo struct{}
-type OneOfDemo struct{}
-type WellKnownTypesDemo struct{}
-type Common struct{}
-type Admin struct{}
-`
-	err = os.WriteFile(filepath.Join(tmpDir, "stub_types.go"), []byte(stubContent), 0o644)
+	err = os.WriteFile(filepath.Join(tmpDir, "stub_types.go"), []byte(userStubTypes()), 0o644)
 	s.Require().NoError(err)
 
 	// Write test file that verifies forced messages are in $defs

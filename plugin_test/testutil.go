@@ -270,3 +270,101 @@ func tempDir(t *testing.T) string {
 	})
 	return dir
 }
+
+// extractGoFuncSection returns the source of a top-level Go function from content,
+// from "func name(" through its closing brace. Returns empty string if not found.
+func extractGoFuncSection(content, funcName string) string {
+	needle := "func " + funcName + "("
+	start := strings.Index(content, needle)
+	if start < 0 {
+		return ""
+	}
+	braceStart := strings.Index(content[start:], "{")
+	if braceStart < 0 {
+		return ""
+	}
+	braceStart += start
+	depth := 0
+	for i := braceStart; i < len(content); i++ {
+		switch content[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return content[start : i+1]
+			}
+		}
+	}
+	return ""
+}
+
+// userStubTypes returns Go source for stub types that satisfy the generated
+// jsonschema code for users/v1. Integration tests that compile generated code
+// in a temp module use this instead of maintaining their own copy.
+func userStubTypes() string {
+	return `package usersv1
+
+type UserStatus int32
+type AccountType int32
+type Priority int32
+type Address struct{}
+type Address_AddressDetails struct{}
+type AddressDetails struct{}
+type ContactInfo struct{}
+type Metadata struct{}
+type ComprehensiveUser struct{}
+type User struct{}
+type CreateUserRequest struct{}
+type GetUserRequest struct{}
+type UpdateUserRequest struct{}
+type DeleteUserRequest struct{}
+type DeleteUserResponse struct{}
+type CreateComprehensiveUserRequest struct{}
+type BatchGetUsersRequest struct{}
+type BatchGetUsersResponse struct{}
+type UserProfile struct{}
+type PersonalProfile struct{}
+type BusinessProfile struct{}
+type RepeatedFieldsDemo struct{}
+type MapFieldsDemo struct{}
+type ConstraintDemo struct{}
+type OneOfDemo struct{}
+type WellKnownTypesDemo struct{}
+type Common struct{}
+type Admin struct{}
+`
+}
+
+// oneofDemoRealTypes returns Go source for a faithful OneOfDemo type that mirrors
+// the real protoc-gen-go output: oneof interface fields tagged only with
+// `protobuf_oneof` (no json tag) and variant wrapper structs whose fields carry a
+// `protobuf` tag but no json tag. This lets round-trip tests marshal a real value
+// and validate the resulting document against the generated schema. Callers must
+// remove the empty `type OneOfDemo struct{}` stub from userStubTypes() first.
+//
+// Only Field1's string variant is given a concrete type; the other oneof groups
+// just need their interface types declared so an unset (all-nil) value marshals to
+// {"Field1":null,"Field2":null,"Field3":null,"Field4":null}.
+func oneofDemoRealTypes() string {
+	return `package usersv1
+
+type OneOfDemo struct {
+	Field1 isOneOfDemo_Field1 ` + "`protobuf_oneof:\"field1\"`" + `
+	Field2 isOneOfDemo_Field2 ` + "`protobuf_oneof:\"field2\"`" + `
+	Field3 isOneOfDemo_Field3 ` + "`protobuf_oneof:\"field3\"`" + `
+	Field4 isOneOfDemo_Field4 ` + "`protobuf_oneof:\"field4\"`" + `
+}
+
+type isOneOfDemo_Field1 interface{ isOneOfDemo_Field1() }
+type isOneOfDemo_Field2 interface{ isOneOfDemo_Field2() }
+type isOneOfDemo_Field3 interface{ isOneOfDemo_Field3() }
+type isOneOfDemo_Field4 interface{ isOneOfDemo_Field4() }
+
+type OneOfDemo_StringValue struct {
+	StringValue string ` + "`protobuf:\"bytes,1,opt,name=string_value,json=stringValue,proto3,oneof\"`" + `
+}
+
+func (*OneOfDemo_StringValue) isOneOfDemo_Field1() {}
+`
+}

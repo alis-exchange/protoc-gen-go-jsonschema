@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-05-11 07:51:00 UTC
+// Generated on: 2026-06-12 06:56:01 UTC
 
 package usersv1
 
@@ -232,16 +232,26 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 		AdditionalProperties: AddressDetails_JsonSchema_WithDefs(defs),
 	}
 
-	schema.Properties["oneof_address_details"] = AddressDetails_JsonSchema_WithDefs(defs)
-
 	schema.Properties["optional_address_details"] = AddressDetails_JsonSchema_WithDefs(defs)
 
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"oneof_address_details"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"oneof_address_details"}},
-		}}},
+	schema.Properties["AddressDetails"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"OneofAddressDetails": AddressDetails_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"OneofAddressDetails"},
+					},
+				},
+			},
+		},
 	}
+
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
 }
 
@@ -717,46 +727,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		AdditionalProperties: Address_AddressDetails_JsonSchema_WithDefs(defs),
 	}
 
-	schema.Properties["email"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Email address as identifier.",
-	}
-
-	schema.Properties["username"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Username as identifier.",
-	}
-
-	schema.Properties["user_number"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "User number as identifier.",
-	}
-
-	schema.Properties["credit_card"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Credit card number.",
-	}
-
-	schema.Properties["bank_account"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Bank account number.",
-	}
-
-	schema.Properties["crypto_wallet"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Cryptocurrency wallet address.",
-	}
-
-	schema.Properties["contact_info"] = ContactInfo_JsonSchema_WithDefs(defs)
-
-	schema.Properties["mailing_address"] = Address_JsonSchema_WithDefs(defs)
-
 	schema.Properties["created_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
 
 	schema.Properties["updated_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
@@ -802,42 +772,119 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["common"] = Common_JsonSchema_WithDefs(defs)
 
-	schema.AllOf = []*jsonschema.Schema{
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"contact_info"}},
-				{Required: []string{"mailing_address"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"contact_info"}},
-					{Required: []string{"mailing_address"}},
-				}}},
-			},
-		},
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"email"}},
-				{Required: []string{"username"}},
-				{Required: []string{"user_number"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"email"}},
-					{Required: []string{"username"}},
-					{Required: []string{"user_number"}},
-				}}},
-			},
-		},
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"credit_card"}},
-				{Required: []string{"bank_account"}},
-				{Required: []string{"crypto_wallet"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"credit_card"}},
-					{Required: []string{"bank_account"}},
-					{Required: []string{"crypto_wallet"}},
-				}}},
+	schema.Properties["Identifier"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Email": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Email address as identifier.",
+							},
+						},
+						Required: []string{"Email"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Username": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Username as identifier.",
+							},
+						},
+						Required: []string{"Username"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"UserNumber": &jsonschema.Schema{
+								Type:        "integer",
+								Title:       "",
+								Description: "User number as identifier.",
+							},
+						},
+						Required: []string{"UserNumber"},
+					},
+				},
 			},
 		},
 	}
+
+	schema.Properties["PaymentMethod"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"CreditCard": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Credit card number.",
+							},
+						},
+						Required: []string{"CreditCard"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"BankAccount": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Bank account number.",
+							},
+						},
+						Required: []string{"BankAccount"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"CryptoWallet": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Cryptocurrency wallet address.",
+							},
+						},
+						Required: []string{"CryptoWallet"},
+					},
+				},
+			},
+		},
+	}
+
+	schema.Properties["ContactPreference"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"ContactInfo": ContactInfo_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"ContactInfo"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"MailingAddress": Address_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"MailingAddress"},
+					},
+				},
+			},
+		},
+	}
+
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ComprehensiveUser"}
 }
 
@@ -1208,41 +1255,57 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 		},
 	}
 
-	schema.Properties["email_query"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Query users by email address.",
-	}
-
-	schema.Properties["name_query"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "Query users by name (partial match).",
-	}
-
-	schema.Properties["status_filter"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "Filter users by status.",
-		Enum: []any{
-			0,
-			1,
-			2,
-			3,
-			4,
+	schema.Properties["QueryType"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"EmailQuery": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Query users by email address.",
+							},
+						},
+						Required: []string{"EmailQuery"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"NameQuery": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "Query users by name (partial match).",
+							},
+						},
+						Required: []string{"NameQuery"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"StatusFilter": &jsonschema.Schema{
+								Type:        "integer",
+								Title:       "",
+								Description: "Filter users by status.",
+								Enum: []any{
+									0,
+									1,
+									2,
+									3,
+									4,
+								},
+							},
+						},
+						Required: []string{"StatusFilter"},
+					},
+				},
+			},
 		},
 	}
 
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"email_query"}},
-		{Required: []string{"name_query"}},
-		{Required: []string{"status_filter"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"email_query"}},
-			{Required: []string{"name_query"}},
-			{Required: []string{"status_filter"}},
-		}}},
-	}
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest"}
 }
 
@@ -1343,20 +1406,33 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 		AdditionalProperties: ContactInfo_JsonSchema_WithDefs(defs),
 	}
 
-	schema.Properties["personal"] = PersonalProfile_JsonSchema_WithDefs(defs)
-
-	schema.Properties["business"] = BusinessProfile_JsonSchema_WithDefs(defs)
-
 	schema.Properties["custom_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
 
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"personal"}},
-		{Required: []string{"business"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"personal"}},
-			{Required: []string{"business"}},
-		}}},
+	schema.Properties["ProfileType"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Personal": PersonalProfile_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Personal"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Business": BusinessProfile_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Business"},
+					},
+				},
+			},
+		},
 	}
+
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile"}
 }
 
@@ -1868,6 +1944,7 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 			"short_name",
 			"page_size",
 			"ratio",
+			"shipping_address",
 		},
 	}
 
@@ -1923,6 +2000,8 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 		},
 	}
 
+	schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
+
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo"}
 }
 
@@ -1950,124 +2029,178 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 	// This prevents infinite recursion when a message contains itself.
 	defs["users.v1.OneOfDemo"] = schema
 
-	schema.Properties["string_value"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "String value option.",
-	}
-
-	schema.Properties["int_value"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "Integer value option.",
-	}
-
-	schema.Properties["bool_value"] = &jsonschema.Schema{
-		Type:        "boolean",
-		Title:       "",
-		Description: "Boolean value option.",
-	}
-
-	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
-
-	schema.Properties["contact"] = ContactInfo_JsonSchema_WithDefs(defs)
-
-	schema.Properties["metadata"] = Metadata_JsonSchema_WithDefs(defs)
-
-	schema.Properties["status"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "UserStatus enum option.",
-		Enum: []any{
-			0,
-			1,
-			2,
-			3,
-			4,
-		},
-	}
-
-	schema.Properties["account"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "AccountType enum option.",
-		Enum: []any{
-			0,
-			1,
-			2,
-			3,
-		},
-	}
-
-	schema.Properties["priority"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "Priority enum option.",
-		Enum: []any{
-			0,
-			1,
-			2,
-			3,
-			4,
-		},
-	}
-
-	schema.Properties["timestamp"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-
-	schema.Properties["duration"] = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
-
-	schema.Properties["any_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
-
-	schema.AllOf = []*jsonschema.Schema{
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"string_value"}},
-				{Required: []string{"int_value"}},
-				{Required: []string{"bool_value"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"string_value"}},
-					{Required: []string{"int_value"}},
-					{Required: []string{"bool_value"}},
-				}}},
-			},
-		},
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"address"}},
-				{Required: []string{"contact"}},
-				{Required: []string{"metadata"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"address"}},
-					{Required: []string{"contact"}},
-					{Required: []string{"metadata"}},
-				}}},
-			},
-		},
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"status"}},
-				{Required: []string{"account"}},
-				{Required: []string{"priority"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"status"}},
-					{Required: []string{"account"}},
-					{Required: []string{"priority"}},
-				}}},
-			},
-		},
-		{
-			OneOf: []*jsonschema.Schema{
-				{Required: []string{"timestamp"}},
-				{Required: []string{"duration"}},
-				{Required: []string{"any_data"}},
-				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"timestamp"}},
-					{Required: []string{"duration"}},
-					{Required: []string{"any_data"}},
-				}}},
+	schema.Properties["Field1"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"StringValue": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "",
+								Description: "String value option.",
+							},
+						},
+						Required: []string{"StringValue"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"IntValue": &jsonschema.Schema{
+								Type:        "integer",
+								Title:       "",
+								Description: "Integer value option.",
+							},
+						},
+						Required: []string{"IntValue"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"BoolValue": &jsonschema.Schema{
+								Type:        "boolean",
+								Title:       "",
+								Description: "Boolean value option.",
+							},
+						},
+						Required: []string{"BoolValue"},
+					},
+				},
 			},
 		},
 	}
+
+	schema.Properties["Field2"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Address": Address_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Address"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Contact": ContactInfo_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Contact"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Metadata": Metadata_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Metadata"},
+					},
+				},
+			},
+		},
+	}
+
+	schema.Properties["Field3"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Status": &jsonschema.Schema{
+								Type:        "integer",
+								Title:       "",
+								Description: "UserStatus enum option.",
+								Enum: []any{
+									0,
+									1,
+									2,
+									3,
+									4,
+								},
+							},
+						},
+						Required: []string{"Status"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Account": &jsonschema.Schema{
+								Type:        "integer",
+								Title:       "",
+								Description: "AccountType enum option.",
+								Enum: []any{
+									0,
+									1,
+									2,
+									3,
+								},
+							},
+						},
+						Required: []string{"Account"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Priority": &jsonschema.Schema{
+								Type:        "integer",
+								Title:       "",
+								Description: "Priority enum option.",
+								Enum: []any{
+									0,
+									1,
+									2,
+									3,
+									4,
+								},
+							},
+						},
+						Required: []string{"Priority"},
+					},
+				},
+			},
+		},
+	}
+
+	schema.Properties["Field4"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Timestamp": user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Timestamp"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Duration": user_google_protobuf_Duration_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"Duration"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"AnyData": user_google_protobuf_Any_JsonSchema_WithDefs(defs),
+						},
+						Required: []string{"AnyData"},
+					},
+				},
+			},
+		},
+	}
+
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.OneOfDemo"}
 }
 
