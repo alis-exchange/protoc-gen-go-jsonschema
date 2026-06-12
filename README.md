@@ -187,7 +187,7 @@ message User {
 > [!NOTE]
 > **`exclusive_minimum` / `exclusive_maximum` semantics (JSON Schema draft 2020-12)**
 >
-> Setting `exclusive_minimum: true` alongside `minimum: N` emits `ExclusiveMinimum: N` on the generated schema (and *does not* emit `Minimum`). Under draft 2020-12 the exclusive variants are standalone numeric values that replace — rather than modify — the inclusive bound. The same applies to `exclusive_maximum`/`maximum`. If you're coming from an older draft where these were boolean modifiers, note that you only get one or the other per bound.
+> Setting `exclusive_minimum: true` alongside `minimum: N` emits `ExclusiveMinimum: N` on the generated schema (and _does not_ emit `Minimum`). Under draft 2020-12 the exclusive variants are standalone numeric values that replace — rather than modify — the inclusive bound. The same applies to `exclusive_maximum`/`maximum`. If you're coming from an older draft where these were boolean modifiers, note that you only get one or the other per bound.
 
 ## Compatibility
 
@@ -204,6 +204,23 @@ message User {
   string first_name = 1;  // Schema property: "first_name" (not "firstName")
 }
 ```
+
+### Oneof Fields
+
+User-message oneofs use **nested PascalCase wrappers** to match `encoding/json` output from protoc-gen-go (oneof interface fields and wrapper structs have no `json` tags, so Go field names are used):
+
+```json
+{
+  "Identifier": { "Email": "user@example.com" },
+  "PaymentMethod": { "CreditCard": "4111111111111111" },
+  "ContactPreference": null
+}
+```
+
+Each wrapper accepts either `null` (the oneof is unset — `encoding/json` always emits the key, with value `null`) or an object holding exactly one variant. This differs from flat `protojson`-style oneofs where variant fields appear as snake_case root properties. **Google types** (`google.protobuf.Value`, etc.) keep flat oneof properties because they implement custom `json.Marshaler` with proto JSON semantics.
+
+> [!NOTE]
+> Field-level `title`/`description` options on message-type fields (including oneof message variants) are not applied — the plugin emits a direct `$ref` to preserve structural validation.
 
 ### Type Conversions
 

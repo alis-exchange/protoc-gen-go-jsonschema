@@ -30,6 +30,8 @@
 //   - Messages → object type with properties, or $ref for cross-references
 //   - Repeated fields → array type
 //   - Map fields → object type with additionalProperties
+//   - Oneofs (user messages) → nested PascalCase wrapper properties matching encoding/json
+//     (Google types keep flat oneof properties with proto JSON semantics)
 //
 // # Google Types
 //
@@ -461,23 +463,38 @@ type schemaFieldConfig struct {
 //   - Container constraints: minItems, maxItems, uniqueItems, minProperties, maxProperties
 //   - Value constraints: format, pattern, contentEncoding, min/max, minLength/maxLength
 func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *protogen.Field) {
-	opts := getFieldJsonSchemaOptions(field)
-
-	// --- Optimization: Direct Message Reference ---
-	// If this is a simple message reference with no custom options, we can emit
-	// a direct function call instead of creating a new schema object.
-	// This produces cleaner generated code like: schema.Properties["user"] = User_JsonSchema_WithDefs(defs)
-	{
-		if cfg.messageRef != "" && cfg.typeName == "" && cfg.nested == nil {
-			if opts == nil {
-				sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = %s`, cfg.fieldName, cfg.messageRef))
-				return
-			}
-		}
+	// --- Direct Message Reference ---
+	// Message-type fields always use a direct $ref call. The referenced message's
+	// own schema definition provides the structural constraints. Field-level option
+	// overrides (title, description) are not applied here because emitInlineSchema
+	// cannot emit both a $ref and inline constraints in a single schema object.
+	if cfg.messageRef != "" && cfg.typeName == "" && cfg.nested == nil {
+		sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = %s`, cfg.fieldName, cfg.messageRef))
+		return
 	}
 
+	// Emit as a property assignment delegating to the inline schema emitter.
+	opts := getFieldJsonSchemaOptions(field)
+	prefix := fmt.Sprintf(`schema.Properties["%s"] = `, cfg.fieldName)
+	sg.emitInlineSchema(cfg, opts, prefix, "")
+}
+
+// emitInlineSchema generates Go code for a JSON Schema value (`&jsonschema.Schema{...}`).
+//
+// This is the core schema emission logic, shared by emitSchemaField (for regular
+// message properties) and emitOneofSchema (for oneof variant inner schemas).
+// It emits the complete `&jsonschema.Schema{...}` expression including braces.
+//
+// The prefix parameter is prepended before `&jsonschema.Schema{` on the same line
+// (e.g., `schema.Properties["foo"] = ` or `"Key": `).
+// The closing parameter is appended after the final `}` on the same line (e.g., ","
+// when emitting inside a composite literal). Pass "" for a standalone statement.
+//
+// opts is the field's JSON Schema options (may be nil). Callers pass it in to
+// avoid redundant proto extension lookups.
+func (sg *MessageSchemaGenerator) emitInlineSchema(cfg schemaFieldConfig, opts *optionsPb.FieldOptions_JsonSchema, prefix, closing string) {
 	// --- Begin Schema Object ---
-	sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = &jsonschema.Schema{`, cfg.fieldName))
+	sg.gen.P(prefix + `&jsonschema.Schema{`)
 
 	// Emit type if specified (not set for pure $ref schemas).
 	if cfg.typeName != "" {
@@ -661,7 +678,7 @@ func (sg *MessageSchemaGenerator) emitSchemaField(cfg schemaFieldConfig, field *
 		sg.gen.P(`},`)
 	}
 
-	sg.gen.P("}")
+	sg.gen.P("}" + closing)
 }
 
 // -----------------------------------------------------------------------------
@@ -999,37 +1016,37 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 	sg.gen.P(fmt.Sprintf("defs[\"%s\"] = schema", defKey))
 	sg.gen.P()
 
-	// --- Generate Field Schemas and Collect OneOf Groups ---
-	// Track oneof groups for generating mutual exclusivity constraints.
-	oneofGroups := make(map[string][]string)
+	// --- Generate Field Schemas ---
+	// Google types keep flat oneof behavior (custom json.Marshalers use proto JSON
+	// semantics). User messages skip oneof members here — they are emitted as nested
+	// PascalCase wrapper properties below via emitOneofSchema.
+	isGoogle := isGoogleType(message)
+	oneofGroups := make(map[string][]string) // only populated for Google types
 	for _, field := range message.Fields {
 		opts := getFieldJsonSchemaOptions(field)
 		if opts.GetIgnore() {
 			continue
 		}
 
-		// Track fields that belong to oneof groups (excluding synthetic oneofs for optional).
 		if oneof := field.Oneof; oneof != nil && !oneof.Desc.IsSynthetic() {
+			if !isGoogle {
+				// User messages: skip oneof members; emitted as nested PascalCase
+				// wrapper properties below via emitOneofSchema.
+				continue
+			}
+			// Google types: collect oneof groups and emit fields flat
 			groupName := string(oneof.Desc.Name())
 			oneofGroups[groupName] = append(oneofGroups[groupName], getFieldName(field))
 		}
 
-		// Generate the field's schema.
 		if err := sg.generateFieldJSONSchema(field); err != nil {
 			return err
 		}
 		sg.gen.P("")
 	}
 
-	// --- Generate OneOf Constraints ---
-	// Proto3 oneof fields are mutually exclusive and optional (zero or one field set).
-	// Each oneof group becomes a oneOf constraint where one branch matches each
-	// alternative, plus a "none" branch (using not/anyOf) that matches when no
-	// field in the group is present. This faithfully reflects proto3 semantics.
-	// - Single oneof group: Use OneOf at the schema root
-	// - Multiple oneof groups: Use AllOf containing individual OneOf constraints
-	if len(oneofGroups) > 0 {
-		// Sort group names for deterministic output.
+	// --- Google Types: Flat OneOf Constraints ---
+	if isGoogle && len(oneofGroups) > 0 {
 		var groupNames []string
 		for name := range oneofGroups {
 			groupNames = append(groupNames, name)
@@ -1061,6 +1078,21 @@ func (sg *MessageSchemaGenerator) generateMessageJSONSchema(message *protogen.Me
 		}
 	}
 
+	// --- User Messages: Nested PascalCase Oneof Wrappers ---
+	// encoding/json marshals oneof fields as nested objects because protoc-gen-go
+	// does not add json struct tags to oneof interface fields or wrapper structs.
+	// The property key is oneof.GoName (PascalCase), and each variant is an object
+	// with a single required key of field.GoName (PascalCase).
+	if !isGoogle {
+		for _, oneof := range message.Oneofs {
+			if oneof.Desc.IsSynthetic() {
+				continue
+			}
+			sg.emitOneofSchema(oneof)
+			sg.gen.P("")
+		}
+	}
+
 	// Return a $ref to this message's schema definition.
 	sg.gen.P(fmt.Sprintf("    return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", defKey))
 	sg.gen.P("}")
@@ -1077,6 +1109,86 @@ func (sg *MessageSchemaGenerator) emitOneOfNoneBranch(fields []string) {
 		sg.gen.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
 	}
 	sg.gen.P(`}}},`)
+}
+
+// emitOneofSchema emits a nested PascalCase wrapper property for a single oneof group.
+//
+// encoding/json marshals protoc-gen-go oneof fields as nested objects because the
+// generated Go structs lack json struct tags on oneof-related fields. The resulting
+// JSON shape is:
+//
+//	{"Identifier": {"Email": "user@example.com"}}
+//
+// Each oneof group becomes one property keyed by oneof.GoName (PascalCase). The
+// wrapper is a oneOf of two branches: a null branch and an object branch. The
+// null branch is required because encoding/json always emits the wrapper key,
+// with value null when the oneof is unset (the oneof interface field has no
+// json struct tag, so it is neither omitted nor non-null). The object branch is
+// itself a oneOf where each variant branch is an object with exactly one required
+// property keyed by field.GoName (PascalCase).
+//
+// For scalar variants, the inner value schema is built via getScalarSchemaConfig +
+// emitInlineSchema, inheriting full field-option support. For message variants, a
+// direct referenceName call is always emitted; field-level title/description
+// overrides are not applied (same as emitSchemaField for message-type fields).
+func (sg *MessageSchemaGenerator) emitOneofSchema(oneof *protogen.Oneof) {
+	// Filter out ignored fields and collect active variants with their options.
+	type oneofVariant struct {
+		field *protogen.Field
+		opts  *optionsPb.FieldOptions_JsonSchema
+	}
+	var activeVariants []oneofVariant
+	for _, field := range oneof.Fields {
+		opts := getFieldJsonSchemaOptions(field)
+		if opts.GetIgnore() {
+			continue
+		}
+		activeVariants = append(activeVariants, oneofVariant{field: field, opts: opts})
+	}
+	if len(activeVariants) == 0 {
+		return
+	}
+
+	// The wrapper key is always present in encoding/json output. Allow null (oneof
+	// unset) or an object containing exactly one variant.
+	sg.gen.P(fmt.Sprintf(`schema.Properties["%s"] = &jsonschema.Schema{`, oneof.GoName))
+	sg.gen.P(`OneOf: []*jsonschema.Schema{`)
+	sg.gen.P(fmt.Sprintf(`{Type: "%s"},`, jsNull))
+	sg.gen.P(`{`)
+	sg.gen.P(fmt.Sprintf(`Type: "%s",`, jsObject))
+	sg.gen.P(`OneOf: []*jsonschema.Schema{`)
+
+	for _, variant := range activeVariants {
+		field := variant.field
+		opts := variant.opts
+		variantKey := field.GoName
+
+		sg.gen.P(`{`)
+		sg.gen.P(fmt.Sprintf(`Type: "%s",`, jsObject))
+		sg.gen.P(`Properties: map[string]*jsonschema.Schema{`)
+
+		// Emit the variant's inner value schema.
+		if field.Desc.Kind() == protoreflect.MessageKind {
+			// Message variant: always use direct $ref. Field-level options
+			// (title, description overrides) are not applied because the $ref
+			// delegates to the message's own schema definition.
+			sg.gen.P(fmt.Sprintf(`"%s": %s,`, variantKey, sg.referenceName(field.Message)))
+		} else {
+			// Scalar variant: full inline schema with option support.
+			title, description := sg.gr.getTitleAndDescription(field.Desc)
+			cfg := sg.getScalarSchemaConfig(field, title, description)
+			sg.emitInlineSchema(cfg, opts, fmt.Sprintf(`"%s": `, variantKey), ",")
+		}
+
+		sg.gen.P(`},`)
+		sg.gen.P(fmt.Sprintf(`Required: []string{"%s"},`, variantKey))
+		sg.gen.P(`},`)
+	}
+
+	sg.gen.P(`},`) // close inner OneOf (variant branches)
+	sg.gen.P(`},`) // close object branch
+	sg.gen.P(`},`) // close outer OneOf (null | object)
+	sg.gen.P(`}`)
 }
 
 // generateFieldJSONSchema generates the schema code for a single proto field.

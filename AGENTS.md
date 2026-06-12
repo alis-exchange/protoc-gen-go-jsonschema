@@ -229,7 +229,7 @@ The `getFieldName()` helper function returns the proto field name directly via `
 | `message`    | `"object"`       | Properties for each field, or `$ref`               |
 | `repeated T` | `"array"`        | `items` contains element schema                    |
 | `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
-| `oneof`      | —                | `oneOf` constraint with `required` for each option |
+| `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper: `oneOf` of a null branch (unset) and an object branch (see below) |
 
 ### Required Fields
 
@@ -251,6 +251,90 @@ Map keys are always strings in JSON. Non-string proto keys use `propertyNames` v
 | `string`               | (none)                |
 | `int32`, `int64`, etc. | `"^-?[0-9]+$"`        |
 | `bool`                 | `"^(true\|false)$"`   |
+
+### Oneof Handling
+
+Oneof fields use **nested PascalCase wrappers** to match `encoding/json` behavior. This differs from regular fields (snake_case) because protoc-gen-go does not add `json` struct tags to oneof interface fields or wrapper structs — `encoding/json` falls back to Go's exported field name (PascalCase).
+
+For a proto definition:
+
+```protobuf
+message ComprehensiveUser {
+  oneof identifier {
+    string email = 39;
+    string username = 40;
+    int64 user_number = 41;
+  }
+  oneof contact_preference {
+    ContactInfo contact_info = 45;
+    Address mailing_address = 46;
+  }
+}
+```
+
+The generated schema shape is an outer `oneOf` of a **null branch** and an **object branch**. The null branch is required because `encoding/json` always emits the wrapper key, with value `null` when the oneof is unset (the oneof interface field has no `json` tag, so it is neither omitted nor non-null). The object branch holds the variant `oneOf`:
+
+```go
+// Wrapper property: oneof.GoName (PascalCase)
+schema.Properties["Identifier"] = &jsonschema.Schema{
+    OneOf: []*jsonschema.Schema{
+        {Type: "null"}, // oneof unset → encoding/json emits null
+        {
+            Type: "object",
+            OneOf: []*jsonschema.Schema{
+                {
+                    Type: "object",
+                    Properties: map[string]*jsonschema.Schema{
+                        // Variant key: field.GoName (PascalCase)
+                        "Email": &jsonschema.Schema{Type: "string", ...},
+                    },
+                    Required: []string{"Email"},
+                },
+                // ... more variants
+            },
+        },
+    },
+}
+// Message variants use $ref
+schema.Properties["ContactPreference"] = &jsonschema.Schema{
+    OneOf: []*jsonschema.Schema{
+        {Type: "null"},
+        {
+            Type: "object",
+            OneOf: []*jsonschema.Schema{
+                {
+                    Type: "object",
+                    Properties: map[string]*jsonschema.Schema{
+                        "ContactInfo": ContactInfo_JsonSchema_WithDefs(defs),
+                    },
+                    Required: []string{"ContactInfo"},
+                },
+                // ...
+            },
+        },
+    },
+}
+```
+
+This matches the JSON that `json.Marshal` produces — both when a variant is set and when the oneof is unset:
+
+```json
+{
+  "id": "1234",
+  "Identifier": {"Email": "user@example.com"},
+  "ContactPreference": null
+}
+```
+
+**Naming rules:**
+
+| Layer | Source | JSON key |
+|-------|--------|----------|
+| Oneof wrapper property | `oneof.GoName` | PascalCase (e.g., `Identifier`) |
+| Variant key inside wrapper | `field.GoName` | PascalCase (e.g., `Email`, `CreditCard`) |
+| Fields inside nested messages | `field.Desc.Name()` | snake_case (e.g., `phone`, `zip_code`) |
+
+**Google types exception:** Google types (e.g., `google.protobuf.Value`) keep flat oneof behavior because they implement custom `json.Marshaler` methods with proto JSON semantics.
 
 ---
 
@@ -383,6 +467,10 @@ Available field options:
 - `min_items`, `max_items`, `unique_items` - Array constraints
 - `min_properties`, `max_properties` - Object constraints
 - `content_encoding`, `content_media_type` - Binary data hints
+
+**Message-type field limitation:** Field-level `title` and `description` overrides on **message-type** fields are **not** applied to the generated property schema. Message fields (including oneof message variants) always emit a direct `$ref` call (e.g., `Address_JsonSchema_WithDefs(defs)`). This preserves structural validation; `emitInlineSchema` cannot emit both a `$ref` and inline metadata in a single schema object. Use message-level comments/options on the referenced message for metadata instead, or an `allOf` pattern if per-field overrides on `$ref` properties are required in the future.
+
+Scalar, array, and map fields fully support field-level options via `emitInlineSchema`.
 
 ---
 
@@ -610,6 +698,16 @@ message Parent {
 
 64-bit integers (`int64`, `uint64`, `sint64`, `sfixed64`, `fixed64`) are mapped to JSON Schema `"integer"` type. While JavaScript has precision limitations for very large integers (beyond 2^53-1), the `"integer"` type provides better schema validation and works correctly for most use cases.
 
+### Oneof Field Naming (PascalCase vs snake_case)
+
+**Problem**: Oneof fields use PascalCase naming (`Identifier`, `Email`) while regular fields use snake_case (`first_name`, `zip_code`). This is intentional — not a bug.
+
+**Why**: protoc-gen-go does not add `json` struct tags to oneof interface fields or wrapper structs. Without tags, `encoding/json` uses Go's exported field names (PascalCase). Regular fields have `json:"snake_case"` tags, so they use snake_case.
+
+**Implementation**: Oneof wrapper properties use `oneof.GoName`, variant keys use `field.GoName`. Regular fields use `field.Desc.Name()` via `getFieldName()`. See `emitOneofSchema()` in `plugin/functions.go`.
+
+**Google types exception**: Google types keep flat oneof behavior (e.g., `google.protobuf.Value.kind` uses `null_value`, `number_value` as flat root properties). This is handled by checking `isGoogleType(message)` in the field loop.
+
 ### Google Type Handling
 
 All Google types (`google.*`) are treated like normal messages and generate schemas with `$ref` definitions. Key differences from user messages:
@@ -617,6 +715,7 @@ All Google types (`google.*`) are treated like normal messages and generate sche
 1. **Standalone functions**: Google types generate standalone functions (not methods) since we can't add methods to imported types
 2. **File prefix**: Google type function names include a file prefix (e.g., `user_google_protobuf_Timestamp_JsonSchema`) to avoid duplicate function names when multiple files in the same package import the same types
 3. **Recursive dependencies**: Google type dependencies (including map value types) are properly collected via `getMessagesWithForce()`
+4. **Flat oneof behavior**: Google types keep flat oneof properties with root-level `OneOf`/`AllOf` constraints (not nested PascalCase wrappers) because they implement custom `json.Marshaler` methods
 
 ### Map Value Dependencies
 
@@ -654,6 +753,8 @@ All Google types (`google.*`) are treated like normal messages and generate sche
 | Message collection            | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()`                       |
 | Force logic                   | `plugin/functions.go` → `getMessagesWithForce()`                                         |
 | Field name helper             | `plugin/functions.go` → `getFieldName()`                                                 |
+| Oneof schema generation       | `plugin/functions.go` → `emitOneofSchema()`                                              |
+| Inline schema emission        | `plugin/functions.go` → `emitInlineSchema()`                                             |
 | Google type helpers           | `plugin/functions.go` → `isGoogleType()`, `googleTypeFunctionName()`, `fileNamePrefix()` |
 | Google type schema generation | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isGoogleType()`)           |
 | Options extraction            | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()`                       |

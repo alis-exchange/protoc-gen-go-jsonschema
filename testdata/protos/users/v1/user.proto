@@ -2,15 +2,14 @@ syntax = "proto3";
 
 package users.v1;
 
+import "alis/open/options/v1/options.proto";
 import "google/protobuf/any.proto";
-import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/struct.proto";
-import "alis/open/options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
 import "users/v1/common.proto";
 
 option go_package = "github.com/newtonnthiga/users/v1;usersv1";
-
 option (alis.open.options.v1.file).json_schema.generate = true;
 
 // UserStatus represents the current status of a user account.
@@ -108,7 +107,9 @@ message AddressDetails {
   // Map of address details.
   map<string, AddressDetails> map_address_details = 8;
   // Oneof address details.
-  oneof address_details { AddressDetails oneof_address_details = 9; }
+  oneof address_details {
+    AddressDetails oneof_address_details = 9;
+  }
   // Optional address details.
   optional AddressDetails optional_address_details = 10;
 }
@@ -116,10 +117,10 @@ message AddressDetails {
 // ContactInfo contains contact information for a user.
 message ContactInfo {
   // Primary phone number in E.164 format.
-  string phone = 1 [ (alis.open.options.v1.field).json_schema = {
-    format : "email",
-    title : "Primary Email"
-  } ];
+  string phone = 1 [(alis.open.options.v1.field).json_schema = {
+    format: "email"
+    title: "Primary Email"
+  }];
   // Mobile phone number in E.164 format.
   string mobile = 2;
   // Fax number if available.
@@ -274,7 +275,7 @@ message ComprehensiveUser {
   // Contact preference - either contact info or mailing address.
   oneof contact_preference {
     // Preferred contact information.
-    ContactInfo contact_info = 45;
+    ContactInfo contact_info = 45 [(alis.open.options.v1.field).json_schema = {description: "Preferred contact information"}];
     // Preferred mailing address.
     Address mailing_address = 46;
   }
@@ -337,8 +338,7 @@ service UserService {
 
   // CreateComprehensiveUser creates a new comprehensive user account.
   // This allows setting all available fields including nested structures.
-  rpc CreateComprehensiveUser(CreateComprehensiveUserRequest)
-      returns (ComprehensiveUser);
+  rpc CreateComprehensiveUser(CreateComprehensiveUserRequest) returns (ComprehensiveUser);
 
   // BatchGetUsers retrieves multiple users in a single request.
   // Useful for efficient bulk operations.
@@ -566,40 +566,43 @@ message ConstraintDemo {
   option (alis.open.options.v1.message).json_schema.generate = true;
 
   // String with length and pattern bounds.
-  string short_name = 1 [ (alis.open.options.v1.field).json_schema = {
-    min_length : 2,
-    max_length : 32,
-    pattern : "^[a-z][a-z0-9-]*$"
-  } ];
+  string short_name = 1 [(alis.open.options.v1.field).json_schema = {
+    min_length: 2
+    max_length: 32
+    pattern: "^[a-z][a-z0-9-]*$"
+  }];
 
   // Integer with inclusive numeric bounds.
-  int32 page_size = 2 [ (alis.open.options.v1.field).json_schema = {
-    minimum : 1,
-    maximum : 1000
-  } ];
+  int32 page_size = 2 [(alis.open.options.v1.field).json_schema = {
+    minimum: 1
+    maximum: 1000
+  }];
 
   // Double with exclusive numeric bounds — verifies the draft 2020-12
   // semantic swap (ExclusiveMinimum/Maximum replace Minimum/Maximum).
-  double ratio = 3 [ (alis.open.options.v1.field).json_schema = {
-    minimum : 0,
-    maximum : 1,
-    exclusive_minimum : true,
-    exclusive_maximum : true
-  } ];
+  double ratio = 3 [(alis.open.options.v1.field).json_schema = {
+    minimum: 0
+    maximum: 1
+    exclusive_minimum: true
+    exclusive_maximum: true
+  }];
 
   // Bounded, unique array.
-  repeated string tags = 4 [ (alis.open.options.v1.field).json_schema = {
-    min_items : 1,
-    max_items : 5,
-    unique_items : true
-  } ];
+  repeated string tags = 4 [(alis.open.options.v1.field).json_schema = {
+    min_items: 1
+    max_items: 5
+    unique_items: true
+  }];
 
   // Map with property bounds.
-  map<string, string> attributes = 5
-      [ (alis.open.options.v1.field).json_schema = {
-        min_properties : 1,
-        max_properties : 10
-      } ];
+  map<string, string> attributes = 5 [(alis.open.options.v1.field).json_schema = {
+    min_properties: 1
+    max_properties: 10
+  }];
+
+  // Message field with description override — exercises the $ref path
+  // for message-type fields with field-level options.
+  Address shipping_address = 6 [(alis.open.options.v1.field).json_schema = {description: "Shipping address for deliveries"}];
 }
 
 // OneOfDemo demonstrates multiple oneof field groups.

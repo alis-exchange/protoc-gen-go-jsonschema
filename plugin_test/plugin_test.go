@@ -268,9 +268,14 @@ func (s *PluginGeneratorTestSuite) TestGeneratedCodeForSpecificMessages() {
 // TestOneOfHandling tests oneof field handling in generated code.
 func (s *PluginGeneratorTestSuite) TestOneOfHandling() {
 	content := s.GetGeneratedContent()
-	if !strings.Contains(content, "OneOf") {
-		s.T().Log("Warning: OneOf constraint not found in generated code")
-	}
+	s.Contains(content, "OneOf", "Generated code should contain OneOf constraints")
+	s.Contains(content, `schema.Properties["Identifier"]`,
+		"User message oneofs should use PascalCase wrapper properties")
+
+	cuSection := extractGoFuncSection(content, "ComprehensiveUser_JsonSchema_WithDefs")
+	s.Require().NotEmpty(cuSection, "ComprehensiveUser_JsonSchema_WithDefs not found")
+	s.NotContains(cuSection, `schema.AllOf`,
+		"ComprehensiveUser should not have root-level AllOf oneof constraints")
 }
 
 // TestGoogleTypesHandling tests Google type handling in generated code.
