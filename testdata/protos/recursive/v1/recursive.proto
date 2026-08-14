@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package recursive.v1;
+
+import "alis/open/options/v1/options.proto";
+
+option go_package = "github.com/newtonnthiga/recursive/v1;recursivev1";
+option (alis.open.options.v1.file).json_schema.generate = true;
+
+message GetRecursiveConfigRequest {
+  string name = 1;
+  RecursiveConfig recursive_config = 2;
+}
+
+// RecursiveConfig is a custom configuration required for the recursive example.
+message RecursiveConfig {
+  // The list of recursive items to implement
+  repeated RecursiveItem recursive_items = 1;
+  // Configuration for a single recursive item.
+  message RecursiveItem {
+    // The human-readable, singular name of the recursive item.
+    // Example: "Book"
+    string name = 1 [(alis.open.options.v1.field).json_schema = {pattern: "^[A-Z]([A-Za-z_]{0,61}[a-z])+$"}];
+
+    // A brief description of the recursive item, outlining its purpose and scope.
+    optional string description = 5;
+
+    // Defines any child resources that are nested under this resource.
+    repeated RecursiveItem children = 10;
+  }
+}

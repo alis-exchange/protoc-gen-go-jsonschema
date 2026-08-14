@@ -1,0 +1,39 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # open.alis.services/protobuf resolves via the alis Go registry (public
+      # reads); sum checking is disabled for it. proxy.golang.org must come
+      # first: the registry answers 401 (not 404) for modules it does not host,
+      # and Go only falls through on 404/410.
+      GOPROXY: https://proxy.golang.org,https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,direct
+      GONOSUMDB: open.alis.services/protobuf
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install protoc-gen-go
+        run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -timeout 25m ./...

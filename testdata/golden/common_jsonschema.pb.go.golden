@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-06-12 06:56:01 UTC
+// Generated on: 2026-08-14 09:39:09 UTC
 
 package usersv1
 
@@ -47,62 +47,126 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 	defs["users.v1.Common"] = schema
 
 	schema.Properties["id"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["name"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["email"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["phone"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["address"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["city"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["state"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["zip"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["country"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["service_account_key"] = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Common"}
+}
+
+// JsonSchema returns the JSON schema for the CompleteInterviewRequest message.
+func (x *CompleteInterviewRequest) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	_ = CompleteInterviewRequest_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest", Type: "object"}
+	root.Defs = defs
+	return root
+}
+
+func CompleteInterviewRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["users.v1.CompleteInterviewRequest"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest"}
+	}
+
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "Request message for CompleteInterview.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"finish_reason",
+			"summary",
+		},
+	}
+
+	// Register schema BEFORE processing fields to handle self-references.
+	// This prevents infinite recursion when a message contains itself.
+	defs["users.v1.CompleteInterviewRequest"] = schema
+
+	schema.Properties["finish_reason"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "The reason the interview is complete: the research plan was fully covered, the participant said they were done, or the participant could not continue.",
+	}
+
+	schema.Properties["summary"] = CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs)
+	schema.Properties["summary"].Description = "A short participant-facing recap of what the participant shared, shown to them on the completion screen. Fill it from the whole interview, in the participant's own framing."
+
+	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest"}
+}
+
+// JsonSchema returns the JSON schema for the InterviewSummary message.
+func (x *CompleteInterviewRequest_InterviewSummary) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	_ = CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest.InterviewSummary", Type: "object"}
+	root.Defs = defs
+	return root
+}
+
+func CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["users.v1.CompleteInterviewRequest.InterviewSummary"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest.InterviewSummary"}
+	}
+
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "A participant-facing recap of an interview contribution.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"headline",
+		},
+	}
+
+	// Register schema BEFORE processing fields to handle self-references.
+	// This prevents infinite recursion when a message contains itself.
+	defs["users.v1.CompleteInterviewRequest.InterviewSummary"] = schema
+
+	schema.Properties["headline"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "One warm sentence naming what the participant helped with, in their own words (not the team's jargon).",
+	}
+
+	schema.Properties["points"] = &jsonschema.Schema{
+		Type:        "array",
+		Description: "3-5 short bullets, each a concrete thing the participant told you, in second person (e.g. 'You walked through the morning reconciliation across three stores').",
+		Items: &jsonschema.Schema{
+			Type: "string",
+		},
+	}
+
+	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest.InterviewSummary"}
 }
 
 // common_google_iam_admin_v1_ServiceAccountKey_JsonSchema returns the JSON schema for the ServiceAccountKey message.
@@ -144,7 +208,6 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The resource name of the service account key in the following format\n `projects/{PROJECT_ID}/serviceAccounts/{ACCOUNT}/keys/{key}`.",
 	}
 
@@ -161,7 +224,6 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 
 	schema.Properties["key_algorithm"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Specifies the algorithm (and possibly key size) for the key.",
 		Enum: []any{
 			0,
@@ -172,25 +234,24 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 
 	schema.Properties["private_key_data"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The private key data. Only provided in `CreateServiceAccountKey`\n responses. Make sure to keep the private key data secure because it\n allows for the assertion of the service account identity.\n When base64 decoded, the private key data can be used to authenticate with\n Google API client libraries and with\n <a href=\"/sdk/gcloud/reference/auth/activate-service-account\">gcloud\n auth activate-service-account</a>.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["public_key_data"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The public key data. Only provided in `GetServiceAccountKey` responses.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["valid_after_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_after_time"].Description = "The key can be used after this timestamp."
 
 	schema.Properties["valid_before_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_before_time"].Description = "The key can be used before this timestamp.\n For system-managed key pairs, this timestamp is the end time for the\n private key signing operation. The public key could still be used\n for verification for a few hours after this time."
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The key origin.",
 		Enum: []any{
 			0,
@@ -201,7 +262,6 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 
 	schema.Properties["key_type"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The key type.",
 		Enum: []any{
 			0,
@@ -212,7 +272,6 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 
 	schema.Properties["disabled"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "The key status.",
 	}
 
@@ -236,7 +295,7 @@ func common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsons
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
-		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A proto3 JSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a proto3 JSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
+		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A ProtoJSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a ProtoJSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"seconds",
@@ -250,14 +309,12 @@ func common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsons
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Represents seconds of UTC time since Unix epoch\n 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n 9999-12-31T23:59:59Z inclusive.",
+		Description: "Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must\n be between -62135596800 and 253402300799 inclusive (which corresponds to\n 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Non-negative fractions of a second at nanosecond resolution. Negative\n second values with fractions must still have non-negative nanos values\n that count forward in time. Must be from 0 to 999,999,999\n inclusive.",
+		Description: "Non-negative fractions of a second at nanosecond resolution. This field is\n the nanosecond portion of the duration, not an alternative to seconds.\n Negative second values with fractions must still have non-negative nanos\n values that count forward in time. Must be between 0 and 999,999,999\n inclusive.",
 	}
 
 	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}

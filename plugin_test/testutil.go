@@ -1,5 +1,3 @@
-//go:build plugintest
-
 package plugintest
 
 import (
@@ -16,39 +14,9 @@ import (
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
-// JSON Schema type constants (mirror plugin package for test assertions).
-const (
-	jsArray   = "array"
-	jsBoolean = "boolean"
-	jsInteger = "integer"
-	jsNumber  = "number"
-	jsObject  = "object"
-	jsString  = "string"
-)
-
 // updateGolden is a flag to update golden files instead of comparing against them.
 // Usage: go test -update
 var updateGolden = flag.Bool("update", false, "update golden files")
-
-// testdataDir returns the path to the testdata directory relative to the plugin_test package.
-func testdataDir() string {
-	return filepath.Join("..", "testdata")
-}
-
-// protosDir returns the path to the protos directory within testdata.
-func protosDir() string {
-	return filepath.Join(testdataDir(), "protos")
-}
-
-// descriptorsDir returns the path to the descriptors directory within testdata.
-func descriptorsDir() string {
-	return filepath.Join(testdataDir(), "descriptors")
-}
-
-// goldenDir returns the path to the golden files directory within testdata.
-func goldenDir() string {
-	return filepath.Join(testdataDir(), "golden")
-}
 
 // loadDescriptorSet loads a FileDescriptorSet from a .pb file.
 func loadDescriptorSet(t *testing.T, path string) *descriptorpb.FileDescriptorSet {
@@ -85,39 +53,95 @@ func createTestPlugin(t *testing.T, fds *descriptorpb.FileDescriptorSet, filesTo
 	return p
 }
 
-// generateDescriptorSet runs protoc to generate a FileDescriptorSet.
-// It returns the parsed FileDescriptorSet.
-func generateDescriptorSet(t *testing.T, protoPath, protoFile, outputPath string, additionalProtoPaths ...string) *descriptorpb.FileDescriptorSet {
+// alisModuleEnv returns the process environment extended with the Go registry
+// settings that resolve open.alis.services/protobuf (same setup as the release
+// workflow; the registry allows public reads). Temp test modules whose
+// generated .pb.go files import the alis options package need this when the
+// host has no alis registry configured.
+func alisModuleEnv() []string {
+	// proxy.golang.org must come first: the alis registry answers 401 (not 404)
+	// for modules it does not host, and Go only falls through on 404/410.
+	return append(os.Environ(),
+		"GOPROXY=https://proxy.golang.org,https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,direct",
+		"GONOSUMDB=open.alis.services/protobuf",
+	)
+}
+
+// requireProtoc skips the test if protoc is not installed.
+func requireProtoc(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("protoc"); err != nil {
+		t.Skip("protoc not found in PATH")
+	}
+}
+
+// protoPaths returns the --proto_path directories used for every protoc
+// invocation: the testdata protos plus the vendored third-party protos
+// (alis options, google/iam and friends). All imports resolve from the repo
+// itself — no machine-specific paths.
+func protoPaths(workspaceRoot string) []string {
+	return []string{
+		filepath.Join(workspaceRoot, "testdata", "protos"),
+		filepath.Join(workspaceRoot, "third_party", "protos"),
+	}
+}
+
+// buildDescriptorSet runs protoc over protoFiles (paths relative to
+// testdata/protos) and returns the parsed FileDescriptorSet.
+func buildDescriptorSet(t *testing.T, workspaceRoot string, protoFiles []string, outputPath string) *descriptorpb.FileDescriptorSet {
 	t.Helper()
 
-	// Create output directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		t.Fatalf("Failed to create output directory: %v", err)
 	}
 
-	// Build protoc command arguments
 	args := []string{
 		"--descriptor_set_out=" + outputPath,
 		"--include_imports",
 		"--include_source_info",
-		"--proto_path=" + protoPath,
 	}
-
-	// Add additional proto paths
-	for _, path := range additionalProtoPaths {
+	for _, path := range protoPaths(workspaceRoot) {
 		args = append(args, "--proto_path="+path)
 	}
+	args = append(args, protoFiles...)
 
-	// Add the proto file
-	args = append(args, protoFile)
-
-	// Run protoc
 	cmd := exec.Command("protoc", args...)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("Failed to run protoc: %v\nOutput: %s\nArgs: %v", err, output, args)
 	}
 
 	return loadDescriptorSet(t, outputPath)
+}
+
+// discoverProtoDirs walks testdata/protos and groups .proto files by the
+// directory they live in, keyed by directory (e.g. "users/v1") with values
+// relative to testdata/protos. Files in one directory share a Go package and
+// must be compiled together so cross-file references resolve.
+func discoverProtoDirs(t *testing.T, workspaceRoot string) map[string][]string {
+	t.Helper()
+
+	rootDir := filepath.Join(workspaceRoot, "testdata", "protos")
+	groups := make(map[string][]string)
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || !strings.HasSuffix(path, ".proto") {
+			return nil
+		}
+		relPath, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return err
+		}
+		relPath = filepath.ToSlash(relPath)
+		dir := filepath.ToSlash(filepath.Dir(relPath))
+		groups[dir] = append(groups[dir], relPath)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Failed to walk proto directory: %v", err)
+	}
+	return groups
 }
 
 // assertGoldenFile compares actual content against a golden file.
@@ -218,45 +242,6 @@ func getGeneratedContent(t *testing.T, p *protogen.Plugin) map[string]string {
 	return result
 }
 
-// mustFindFile finds a file in the plugin by path suffix.
-func mustFindFile(t *testing.T, p *protogen.Plugin, pathSuffix string) *protogen.File {
-	t.Helper()
-
-	for _, f := range p.Files {
-		if strings.HasSuffix(f.Desc.Path(), pathSuffix) {
-			return f
-		}
-	}
-	t.Fatalf("Could not find file with suffix %q", pathSuffix)
-	return nil
-}
-
-// mustFindMessage finds a message in a file by name.
-func mustFindMessage(t *testing.T, file *protogen.File, name string) *protogen.Message {
-	t.Helper()
-
-	for _, msg := range file.Messages {
-		if string(msg.Desc.Name()) == name {
-			return msg
-		}
-	}
-	t.Fatalf("Could not find message %q in file %q", name, file.Desc.Path())
-	return nil
-}
-
-// mustFindField finds a field in a message by name.
-func mustFindField(t *testing.T, msg *protogen.Message, name string) *protogen.Field {
-	t.Helper()
-
-	for _, field := range msg.Fields {
-		if string(field.Desc.Name()) == name {
-			return field
-		}
-	}
-	t.Fatalf("Could not find field %q in message %q", name, msg.Desc.Name())
-	return nil
-}
-
 // tempDir creates a temporary directory for test artifacts.
 func tempDir(t *testing.T) string {
 	t.Helper()
@@ -333,6 +318,8 @@ type OneOfDemo struct{}
 type WellKnownTypesDemo struct{}
 type Common struct{}
 type Admin struct{}
+type CompleteInterviewRequest struct{}
+type CompleteInterviewRequest_InterviewSummary struct{}
 `
 }
 
@@ -367,4 +354,137 @@ type OneOfDemo_StringValue struct {
 
 func (*OneOfDemo_StringValue) isOneOfDemo_Field1() {}
 `
+}
+
+// schemaTestHelpersSource returns Go source for the schema-validation helpers
+// shared by every compile-and-run test that builds a temp module. Written once
+// here so each temp module gets the same ValidateSchema/collectRefs behaviour
+// instead of carrying its own embedded copy.
+func schemaTestHelpersSource(pkgName string) string {
+	return "package " + pkgName + `
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/google/jsonschema-go/jsonschema"
+)
+
+// ValidateSchema validates a *jsonschema.Schema and returns a resolved schema
+// that can be used for validation. It ensures:
+//   - The schema is not nil
+//   - The schema type is "object" or the root is a $ref (ref-as-root)
+//   - Every $ref points to an existing definition
+//   - The schema structure is valid (via Resolve)
+func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
+	return ValidateSchemaWithName("schema", schema)
+}
+
+// ValidateSchemaWithName is ValidateSchema with the schema name included in
+// error messages for better debugging.
+func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
+	if schema == nil {
+		return nil, fmt.Errorf("schema %q: cannot be nil", name)
+	}
+
+	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
+	if schema.Ref == "" && schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
+	}
+
+	// Verify all $ref pointers exist
+	refs := collectRefs(schema)
+	if schema.Defs != nil {
+		for ref := range refs {
+			key := extractRefKey(ref)
+			if key != "" {
+				if _, exists := schema.Defs[key]; !exists {
+					return nil, fmt.Errorf("schema %q: $ref %q points to non-existent definition %q", name, ref, key)
+				}
+			}
+		}
+	}
+
+	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{
+		ValidateDefaults: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("schema %q: invalid schema structure: %w", name, err)
+	}
+
+	return resolved, nil
+}
+
+// collectRefs recursively collects all $ref values from a schema
+func collectRefs(schema *jsonschema.Schema) map[string]bool {
+	refs := make(map[string]bool)
+	if schema == nil {
+		return refs
+	}
+
+	if schema.Ref != "" {
+		refs[schema.Ref] = true
+	}
+
+	for _, prop := range schema.Properties {
+		for ref := range collectRefs(prop) {
+			refs[ref] = true
+		}
+	}
+
+	if schema.Items != nil {
+		for ref := range collectRefs(schema.Items) {
+			refs[ref] = true
+		}
+	}
+
+	if schema.AdditionalProperties != nil {
+		for ref := range collectRefs(schema.AdditionalProperties) {
+			refs[ref] = true
+		}
+	}
+
+	for _, branch := range schema.OneOf {
+		for ref := range collectRefs(branch) {
+			refs[ref] = true
+		}
+	}
+
+	for _, def := range schema.Defs {
+		for ref := range collectRefs(def) {
+			refs[ref] = true
+		}
+	}
+
+	return refs
+}
+
+// extractRefKey extracts the definition key from a $ref value
+// Format: "#/$defs/key" -> "key"
+func extractRefKey(ref string) string {
+	prefix := "#/$defs/"
+	if strings.HasPrefix(ref, prefix) {
+		return ref[len(prefix):]
+	}
+	return ""
+}
+
+func getDefKeys(defs map[string]*jsonschema.Schema) []string {
+	keys := make([]string, 0, len(defs))
+	for k := range defs {
+		keys = append(keys, k)
+	}
+	return keys
+}
+`
+}
+
+// writeSchemaTestHelpers writes the shared validation helpers into a temp
+// module package directory.
+func writeSchemaTestHelpers(t *testing.T, pkgDir, pkgName string) {
+	t.Helper()
+	path := filepath.Join(pkgDir, "schema_test_helpers.go")
+	if err := os.WriteFile(path, []byte(schemaTestHelpersSource(pkgName)), 0o644); err != nil {
+		t.Fatalf("Failed to write schema test helpers: %v", err)
+	}
 }

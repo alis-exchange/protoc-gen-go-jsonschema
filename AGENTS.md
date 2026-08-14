@@ -15,14 +15,6 @@ Significant changes include:
 - New test patterns or testing approaches
 - Changes to the code generation output format
 
-When updating this document:
-
-1. Update the relevant sections with new information
-2. Add new sections if needed
-3. Update the "File Locations Quick Reference" table
-4. Update the "Common Issues and Solutions" section if applicable
-5. Keep examples and code snippets current
-
 **This document is the single source of truth for understanding how the plugin works.**
 
 ## Project Overview
@@ -34,8 +26,7 @@ When updating this document:
 - **Purpose**: Generate `JsonSchema()` methods for proto messages
 - **Output**: JSON Schema Draft 2020-12 compliant schemas
 - **Key Dependency**: `github.com/google/jsonschema-go/jsonschema`
-
-### What This Plugin Does
+- **Primary consumers**: agents and MCP tools that marshal with `json.Marshal` (not `protojson`) and register schemas via `mcp.AddTool`
 
 For each targeted proto message, the plugin generates:
 
@@ -55,131 +46,72 @@ func (x *User) JsonSchema() *jsonschema.Schema {
 
 ---
 
-## Project Structure
+## Architecture
 
-```
-protoc-gen-go-jsonschema/
-├── cmd/
-│   └── protoc-gen-go-jsonschema/
-│       └── main.go              # Plugin entry point, handles CLI flags
-├── plugin/
-│   ├── plugin.go                # Generate() function - main entry point
-│   ├── functions.go             # Core schema generation logic (~1200 lines)
-│   ├── testutils.go             # TestingHelper (build-tagged plugintest)
-├── plugin_test/
-│   ├── suite.go                 # PluginTestSuite, IntegrationTestSuite base
-│   ├── testutil.go              # assertGoldenFile, loadDescriptorSet, etc.
-│   ├── integration_test.go      # End-to-end integration tests
-│   ├── plugin_test.go           # Generator and plugin tests
-│   └── functions_test.go        # Unit tests for helper functions
-├── testdata/
-│   ├── protos/                  # Sample proto files for testing
-│   │   ├── users/v1/user.proto
-│   │   └── force_test/v1/force_test.proto  # Test proto for force logic
-│   ├── descriptors/             # Generated FileDescriptorSet files
-│   │   └── user.pb
-│   └── golden/                  # Expected output for golden file tests
-│       └── user_jsonschema.pb.go.golden
-├── build.sh                     # Cross-platform build script
-├── install.sh                   # Installation script
-├── go.mod
-├── go.sum
-├── LICENSE
-└── README.md
-```
+The plugin separates **deciding** what a schema is from **printing** Go source. The
+vocabulary below is used consistently in code and docs (deep-module terms: a
+*module* is an interface plus an implementation; a module is *deep* when a small
+interface hides a lot of behaviour):
 
----
-
-## Core Concepts
-
-### Generation Flow
+- **Schema model** (`plugin/model.go`) — the deep module. `buildMessageSchema`
+  turns one message plus its options into a complete symbolic model
+  (`messageSchemaModel`): every keyword, required-field decision, oneof shape,
+  and option override is decided here. The model is the plugin's internal seam:
+  tests assert on decided models, not on generated source text.
+- **Message identity** (`messageIdentity` in `plugin/model.go`) — answers every
+  naming and strategy question about a message exactly once: its `$defs` key,
+  generated function base name, method-vs-standalone-function, and
+  flat-vs-wrapped oneof strategy. The `isGoogleType` predicate is consulted
+  only here.
+- **Value shape** (`buildElement` in `plugin/model.go`) — the single answer to
+  "what is the JSON shape of one proto value", shared by array elements and map
+  values (message → `$ref`, enum → integer + values, bytes → base64 string,
+  scalar → mapped type).
+- **Printer** (`plugin/printer.go`) — a thin adapter from model to Go source.
+  It owns literal layout, string escaping, and import qualification
+  (`QualifiedGoIdent`), and knows both Go syntactic contexts (statement and
+  composite literal). It makes no schema decisions.
+- **Collection** (`plugin/collect.go`) — `getMessagesWithForce` walks messages,
+  applying generate options and the force logic (below).
+- **Orchestration** (`plugin/generate.go`) — `Generator.generateFile` runs
+  collect → build → print per proto file.
+- **Options extraction** (`plugin/options.go`) — reads the alis proto
+  extensions at file/message/field level.
 
 ```
 protoc invokes plugin
          │
          ▼
-   plugin.Generate()
+   plugin.Generate()                     plugin/plugin.go
          │
          ▼
- Generator.generateFile()
+ Generator.generateFile()                plugin/generate.go
          │
-         ├─── Generator.getMessages()  ──► Collects target messages
+         ├── getMessagesWithForce()  ──► collect target messages (+ forced deps)
          │
-         ▼
- MessageSchemaGenerator.generateMessageJSONSchema()
+         ├── per message:
+         │      buildMessageSchema() ──► messageSchemaModel   (decide — model.go)
+         │            │
+         │            ├── identityFor()        naming + oneof strategy
+         │            ├── buildFieldProperty() field → ref or inline node
+         │            ├── buildElement()       value shape for arrays/maps
+         │            └── buildOneofWrapper()  nested wrapper shape
          │
-         ├─── For each field:
-         │         │
-         │         ▼
-         │    generateFieldJSONSchema()
-         │         │
-         │    ┌────┴────┬──────────┐
-         │    ▼         ▼          ▼
-         │  IsList?   IsMap?    Scalar?
-         │    │         │          │
-         │    ▼         ▼          ▼
-         │  getArray   getMap    getScalar
-         │  Config     Config    Config
-         │    │         │          │
-         │    └────┬────┴──────────┘
-         │         ▼
-         │    emitSchemaField()
-         │
-         ▼
-   Generated *_jsonschema.pb.go file
+         └── schemaPrinter.printMessageSchema()  (print — printer.go)
+                    │
+                    ▼
+          Generated *_jsonschema.pb.go
 ```
 
-### Key Types
+### Testing the seam
 
-#### `Generator` (plugin/functions.go)
-
-Stateless coordinator for file-level generation:
-
-- `generateFile()` - Creates output file, iterates messages
-- `getMessages()` - Public wrapper that calls `getMessagesWithForce()` with `force=false`
-- `getMessagesWithForce()` - Internal implementation with force logic for dependencies and nested messages
-- `escapeGoString()` - Escapes strings for Go source code
-- `getTitleAndDescription()` - Extracts metadata from proto comments
-
-#### `MessageSchemaGenerator` (plugin/functions.go)
-
-Stateful per-message schema builder:
-
-- `gr` - Reference to parent Generator
-- `gen` - Output file writer (`*protogen.GeneratedFile`)
-- `visited` - Map tracking processed messages (prevents infinite recursion)
-- `filePrefix` - Proto file name prefix for unique Google type function names
-
-Key methods:
-
-- `generateMessageJSONSchema()` - Generates complete schema for a message
-- `generateFieldJSONSchema()` - Routes to appropriate config builder
-- `emitSchemaField()` - Generates Go code for a field's schema
-- `getArraySchemaConfig()` - Creates config for repeated fields
-- `getMapSchemaConfig()` - Creates config for map fields
-- `getScalarSchemaConfig()` - Creates config for scalar/message fields
-- `getMessageSchemaConfig()` - Handles Google types and message references
-- `getKindTypeName()` - Maps proto kinds to JSON Schema types
-
-#### `schemaFieldConfig` (plugin/functions.go)
-
-Intermediate representation for field schemas:
-
-```go
-type schemaFieldConfig struct {
-    fieldName            string  // Proto field name (snake_case)
-    title                string  // Schema title
-    description          string  // Schema description
-    typeName             string  // JSON Schema type ("string", "object", etc.)
-    format               string  // Format annotation ("date-time", "email", etc.)
-    pattern              string  // Regex pattern
-    propertyNamesPattern string  // Pattern for map keys
-    enumValues           []int32  // Allowed enum values (numeric for encoding/json compatibility)
-    isBytes              bool    // Requires base64 contentEncoding
-    messageRef           string  // Reference function call for messages
-    nested               *schemaFieldConfig // For array items / map values
-}
-```
+- `plugin/model_test.go` (in-package) unit-tests the model against the
+  checked-in descriptor set — no protoc, no network, no generated-source
+  string matching.
+- `plugin_test/` pins the generated output: golden files for **every** proto
+  under `testdata/protos` (auto-discovered), string-shape tests for oneof/ref
+  patterns, and compile-and-run integration tests (including an MCP
+  `AddTool` smoke test) that build temp Go modules.
 
 ---
 
@@ -189,21 +121,7 @@ type schemaFieldConfig struct {
 
 Generated schemas use **proto field names** (snake_case) instead of JSON names (camelCase). This is because agents and MCP tools typically use `json.Marshal` instead of `protojson.Marshal`.
 
-```protobuf
-// Proto field definition
-message User {
-  string first_name = 1;  // Proto field name: first_name
-  string last_name = 2;   // Proto field name: last_name
-}
-```
-
-```go
-// Generated schema uses snake_case
-schema.Properties["first_name"] = &jsonschema.Schema{Type: "string"}
-schema.Properties["last_name"] = &jsonschema.Schema{Type: "string"}
-```
-
-The `getFieldName()` helper function returns the proto field name directly via `field.Desc.Name()`.
+The `getFieldName()` helper returns the proto field name directly via `field.Desc.Name()`.
 
 ### Scalar Types
 
@@ -220,27 +138,73 @@ The `getFieldName()` helper function returns the proto field name directly via `
 | `bytes`                       | `"string"`       | `contentEncoding: "base64"`       |
 | `enum`                        | `"integer"`      | `enum: [0, 1, 2, ...]` (numeric values for encoding/json) |
 
-**Note**: 64-bit integers are mapped to `"integer"` type for simplicity. While JavaScript has precision limitations for large integers (beyond 2^53-1), most use cases don't require values that large, and using `"integer"` provides better schema validation.
+**Note**: 64-bit integers are mapped to `"integer"` for simplicity; JavaScript precision limits beyond 2^53-1 are accepted.
+
+An **unsupported field kind aborts generation with an error** naming the field
+(it previously emitted a silent `Type: ""`).
 
 ### Complex Types
 
 | Proto Type   | JSON Schema Type | Structure                                          |
 | ------------ | ---------------- | -------------------------------------------------- |
-| `message`    | `"object"`       | Properties for each field, or `$ref`               |
+| `message`    | `"object"`       | `$ref` to the message's def, optionally with sibling keywords |
 | `repeated T` | `"array"`        | `items` contains element schema                    |
 | `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
-| `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper: `oneOf` of a null branch (unset) and an object branch (see below) |
+| `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper (user types); flat (Google types) |
+
+### Message-Typed Fields: $ref with Sibling Keywords
+
+Message-typed fields (including oneof message variants) emit a `$ref` to the
+target's definition **plus any field-level metadata and option constraints as
+Draft 2020-12 sibling keywords**. Sibling keywords next to `$ref` are
+applicable in 2020-12 (the ref-as-root pattern already relies on this), and
+`google/jsonschema-go` — which the MCP go-sdk uses — resolves them correctly.
+
+```go
+// Field comment and/or options emit as siblings on the fresh $ref schema:
+schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
+schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
+
+// In composite-literal contexts (oneof variants) a closure decorates the ref:
+"ContactInfo": func() *jsonschema.Schema {
+    s := ContactInfo_JsonSchema_WithDefs(defs)
+    s.Description = "Primary contact information"
+    return s
+}(),
+```
+
+This is safe because `_WithDefs` always returns a **fresh** `&Schema{Ref: ...}`
+wrapper, never the definition stored in `defs`.
+
+⚠️ **Compatibility notes**:
+
+- Draft-07-era consumers ignore siblings of `$ref`; they see the same schema as
+  before (the metadata is simply dropped, as it always was for them).
+- Constraint options (`min_properties` etc.) on message-typed fields were
+  **silently dropped** before this feature; they now take effect. Documents
+  that validated before may be rejected if such dormant options exist.
+- Array/map **elements** that are messages still emit a bare `$ref` (no
+  sibling support there); container options apply at the field root as before.
 
 ### Required Fields
 
-A field is added to the JSON Schema `required` array only if **all** of the following are true:
+A field is added to `required` only if **all** of the following are true:
 
 - Not in a `oneof` group
 - Not marked with the `optional` keyword
-- Not a `repeated` field (array)
-- Not a `map` field
+- Not `repeated` (array) and not a `map`
 
-This means repeated fields and map fields are always optional in the generated schema, which aligns with how these types work in practice (an empty array `[]` or empty object `{}` is valid).
+This is deliberately the **proto3 contract**: singular fields (scalars *and*
+message fields) are required unless `optional`. Use `optional` on a message
+field to take it out of `required`.
+
+⚠️ **Known, accepted tension**: protoc-gen-go tags every field `omitempty`, so
+`json.Marshal` omits zero-valued scalars and nil message fields. A marshalled
+zero-heavy value can therefore fail validation against its own schema. This was
+considered and **deliberately kept** (2026-08): the schema states the intended
+contract for producers (agents generating input), not the marshal round-trip.
+Architecture reviews should not re-suggest presence-based or explicit-only
+`required` without new evidence.
 
 ### Map Key Handling
 
@@ -254,73 +218,12 @@ Map keys are always strings in JSON. Non-string proto keys use `propertyNames` v
 
 ### Oneof Handling
 
-Oneof fields use **nested PascalCase wrappers** to match `encoding/json` behavior. This differs from regular fields (snake_case) because protoc-gen-go does not add `json` struct tags to oneof interface fields or wrapper structs — `encoding/json` falls back to Go's exported field name (PascalCase).
+Oneof fields use **nested PascalCase wrappers** to match `encoding/json` behavior: protoc-gen-go does not add `json` struct tags to oneof interface fields or wrapper structs, so `encoding/json` uses Go's exported field names.
 
-For a proto definition:
-
-```protobuf
-message ComprehensiveUser {
-  oneof identifier {
-    string email = 39;
-    string username = 40;
-    int64 user_number = 41;
-  }
-  oneof contact_preference {
-    ContactInfo contact_info = 45;
-    Address mailing_address = 46;
-  }
-}
-```
-
-The generated schema shape is an outer `oneOf` of a **null branch** and an **object branch**. The null branch is required because `encoding/json` always emits the wrapper key, with value `null` when the oneof is unset (the oneof interface field has no `json` tag, so it is neither omitted nor non-null). The object branch holds the variant `oneOf`:
-
-```go
-// Wrapper property: oneof.GoName (PascalCase)
-schema.Properties["Identifier"] = &jsonschema.Schema{
-    OneOf: []*jsonschema.Schema{
-        {Type: "null"}, // oneof unset → encoding/json emits null
-        {
-            Type: "object",
-            OneOf: []*jsonschema.Schema{
-                {
-                    Type: "object",
-                    Properties: map[string]*jsonschema.Schema{
-                        // Variant key: field.GoName (PascalCase)
-                        "Email": &jsonschema.Schema{Type: "string", ...},
-                    },
-                    Required: []string{"Email"},
-                },
-                // ... more variants
-            },
-        },
-    },
-}
-// Message variants use $ref
-schema.Properties["ContactPreference"] = &jsonschema.Schema{
-    OneOf: []*jsonschema.Schema{
-        {Type: "null"},
-        {
-            Type: "object",
-            OneOf: []*jsonschema.Schema{
-                {
-                    Type: "object",
-                    Properties: map[string]*jsonschema.Schema{
-                        "ContactInfo": ContactInfo_JsonSchema_WithDefs(defs),
-                    },
-                    Required: []string{"ContactInfo"},
-                },
-                // ...
-            },
-        },
-    },
-}
-```
-
-This matches the JSON that `json.Marshal` produces — both when a variant is set and when the oneof is unset:
+The generated shape is an outer `oneOf` of a **null branch** (unset oneof — `encoding/json` always emits the wrapper key, null when unset) and an **object branch** holding the variant `oneOf`:
 
 ```json
 {
-  "id": "1234",
   "Identifier": {"Email": "user@example.com"},
   "ContactPreference": null
 }
@@ -331,330 +234,165 @@ This matches the JSON that `json.Marshal` produces — both when a variant is se
 | Layer | Source | JSON key |
 |-------|--------|----------|
 | Oneof wrapper property | `oneof.GoName` | PascalCase (e.g., `Identifier`) |
-| Variant key inside wrapper | `field.GoName` | PascalCase (e.g., `Email`, `CreditCard`) |
-| Fields inside nested messages | `field.Desc.Name()` | snake_case (e.g., `phone`, `zip_code`) |
+| Variant key inside wrapper | `field.GoName` | PascalCase (e.g., `Email`) |
+| Fields inside nested messages | `field.Desc.Name()` | snake_case |
 
-**Google types exception:** Google types (e.g., `google.protobuf.Value`) keep flat oneof behavior because they implement custom `json.Marshaler` methods with proto JSON semantics.
+**Google types exception:** Google types keep flat oneof behavior (root-level
+`OneOf`/`AllOf` with a none-set branch) because they implement custom
+`json.Marshaler` methods with proto JSON semantics. The strategy is decided by
+`messageIdentity`; the printer knows nothing about oneofs' meaning.
+
+### Metadata Emission
+
+`Title`/`Description` keywords are emitted **only when non-empty**, at every
+level (message, field, oneof variant). `jsonschema-go` marshals with
+`omitempty`, so this changed generated Go cosmetically without changing the
+schema JSON.
 
 ---
 
 ## Google Types
 
-All Google types (any message in a `google.*` package) are treated like normal messages and generate schemas with `$ref` definitions. Since Google types are imported types (we can't add methods to them), the plugin generates **standalone functions** instead of methods.
-
-This includes:
-
-- Well-known types: `google.protobuf.*` (Timestamp, Duration, Any, Struct, etc.)
-- Common types: `google.type.*` (Date, LatLng, Money, etc.)
-- API types: `google.api.*` (HttpBody, ResourceDescriptor, etc.)
-- IAM types: `google.iam.*` (ServiceAccountKey, Policy, etc.)
-- Any other `google.*` packages
-
-### Google Type Function Naming
-
-Google type functions include a **file prefix** to ensure uniqueness when multiple proto files in the same package import the same types:
+All Google types (any message in a `google.*` package) generate schemas with `$ref` definitions. Since they're imported types (no methods can be added), the plugin generates **standalone functions**:
 
 ```go
-// From user.proto
+// From user.proto — file prefix keeps names unique across files in a package
 func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
 func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
-
-// From admin.proto (same package)
-func admin_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
-func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
-
-// IAM types also work the same way
-func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema { ... }
 ```
 
-The prefix is derived from the proto file name (e.g., `users/v1/admin.proto` → `admin`).
-
-### Google Type Helper Functions
-
-Located in `plugin/functions.go`:
-
-- `isGoogleType(msg)` - Checks if a message is from a Google package (`google.*`)
-- `googleTypeFunctionName(msg, filePrefix)` - Generates the function name with file prefix
-- `fileNamePrefix(file)` - Extracts prefix from proto file path
-
-### MessageSchemaGenerator.filePrefix
-
-The `MessageSchemaGenerator` struct includes a `filePrefix` field that is set during file generation and used for Google type function naming.
+The prefix is derived from the proto file name (`users/v1/admin.proto` → `admin`). All naming lives in `messageIdentity` / `googleTypeFunctionName` / `fileNamePrefix` (`plugin/model.go`).
 
 ---
 
 ## Options System
 
-The plugin uses custom proto options from `open.alis.services/protobuf`:
+The plugin uses custom proto options from `open.alis.services/protobuf` (vendored for tests at `third_party/protos/alis/open/options/v1/options.proto`).
 
 ### File-Level Options
 
 ```protobuf
 import "alis/open/options/v1/options.proto";
-
-// Enable schema generation for all messages in this file
 option (alis.open.options.v1.file).json_schema.generate = true;
 ```
-
-Extracted by: `getFileJsonSchemaOptions(file *protogen.File)`
 
 ### Message-Level Options
 
 ```protobuf
 message User {
   option (alis.open.options.v1.message).json_schema.generate = true;
-  // ...
 }
 ```
 
-Extracted by: `getMessageJsonSchemaOptions(message *protogen.Message)`
-
-**Important: Force Logic for Dependencies and Nested Messages**
-
-When a message has `generate = true`, its **field dependencies** and **nested messages** are **forced to generate** even if they have `generate = false`. This ensures that `$ref` pointers in the generated schema can always be resolved.
-
-```protobuf
-message Parent {
-  option (alis.open.options.v1.message).json_schema.generate = true;
-
-  Dependency dep = 1;  // Field dependency - will generate even if generate=false
-
-  message Nested {
-    option (alis.open.options.v1.message).json_schema.generate = false;  // Explicit false
-    string value = 1;
-  }
-
-  Nested nested = 2;  // Nested message - will generate even if generate=false
-}
-
-message Dependency {
-  option (alis.open.options.v1.message).json_schema.generate = false;  // Explicit false
-  string data = 1;
-}
-```
-
-In the above example, both `Dependency` and `Parent.Nested` will generate schemas because `Parent` has `generate = true`. This prevents broken `$ref` pointers like `"#/$defs/package.Parent.Nested"` that point to non-existent definitions.
-
-The force logic is implemented in `getMessagesWithForce()`:
-
-- Field dependencies: Called with `force=true` (line 260)
-- Nested messages: Called with `force=true` (line 280)
-- When `force=true` and a message has `generate=false`, the `false` is ignored and `defaultGenerate` (which is `true` when forcing) is used instead
+**Force Logic for Dependencies and Nested Messages**: when a message has
+`generate = true`, its **field dependencies** and **nested messages** are
+**forced to generate** even with explicit `generate = false`, so `$ref`
+pointers always resolve. Implemented in `getMessagesWithForce()`
+(`plugin/collect.go`); map fields force their value message (field 2 of the
+synthetic entry).
 
 ### Field-Level Options
 
 ```protobuf
-message User {
-  string email = 1 [(alis.open.options.v1.field).json_schema = {
-    format: "email"
-    title: "Email Address"
-    description: "User's primary email"
-    min_length: 5
-    max_length: 255
-  }];
-}
+string email = 1 [(alis.open.options.v1.field).json_schema = {
+  format: "email"
+  title: "Email Address"
+  min_length: 5
+}];
 ```
 
-Extracted by: `getFieldJsonSchemaOptions(field *protogen.Field)`
+Available: `ignore`, `title`, `description`, `format`, `pattern`, `minimum`,
+`maximum`, `exclusive_minimum`, `exclusive_maximum`, `min_length`,
+`max_length`, `min_items`, `max_items`, `unique_items`, `min_properties`,
+`max_properties`, `content_encoding`, `content_media_type`.
 
-Available field options:
+Application rules (all decided in `plugin/model.go`):
 
-- `ignore` - Exclude from schema
-- `title`, `description` - Metadata
-- `format`, `pattern` - String validation
-- `minimum`, `maximum`, `exclusive_minimum`, `exclusive_maximum` - Numeric bounds
-- `min_length`, `max_length` - String length
-- `min_items`, `max_items`, `unique_items` - Array constraints
-- `min_properties`, `max_properties` - Object constraints
-- `content_encoding`, `content_media_type` - Binary data hints
-
-**Message-type field limitation:** Field-level `title` and `description` overrides on **message-type** fields are **not** applied to the generated property schema. Message fields (including oneof message variants) always emit a direct `$ref` call (e.g., `Address_JsonSchema_WithDefs(defs)`). This preserves structural validation; `emitInlineSchema` cannot emit both a `$ref` and inline metadata in a single schema object. Use message-level comments/options on the referenced message for metadata instead, or an `allOf` pattern if per-field overrides on `$ref` properties are required in the future.
-
-Scalar, array, and map fields fully support field-level options via `emitInlineSchema`.
+- Scalar fields: metadata + container + value constraints at the root.
+- Arrays/maps: metadata + container constraints at the root; value constraints
+  on the element (`items` / `additionalProperties`).
+- Message-typed fields and oneof message variants: everything emits as `$ref`
+  **siblings** (see above).
+- Exclusive bounds: `exclusive_minimum: true` emits `ExclusiveMinimum` with the
+  `minimum` value (even 0) and skips `Minimum`; a bare non-zero `minimum` emits
+  `Minimum`. Proto3 zero values make an explicit `minimum: 0` without the
+  exclusive flag indistinguishable from unset. Same for maximum.
 
 ---
 
-## Testing Patterns
+## Testing
 
-### Test Suite Hierarchy
+### Layout
 
 ```
-PluginTestSuite (base)
-    │
-    ├── PluginGeneratorTestSuite (plugin_test.go)
-    │   └── Tests for Generator and Generate function
-    │
-    ├── FunctionsTestSuite (functions_test.go)
-    │   └── Unit tests for helper functions
-    │
-    └── IntegrationTestSuite (integration_test.go)
-        └── End-to-end tests with protoc
+plugin/model_test.go        In-package model tests (no protoc needed; uses
+                            testdata/descriptors/user.pb)
+plugin_test/suite.go        PluginTestSuite: descriptor regeneration (protoc)
+                            with checked-in fallback
+plugin_test/testutil.go     Shared harness: protoc runner, proto discovery,
+                            golden assertions, temp-module helpers, shared
+                            schema-validation helper source
+plugin_test/plugin_test.go  Generate-level output tests
+plugin_test/functions_test.go  Generated-shape pins (oneofs, $ref siblings)
+plugin_test/integration_test.go Golden auto-discovery + compile-and-run tests
+plugin_test/recursive_mcp_test.go Recursive types + MCP AddTool smoke test
 ```
 
-### Base Test Suite (`PluginTestSuite`)
+There is **no build tag**: `go test ./...` runs everything. Tests needing
+`protoc`, `protoc-gen-go`, or the network **skip themselves** when the tool is
+missing (or with `-short`). CI (`.github/workflows/test.yml`) installs the
+tools and runs the full suite on every PR and push to main.
 
-Located in `plugin_test/suite.go`. Provides:
+### Proto fixtures and goldens
 
-- **Setup**: Finds workspace root, regenerates descriptor sets from proto files
-- **Fixtures**: `fds` (FileDescriptorSet), `plugin` (protogen.Plugin), `file` (target file)
-- **Helpers**: `FindMessage()`, `FindField()`, `RunGenerate()`, `GetGeneratedContent()`
-
-```go
-// Example test using the suite
-func (s *FunctionsTestSuite) TestSomething() {
-    msg := s.FindMessage("User")
-    field := s.FindField(msg, "email")
-    // ... test logic
-}
-```
-
-### Golden File Testing
-
-Integration tests compare generated output against golden files:
-
-```go
-func (s *IntegrationTestSuite) TestGoldenFile() {
-    contents := s.RunGenerate()
-    for name, content := range contents {
-        goldenPath := filepath.Join(goldenDir(), baseName+".golden")
-        assertGoldenFile(s.T(), content, goldenPath, *updateGolden)
-    }
-}
-```
-
-Update golden files with:
+- Test protos live under `testdata/protos/<name>/v1/`. **Every directory is
+  auto-discovered** by `TestGoldenFile`; files in one directory are compiled
+  together (multi-file Go package support). Adding a proto automatically
+  requires a golden (`-update` creates it); goldens whose protos disappeared
+  fail the test.
+- All proto imports resolve from the repo itself: third-party protos
+  (alis options, google/iam and transitive deps) are vendored under
+  `third_party/protos/`. No machine-specific paths.
+- `testdata/descriptors/user.pb` is checked in as the no-protoc fallback for
+  the main suite and the in-package model tests.
 
 ```shell
-go test ./plugin/... -update
+go test ./...                      # everything (self-skipping)
+go test ./plugin/                  # model tests only (fast, no protoc)
+go test ./plugin_test/... -update  # refresh golden files
+go test -short ./...               # skip compile-and-run integration tests
 ```
 
-### Test Utilities (`testutil_test.go`)
+### Temp-module integration tests
 
-Common helpers:
+Compile-and-run tests write generated code into a temp Go module, `go mod
+tidy`, and run embedded tests there. Shared validation helpers
+(`ValidateSchema`, `collectRefs`, ...) come from one source —
+`schemaTestHelpersSource()` in `plugin_test/testutil.go`. Temp modules that
+build real `.pb.go` files need the alis Go registry; `alisModuleEnv()`
+provides it (proxy.golang.org first — the alis registry answers 401, not 404,
+for modules it does not host, and `go` only falls through on 404/410; the alis
+module itself is declared explicitly in temp `go.mod` files because module
+discovery probes subpaths that 401).
 
-- `loadDescriptorSet()` - Load FileDescriptorSet from .pb file
-- `createTestPlugin()` - Create protogen.Plugin for testing
-- `generateDescriptorSet()` - Run protoc to generate descriptor set
-- `assertGoldenFile()` - Compare against golden file (with timestamp normalization)
-- `mustFindFile()`, `mustFindMessage()`, `mustFindField()` - Find proto elements
-
-### Running Tests
-
-```shell
-# Run all tests
-go test ./...
-
-# Run with verbose output
-go test -v ./...
-
-# Run specific suite
-go test -v ./plugin/... -run TestFunctionsSuite
-
-# Update golden files
-go test ./plugin/... -update
-
-# Skip long-running tests
-go test -short ./...
-```
+The MCP smoke test (`recursive_mcp_test.go`) generates real protoc-gen-go
+types for the recursive proto and registers `JsonSchema()` input/output
+schemas with `mcp.AddTool` — the plugin's primary consumer path.
 
 ---
 
 ## Development Commands
 
-### Building
-
 ```shell
-# Build for current platform
-go build ./...
+go build ./...                                    # build
+go install ./cmd/protoc-gen-go-jsonschema         # install to GOPATH/bin
+./build.sh v1.0.0                                 # cross-platform release build
 
-# Build the plugin binary
-go build -o protoc-gen-go-jsonschema ./cmd/protoc-gen-go-jsonschema
-
-# Build for all platforms (releases)
-./build.sh v1.0.0
-```
-
-### Testing
-
-```shell
-# Run all tests
-go test ./...
-
-# Run with race detector
-go test -race ./...
-
-# Update golden files
-go test ./plugin/... -update
-
-# Run specific test
-go test -v ./plugin/... -run TestEscapeGoString
-```
-
-### Using the Plugin Locally
-
-```shell
-# Build and install to GOPATH/bin
-go install ./cmd/protoc-gen-go-jsonschema
-
-# Or run protoc with explicit plugin path
 protoc --plugin=protoc-gen-go-jsonschema=./protoc-gen-go-jsonschema \
        --go-jsonschema_out=. \
+       --proto_path=testdata/protos --proto_path=third_party/protos \
        your.proto
 ```
-
----
-
-## Code Patterns and Conventions
-
-### Generated Code Pattern
-
-Each message generates two functions:
-
-```go
-// Public entry point - returns ref-as-root schema with bundled definitions
-func (x *MessageName) JsonSchema() *jsonschema.Schema {
-    defs := make(map[string]*jsonschema.Schema)
-    _ = MessageName_JsonSchema_WithDefs(defs)
-    root := &jsonschema.Schema{Ref: "#/$defs/package.MessageName", Type: "object"}
-    root.Defs = defs
-    return root
-}
-
-// Internal helper - populates shared definitions map, returns $ref
-func MessageName_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-    // Early return if already defined (prevents infinite recursion)
-    if _, ok := defs["package.MessageName"]; ok {
-        return &jsonschema.Schema{Ref: "#/$defs/package.MessageName"}
-    }
-
-    schema := &jsonschema.Schema{
-        Type: "object",
-        Properties: make(map[string]*jsonschema.Schema),
-        // ...
-    }
-
-    // Register BEFORE processing fields (handles self-references)
-    defs["package.MessageName"] = schema
-
-    // Generate field schemas...
-
-    return &jsonschema.Schema{Ref: "#/$defs/package.MessageName"}
-}
-```
-
-### Adding New Field Type Support
-
-1. Update `getKindTypeName()` if it's a new proto kind
-2. Add handling in appropriate config builder (`getScalarSchemaConfig`, `getArraySchemaConfig`, or `getMapSchemaConfig`)
-3. Add tests in `functions_test.go`
-
-Note: Google types are now handled like normal messages (no special cases needed).
-
-### Adding New Option Support
-
-1. Check option proto definition in `open.alis.services/protobuf`
-2. Add handling in `emitSchemaField()` (for field options)
-3. Add tests verifying the option is applied
 
 ---
 
@@ -662,106 +400,65 @@ Note: Google types are now handled like normal messages (no special cases needed
 
 ### Circular References and Recursive Types
 
-The plugin handles circular/recursive message references through:
-
-1. Registering schema in `defs` BEFORE processing fields
-2. Checking `visited` map to avoid re-processing
-3. Returning `$ref` pointers instead of inline definitions
-4. **Ref-as-root pattern**: The `JsonSchema()` method returns a `$ref` wrapper (`root := &jsonschema.Schema{Ref: "#/$defs/..."}`) with `root.Defs = defs`. The actual schema stays in `defs`, so `root != defs[key]` (no pointer cycle). This both prevents stack overflow on JSON marshaling and enables recursive types like `AddressDetails` whose properties reference `#/$defs/AddressDetails` (the def must exist for refs to resolve).
-
-### Nested Messages with generate=false
-
-**Problem**: Nested messages with `generate = false` might not generate, causing broken `$ref` pointers.
-
-**Solution**: The force logic ensures that when a parent message has `generate = true`, all nested messages are forced to generate regardless of their own `generate` option. This is implemented in `getMessagesWithForce()` with `force=true` for nested message processing.
-
-**Example**:
-
-```protobuf
-message Parent {
-  option (alis.open.options.v1.message).json_schema.generate = true;
-
-  message Nested {
-    option (alis.open.options.v1.message).json_schema.generate = false;  // Still generates!
-    string value = 1;
-  }
-}
-```
-
-### Field Dependencies with generate=false
-
-**Problem**: Message-type fields referencing messages with `generate = false` might cause broken `$ref` pointers.
-
-**Solution**: Field dependencies are forced to generate when the parent generates. This is implemented in `getMessagesWithForce()` with `force=true` for field dependency processing.
-
-### 64-bit Integer Handling
-
-64-bit integers (`int64`, `uint64`, `sint64`, `sfixed64`, `fixed64`) are mapped to JSON Schema `"integer"` type. While JavaScript has precision limitations for very large integers (beyond 2^53-1), the `"integer"` type provides better schema validation and works correctly for most use cases.
-
-### Oneof Field Naming (PascalCase vs snake_case)
-
-**Problem**: Oneof fields use PascalCase naming (`Identifier`, `Email`) while regular fields use snake_case (`first_name`, `zip_code`). This is intentional — not a bug.
-
-**Why**: protoc-gen-go does not add `json` struct tags to oneof interface fields or wrapper structs. Without tags, `encoding/json` uses Go's exported field names (PascalCase). Regular fields have `json:"snake_case"` tags, so they use snake_case.
-
-**Implementation**: Oneof wrapper properties use `oneof.GoName`, variant keys use `field.GoName`. Regular fields use `field.Desc.Name()` via `getFieldName()`. See `emitOneofSchema()` in `plugin/functions.go`.
-
-**Google types exception**: Google types keep flat oneof behavior (e.g., `google.protobuf.Value.kind` uses `null_value`, `number_value` as flat root properties). This is handled by checking `isGoogleType(message)` in the field loop.
-
-### Google Type Handling
-
-All Google types (`google.*`) are treated like normal messages and generate schemas with `$ref` definitions. Key differences from user messages:
-
-1. **Standalone functions**: Google types generate standalone functions (not methods) since we can't add methods to imported types
-2. **File prefix**: Google type function names include a file prefix (e.g., `user_google_protobuf_Timestamp_JsonSchema`) to avoid duplicate function names when multiple files in the same package import the same types
-3. **Recursive dependencies**: Google type dependencies (including map value types) are properly collected via `getMessagesWithForce()`
-4. **Flat oneof behavior**: Google types keep flat oneof properties with root-level `OneOf`/`AllOf` constraints (not nested PascalCase wrappers) because they implement custom `json.Marshaler` methods
-
-### Map Value Dependencies
-
-**Problem**: Map fields with message value types (e.g., `map<string, Value>`) might not collect the value message as a dependency.
-
-**Solution**: The `getMessagesWithForce()` function now handles map fields specially:
-
-- For map fields, it extracts the value message from the synthetic map entry (field number 2)
-- This ensures Google type dependencies like `google.protobuf.Value` (used by `Struct.fields`) are properly collected
+Handled by (1) registering the schema in `defs` **before** its fields are
+populated, (2) `_WithDefs` returning early with a `$ref` when the key exists,
+and (3) the **ref-as-root** pattern: `JsonSchema()` returns a `$ref` wrapper
+with `root.Defs = defs`, so `root != defs[key]` (no pointer cycle on marshal)
+and recursive `$refs` resolve. Pinned by `recursive/v1/recursive.proto` tests.
 
 ### Multi-File Packages
 
-**Problem**: When multiple proto files share the same Go package (e.g., `common.proto`, `admin.proto`, `user.proto` all using `go_package = "github.com/example/users/v1;usersv1"`), you must compile all proto files together.
+Each proto file generates schemas only for messages **defined in that file**
+(filtered by `msg.Desc.ParentFile().Path()`); messages from sibling files are
+referenced by `_WithDefs` name. All files sharing a Go package must be
+compiled together.
 
-**Solution**: The plugin filters messages by their source proto file using `msg.Desc.ParentFile().Path()`. Each proto file generates schemas only for messages **defined in that file**. Messages from other files in the same package are referenced by their `_WithDefs` function name.
+### Changing Generation Behavior
 
-**Example**:
+1. Decide in `plugin/model.go` (never in the printer).
+2. Add/adjust an in-package model test.
+3. Run `go test ./plugin_test/... -update` and **review the golden diff** — it
+   is the change's visible surface.
+4. Update this document.
 
-- `common.proto` generates `Common_JsonSchema_WithDefs` in `common_jsonschema.pb.go`
-- `admin.proto` generates `Admin_JsonSchema_WithDefs` in `admin_jsonschema.pb.go`
-- `admin_jsonschema.pb.go` calls `Common_JsonSchema_WithDefs(defs)` to reference Common
+Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
 
-**Important**: All proto files in a shared Go package must be compiled together so that cross-file references can be resolved at compile time.
+---
+
+## Design Decisions (do not re-litigate without new evidence)
+
+- **Required is proto3-style** (2026-08): singular fields required unless
+  `optional`, including message fields. Presence-based and explicit-signal
+  alternatives were considered and rejected; the `omitempty` round-trip caveat
+  is documented under Required Fields. There is no `json_schema.required`
+  option upstream (the options package doc comment advertising one is a doc
+  bug).
+- **$ref siblings over allOf** (2026-08): metadata/constraints on message
+  fields emit as Draft 2020-12 siblings of `$ref`; allOf-wrapping was rejected
+  (uglier, and the target consumer — jsonschema-go / MCP — handles siblings).
+- **Schemas target `encoding/json` output**, not protojson: snake_case
+  properties, PascalCase oneof wrappers, numeric enums.
+- **The model is the test surface**: unit tests assert decided models
+  in-package; generated-source string matching is reserved for pinning output
+  shapes, and goldens pin everything else.
 
 ---
 
 ## File Locations Quick Reference
 
-| What                          | Where                                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------------------------- |
-| Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                                                   |
-| Generation logic              | `plugin/functions.go`                                                                    |
-| Ref-as-root generation        | `plugin/functions.go` → `generateMessageJSONSchema()` (root := &jsonschema.Schema{Ref: ...}) |
-| Type constants                | `plugin/functions.go` (top of file)                                                      |
-| Message collection            | `plugin/functions.go` → `getMessages()` / `getMessagesWithForce()`                       |
-| Force logic                   | `plugin/functions.go` → `getMessagesWithForce()`                                         |
-| Field name helper             | `plugin/functions.go` → `getFieldName()`                                                 |
-| Oneof schema generation       | `plugin/functions.go` → `emitOneofSchema()`                                              |
-| Inline schema emission        | `plugin/functions.go` → `emitInlineSchema()`                                             |
-| Google type helpers           | `plugin/functions.go` → `isGoogleType()`, `googleTypeFunctionName()`, `fileNamePrefix()` |
-| Google type schema generation | `plugin/functions.go` → `generateMessageJSONSchema()` (check `isGoogleType()`)           |
-| Options extraction            | `plugin/functions.go` → `getField/Message/FileJsonSchemaOptions()`                       |
-| Test fixtures                 | `testdata/protos/users/v1/user.proto`                                                    |
-| Force logic tests             | `testdata/protos/force_test/v1/force_test.proto`                                         |
-| Golden files                  | `testdata/golden/*.golden`                                                               |
-| Base test suite               | `plugin_test/suite.go`                                                                   |
-| Force logic unit tests        | `plugin_test/plugin_test.go` → `TestGetMessagesWithForce()`                             |
-| Force logic integration tests | `plugin_test/integration_test.go` → `TestForceLogic*()`                                  |
-| Debug tests (multi-file)      | `debug/debug_test.go`                                                                    |
+| What                          | Where                                                     |
+| ----------------------------- | --------------------------------------------------------- |
+| Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                    |
+| Orchestration (generateFile)  | `plugin/generate.go`                                      |
+| Schema model + identity       | `plugin/model.go`                                         |
+| Printer                       | `plugin/printer.go`                                       |
+| Message collection / force    | `plugin/collect.go` → `getMessagesWithForce()`            |
+| Options extraction            | `plugin/options.go`                                       |
+| Model unit tests              | `plugin/model_test.go`                                    |
+| Test harness helpers          | `plugin_test/testutil.go`                                 |
+| Golden auto-discovery         | `plugin_test/integration_test.go` → `TestGoldenFile`      |
+| MCP smoke test                | `plugin_test/recursive_mcp_test.go`                       |
+| Test protos                   | `testdata/protos/<name>/v1/*.proto`                       |
+| Vendored third-party protos   | `third_party/protos/`                                     |
+| Golden files                  | `testdata/golden/*.golden`                                |
+| CI                            | `.github/workflows/test.yml`                              |

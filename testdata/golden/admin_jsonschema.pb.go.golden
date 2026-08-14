@@ -3,7 +3,7 @@
 // Source: users/v1/admin.proto
 // Plugin version: test
 //
-// Generated on: 2026-06-12 06:56:01 UTC
+// Generated on: 2026-08-14 09:39:09 UTC
 
 package usersv1
 
@@ -59,57 +59,39 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 	defs["users.v1.Admin"] = schema
 
 	schema.Properties["id"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["name"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["email"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["phone"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["address"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["city"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["state"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["zip"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["country"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["created_at"] = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
@@ -123,21 +105,15 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 	schema.Properties["dynamic_data"] = admin_google_protobuf_Struct_JsonSchema_WithDefs(defs)
 
 	schema.Properties["nickname"] = &jsonschema.Schema{
-		Type:        "string",
-		Title:       "",
-		Description: "",
+		Type: "string",
 	}
 
 	schema.Properties["optional_age"] = &jsonschema.Schema{
-		Type:        "integer",
-		Title:       "",
-		Description: "",
+		Type: "integer",
 	}
 
 	schema.Properties["optional_flag"] = &jsonschema.Schema{
-		Type:        "boolean",
-		Title:       "",
-		Description: "",
+		Type: "boolean",
 	}
 
 	schema.Properties["optional_int32_value"] = admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs)
@@ -176,7 +152,7 @@ func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsc
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
-		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A proto3 JSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a proto3 JSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
+		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A ProtoJSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a ProtoJSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"seconds",
@@ -190,14 +166,12 @@ func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsc
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Represents seconds of UTC time since Unix epoch\n 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n 9999-12-31T23:59:59Z inclusive.",
+		Description: "Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must\n be between -62135596800 and 253402300799 inclusive (which corresponds to\n 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Non-negative fractions of a second at nanosecond resolution. Negative\n second values with fractions must still have non-negative nanos values\n that count forward in time. Must be from 0 to 999,999,999\n inclusive.",
+		Description: "Non-negative fractions of a second at nanosecond resolution. This field is\n the nanosecond portion of the duration, not an alternative to seconds.\n Negative second values with fractions must still have non-negative nanos\n values that count forward in time. Must be between 0 and 999,999,999\n inclusive.",
 	}
 
 	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
@@ -234,13 +208,11 @@ func admin_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsch
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Signed seconds of the span of time. Must be from -315,576,000,000\n to +315,576,000,000 inclusive. Note: these bounds are computed from:\n 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Signed fractions of a second at nanosecond resolution of the span\n of time. Durations less than one second are represented with a 0\n `seconds` field and a positive or negative `nanos` field. For durations\n of one second or more, a non-zero value for the `nanos` field must be\n of the same sign as the `seconds` field. Must be from -999,999,999\n to +999,999,999 inclusive.",
 	}
 
@@ -264,7 +236,7 @@ func admin_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.S
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "`Any` contains an arbitrary serialized protocol buffer message along with a\n URL that describes the type of the serialized message.",
-		Description: "Protobuf library provides support to pack/unpack Any values in the form\n of utility functions or additional generated methods of the Any type.\n\n Example 1: Pack and unpack a message in C++.\n\n     Foo foo = ...;\n     Any any;\n     any.PackFrom(foo);\n     ...\n     if (any.UnpackTo(&foo)) {\n       ...\n     }\n\n Example 2: Pack and unpack a message in Java.\n\n     Foo foo = ...;\n     Any any = Any.pack(foo);\n     ...\n     if (any.is(Foo.class)) {\n       foo = any.unpack(Foo.class);\n     }\n     // or ...\n     if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n       foo = any.unpack(Foo.getDefaultInstance());\n     }\n\n  Example 3: Pack and unpack a message in Python.\n\n     foo = Foo(...)\n     any = Any()\n     any.Pack(foo)\n     ...\n     if any.Is(Foo.DESCRIPTOR):\n       any.Unpack(foo)\n       ...\n\n  Example 4: Pack and unpack a message in Go\n\n      foo := &pb.Foo{...}\n      any, err := anypb.New(foo)\n      if err != nil {\n        ...\n      }\n      ...\n      foo := &pb.Foo{}\n      if err := any.UnmarshalTo(foo); err != nil {\n        ...\n      }\n\n The pack methods provided by protobuf library will by default use\n 'type.googleapis.com/full.type.name' as the type URL and the unpack\n methods only use the fully qualified type name after the last '/'\n in the type URL, for example \"foo.bar.com/x/y.z\" will yield type\n name \"y.z\".\n\n JSON\n ====\n The JSON representation of an `Any` value uses the regular\n representation of the deserialized, embedded message, with an\n additional field `@type` which contains the type URL. Example:\n\n     package google.profile;\n     message Person {\n       string first_name = 1;\n       string last_name = 2;\n     }\n\n     {\n       \"@type\": \"type.googleapis.com/google.profile.Person\",\n       \"firstName\": <string>,\n       \"lastName\": <string>\n     }\n\n If the embedded message type is well-known and has a custom JSON\n representation, that representation will be embedded adding a field\n `value` which holds the custom JSON in addition to the `@type`\n field. Example (for message [google.protobuf.Duration][]):\n\n     {\n       \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n       \"value\": \"1.212s\"\n     }",
+		Description: "In its binary encoding, an `Any` is an ordinary message; but in other wire\n forms like JSON, it has a special encoding. The format of the type URL is\n described on the `type_url` field.\n\n Protobuf APIs provide utilities to interact with `Any` values:\n\n - A 'pack' operation accepts a message and constructs a generic `Any` wrapper\n   around it.\n - An 'unpack' operation reads the content of an `Any` message, either into an\n   existing message or a new one. Unpack operations must check the type of the\n   value they unpack against the declared `type_url`.\n - An 'is' operation decides whether an `Any` contains a message of the given\n   type, i.e. whether it can 'unpack' that type.\n\n The JSON format representation of an `Any` follows one of these cases:\n\n - For types without special-cased JSON encodings, the JSON format\n   representation of the `Any` is the same as that of the message, with an\n   additional `@type` field which contains the type URL.\n - For types with special-cased JSON encodings (typically called 'well-known'\n   types, listed in https://protobuf.dev/programming-guides/json/#any), the\n   JSON format representation has a key `@type` which contains the type URL\n   and a key `value` which contains the JSON-serialized value.\n\n The text format representation of an `Any` is like a message with one field\n whose name is the type URL in brackets. For example, an `Any` containing a\n `foo.Bar` message may be written `[type.googleapis.com/foo.Bar] { a: 2 }`.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"type_url",
@@ -278,14 +250,13 @@ func admin_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.S
 
 	schema.Properties["type_url"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "A URL/resource name that uniquely identifies the type of the serialized\n protocol buffer message. This string must contain at least\n one \"/\" character. The last segment of the URL's path must represent\n the fully qualified name of the type (as in\n `path/google.protobuf.Duration`). The name should be in a canonical form\n (e.g., leading \".\" is not accepted).",
-		Description: "In practice, teams usually precompile into the binary all types that they\n expect it to use in the context of Any. However, for URLs which use the\n scheme `http`, `https`, or no scheme, one can optionally set up a type\n server that maps type URLs to message definitions as follows:\n\n * If no scheme is provided, `https` is assumed.\n * An HTTP GET on the URL must yield a [google.protobuf.Type][]\n   value in binary format, or produce an error.\n * Applications are allowed to cache lookup results based on the\n   URL, or have them precompiled into a binary to avoid any\n   lookup. Therefore, binary compatibility needs to be preserved\n   on changes to types. (Use versioned type names to manage\n   breaking changes.)\n\n Note: this functionality is not currently available in the official\n protobuf release, and it is not used for type URLs beginning with\n type.googleapis.com. As of May 2023, there are no widely used type server\n implementations and no plans to implement one.\n\n Schemes other than `http`, `https` (or the empty scheme) might be\n used with implementation specific semantics.",
+		Title:       "Identifies the type of the serialized Protobuf message with a URI reference\n consisting of a prefix ending in a slash and the fully-qualified type name.",
+		Description: "Example: type.googleapis.com/google.protobuf.StringValue\n\n This string must contain at least one `/` character, and the content after\n the last `/` must be the fully-qualified name of the type in canonical\n form, without a leading dot. Do not write a scheme on these URI references\n so that clients do not attempt to contact them.\n\n The prefix is arbitrary and Protobuf implementations are expected to\n simply strip off everything up to and including the last `/` to identify\n the type. `type.googleapis.com/` is a common default prefix that some\n legacy implementations require. This prefix does not indicate the origin of\n the type, and URIs containing it are not expected to respond to any\n requests.\n\n All type URL strings must be legal URI references with the additional\n restriction (for the text format) that the content of the reference\n must consist only of alphanumeric characters, percent-encoded escapes, and\n characters in the following set (not including the outer backticks):\n `/-.~_!$&()*+,;=`. Despite our allowing percent encodings, implementations\n should not unescape them to prevent confusion with existing parsers. For\n example, `type.googleapis.com%2FFoo` should be rejected.\n\n In the original design of `Any`, the possibility of launching a type\n resolution service at these type URLs was considered but Protobuf never\n implemented one and considers contacting these URLs to be problematic and\n a potential security issue. Do not attempt to contact type URLs.",
 	}
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
-		Description:     "Must be a valid serialized protocol buffer of the above specified type.",
+		Description:     "Holds a Protobuf serialization of the type described by type_url.",
 		ContentEncoding: "base64",
 	}
 
@@ -308,8 +279,8 @@ func admin_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschem
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Title:       "`Struct` represents a structured data value, consisting of fields\n which map to dynamically typed values. In some languages, `Struct`\n might be supported by a native representation. For example, in\n scripting languages like JS a struct is represented as an\n object. The details of that representation are described together\n with the proto support for the language.",
-		Description: "The JSON representation for `Struct` is JSON object.",
+		Title:       "Represents a JSON object.",
+		Description: "An unordered key-value map, intending to perfectly capture the semantics of a\n JSON object. This enables parsing any arbitrary JSON payload as a message\n field in ProtoJSON format.\n\n This follows RFC 8259 guidelines for interoperable JSON: notably this type\n cannot represent large Int64 values or `NaN`/`Infinity` numbers,\n since the JSON format generally does not support those values in its number\n type.\n\n If you do not intend to parse arbitrary JSON into your message, a custom\n typed message should be preferred instead of using this type.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
@@ -319,7 +290,6 @@ func admin_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschem
 
 	schema.Properties["fields"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Unordered map of dynamically typed values.",
 		AdditionalProperties: admin_google_protobuf_Value_JsonSchema_WithDefs(defs),
 	}
@@ -343,8 +313,8 @@ func admin_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Title:       "`Value` represents a dynamically typed value which can be either\n null, a number, a string, a boolean, a recursive struct value, or a\n list of values. A producer of value is expected to set one of these\n variants. Absence of any variant indicates an error.",
-		Description: "The JSON representation for `Value` is JSON value.",
+		Title:       "Represents a JSON value.",
+		Description: "`Value` represents a dynamically typed value which can be either\n null, a number, a string, a boolean, a recursive struct value, or a\n list of values. A producer of value is expected to set one of these\n variants. Absence of any variant is an invalid state.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
@@ -354,8 +324,7 @@ func admin_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema
 
 	schema.Properties["null_value"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Represents a null value.",
+		Description: "Represents a JSON `null`.",
 		Enum: []any{
 			0,
 		},
@@ -363,25 +332,24 @@ func admin_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema
 
 	schema.Properties["number_value"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
-		Description: "Represents a double value.",
+		Description: "Represents a JSON number. Must not be `NaN`, `Infinity` or\n `-Infinity`, since those are not supported in JSON. This also cannot\n represent large Int64 values, since JSON format generally does not\n support them in its number type.",
 	}
 
 	schema.Properties["string_value"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
-		Description: "Represents a string value.",
+		Description: "Represents a JSON string.",
 	}
 
 	schema.Properties["bool_value"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
-		Description: "Represents a boolean value.",
+		Description: "Represents a JSON boolean (`true` or `false` literal in JSON).",
 	}
 
 	schema.Properties["struct_value"] = admin_google_protobuf_Struct_JsonSchema_WithDefs(defs)
+	schema.Properties["struct_value"].Description = "Represents a JSON object."
 
 	schema.Properties["list_value"] = admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
+	schema.Properties["list_value"].Description = "Represents a JSON array."
 
 	schema.OneOf = []*jsonschema.Schema{
 		{Required: []string{"null_value"}},
@@ -418,8 +386,7 @@ func admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsc
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Title:       "`ListValue` is a wrapper around a repeated field of values.",
-		Description: "The JSON representation for `ListValue` is JSON array.",
+		Description: "Represents a JSON array.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
@@ -429,7 +396,6 @@ func admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsc
 
 	schema.Properties["values"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Repeated field of dynamically typed values.",
 		Items:       admin_google_protobuf_Value_JsonSchema_WithDefs(defs),
 	}
@@ -467,7 +433,6 @@ func admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs map[string]*jsons
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The int32 value.",
 	}
 
@@ -504,7 +469,6 @@ func admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs map[string]*jsons
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The int64 value.",
 	}
 
@@ -541,7 +505,6 @@ func admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs map[string]*json
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The string value.",
 	}
 
@@ -578,7 +541,6 @@ func admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs map[string]*jsonsc
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "The bool value.",
 	}
 
@@ -615,7 +577,6 @@ func admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs map[string]*json
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
 		Description: "The double value.",
 	}
 
@@ -652,7 +613,6 @@ func admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs map[string]*jsons
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
 		Description: "The float value.",
 	}
 
@@ -689,7 +649,6 @@ func admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs map[string]*jsons
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The bytes value.",
 		ContentEncoding: "base64",
 	}
@@ -736,7 +695,6 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The resource name of the service account key in the following format\n `projects/{PROJECT_ID}/serviceAccounts/{ACCOUNT}/keys/{key}`.",
 	}
 
@@ -753,7 +711,6 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 
 	schema.Properties["key_algorithm"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Specifies the algorithm (and possibly key size) for the key.",
 		Enum: []any{
 			0,
@@ -764,25 +721,24 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 
 	schema.Properties["private_key_data"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The private key data. Only provided in `CreateServiceAccountKey`\n responses. Make sure to keep the private key data secure because it\n allows for the assertion of the service account identity.\n When base64 decoded, the private key data can be used to authenticate with\n Google API client libraries and with\n <a href=\"/sdk/gcloud/reference/auth/activate-service-account\">gcloud\n auth activate-service-account</a>.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["public_key_data"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The public key data. Only provided in `GetServiceAccountKey` responses.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["valid_after_time"] = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_after_time"].Description = "The key can be used after this timestamp."
 
 	schema.Properties["valid_before_time"] = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_before_time"].Description = "The key can be used before this timestamp.\n For system-managed key pairs, this timestamp is the end time for the\n private key signing operation. The public key could still be used\n for verification for a few hours after this time."
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The key origin.",
 		Enum: []any{
 			0,
@@ -793,7 +749,6 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 
 	schema.Properties["key_type"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The key type.",
 		Enum: []any{
 			0,
@@ -804,7 +759,6 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 
 	schema.Properties["disabled"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "The key status.",
 	}
 

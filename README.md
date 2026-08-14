@@ -263,13 +263,15 @@ go get github.com/google/jsonschema-go
 
 ## Testing
 
-Tests live in the `plugin_test/` package and require the `plugintest` build tag:
+Tests live in the `plugin_test/` package and run with plain `go test`. Tests
+that need `protoc`, `protoc-gen-go`, or network access skip themselves when the
+tool is missing (or with `-short`):
 
 ```shell
-go test -tags=plugintest ./plugin_test/...
+go test ./...
 
-# Update golden files
-go test -tags=plugintest ./plugin_test/... -update
+# Update golden files (goldens exist for every proto under testdata/protos)
+go test ./plugin_test/... -update
 ```
 
 ## Contributing

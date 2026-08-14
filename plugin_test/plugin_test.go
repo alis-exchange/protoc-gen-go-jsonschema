@@ -1,5 +1,3 @@
-//go:build plugintest
-
 package plugintest
 
 import (
@@ -8,11 +6,12 @@ import (
 
 	"github.com/alis-exchange/protoc-gen-go-jsonschema/plugin"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/protobuf/compiler/protogen"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-// PluginGeneratorTestSuite contains tests for the Generator and Generate function.
+// PluginGeneratorTestSuite contains tests for the Generate function's output.
+// Message-collection, naming, and schema-model internals are covered by
+// in-package tests in plugin/ — the schema model is the plugin's internal seam
+// and is tested through its own interface there.
 type PluginGeneratorTestSuite struct {
 	PluginTestSuite
 }
@@ -67,152 +66,6 @@ func (s *PluginGeneratorTestSuite) TestGenerateNoFiles() {
 
 	// Should have no generated files
 	s.Empty(resp.File, "Expected no generated files")
-}
-
-// TestGetMessages tests the message collection logic.
-func (s *PluginGeneratorTestSuite) TestGetMessages() {
-	helper := s.TestingHelper()
-
-	s.Run("with generate all true", func() {
-		messages := helper.GetMessages(s.File().Messages, true, make(map[string]bool))
-
-		s.Require().NotEmpty(messages, "Expected messages")
-
-		// Should include main messages
-		messageNames := make(map[string]bool)
-		for _, msg := range messages {
-			messageNames[string(msg.Desc.Name())] = true
-		}
-
-		expectedMessages := []string{"User", "Address", "ComprehensiveUser", "ContactInfo"}
-		for _, name := range expectedMessages {
-			s.True(messageNames[name], "Expected message %s to be included", name)
-		}
-	})
-
-	s.Run("with generate all false", func() {
-		messages := helper.GetMessages(s.File().Messages, false, make(map[string]bool))
-
-		// With generate=false and no message-level overrides, should still get messages
-		// that have the generate option set at message level
-		if len(messages) > 0 {
-			for _, msg := range messages {
-				s.T().Logf("Got message: %s", msg.Desc.Name())
-			}
-		}
-	})
-
-	s.Run("filters map entries", func() {
-		messages := helper.GetMessages(s.File().Messages, true, make(map[string]bool))
-
-		for _, msg := range messages {
-			s.False(msg.Desc.IsMapEntry(), "Map entry %s should be filtered out", msg.Desc.Name())
-		}
-	})
-
-	s.Run("includes google types when referenced", func() {
-		messages := helper.GetMessages(s.File().Messages, true, make(map[string]bool))
-
-		// Check if any Google types are included (they should be if referenced)
-		s.NotNil(messages, "Messages should be returned")
-	})
-
-	s.Run("handles visited tracking", func() {
-		visited := make(map[string]bool)
-
-		messages1 := helper.GetMessages(s.File().Messages, true, visited)
-		count1 := len(messages1)
-
-		messages2 := helper.GetMessages(s.File().Messages, true, visited)
-		count2 := len(messages2)
-
-		s.Equal(0, count2, "Expected 0 messages on second call (all visited)")
-		s.NotEqual(0, count1, "Expected some messages on first call")
-	})
-}
-
-// TestGetMessagesWithForce tests the force logic for nested messages and dependencies.
-func (s *PluginGeneratorTestSuite) TestGetMessagesWithForce() {
-	helper := s.TestingHelper()
-
-	s.Run("force=true ignores explicit generate=false on nested messages", func() {
-		parentMsg := s.FindMessage("Address")
-		s.Require().NotNil(parentMsg, "Address message not found")
-
-		nestedMessages := parentMsg.Messages
-		s.Require().NotEmpty(nestedMessages, "Address should have nested messages")
-
-		visited := make(map[string]bool)
-		messagesNoForce := helper.GetMessagesWithForce(nestedMessages, false, false, visited)
-
-		visited2 := make(map[string]bool)
-		messagesWithForce := helper.GetMessagesWithForce(nestedMessages, true, true, visited2)
-
-		s.NotEmpty(messagesWithForce, "Force=true should include nested messages when defaultGenerate=true")
-		s.T().Logf("Without force: %d messages, With force: %d messages", len(messagesNoForce), len(messagesWithForce))
-
-		foundNested := false
-		for _, msg := range messagesWithForce {
-			if strings.Contains(string(msg.Desc.FullName()), "AddressDetails") {
-				foundNested = true
-				break
-			}
-		}
-		s.True(foundNested, "Nested AddressDetails should be included when force=true")
-	})
-
-	s.Run("force=true includes field dependencies even with generate=false", func() {
-		parentMsg := s.FindMessage("ComprehensiveUser")
-		s.Require().NotNil(parentMsg, "ComprehensiveUser message not found")
-
-		visited := make(map[string]bool)
-		visited[string(parentMsg.Desc.FullName())] = true
-
-		var depMessages []*protogen.Message
-		for _, field := range parentMsg.Fields {
-			if field.Desc.Kind() == protoreflect.MessageKind {
-				deps := helper.GetMessagesWithForce([]*protogen.Message{field.Message}, true, true, visited)
-				depMessages = append(depMessages, deps...)
-			}
-		}
-
-		s.NotEmpty(depMessages, "Force=true should include field dependencies")
-	})
-
-	s.Run("force=false respects explicit generate=false", func() {
-		visited := make(map[string]bool)
-		allMessages := s.File().Messages
-		messagesNoForce := helper.GetMessagesWithForce(allMessages, false, false, visited)
-
-		for _, msg := range messagesNoForce {
-			if helper.MessageHasExplicitGenerateFalse(msg) {
-				s.Fail("Message with generate=false should not be included when force=false")
-			}
-		}
-	})
-}
-
-// TestGeneratorGenerateFile tests the generateFile method.
-func (s *PluginGeneratorTestSuite) TestGeneratorGenerateFile() {
-	helper := s.TestingHelper()
-
-	genFile, err := helper.GenerateFile(s.Plugin(), s.File())
-	s.Require().NoError(err, "generateFile failed")
-	s.Require().NotNil(genFile, "Expected generated file")
-}
-
-// TestMessageSchemaGeneratorReferenceName tests reference name generation.
-func (s *PluginGeneratorTestSuite) TestMessageSchemaGeneratorReferenceName() {
-	helper := s.TestingHelper()
-
-	s.Run("user message reference", func() {
-		msg := s.FindMessage("Address")
-		ref := helper.ReferenceName(msg)
-
-		s.NotEmpty(ref, "Expected non-empty reference")
-		s.Contains(ref, "Address_JsonSchema_WithDefs", "Reference should contain function name")
-		s.Contains(ref, "(defs)", "Reference should contain defs parameter")
-	})
 }
 
 // TestGeneratedCodeStructure tests the structure of generated code.

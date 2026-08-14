@@ -2,15 +2,14 @@ syntax = "proto3";
 
 package users.v1;
 
-import "google/protobuf/any.proto";
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/duration.proto";
-import "google/protobuf/struct.proto";
 import "alis/open/options/v1/options.proto";
 import "google/iam/admin/v1/iam.proto";
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/newtonnthiga/users/v1;usersv1";
-
 option (alis.open.options.v1.file).json_schema.generate = true;
 
 message Common {
@@ -24,4 +23,20 @@ message Common {
   string zip = 8;
   string country = 9;
   google.iam.admin.v1.ServiceAccountKey service_account_key = 11;
+}
+
+// Request message for CompleteInterview.
+message CompleteInterviewRequest {
+  string finish_reason = 1 [(alis.open.options.v1.field).json_schema = {description: "The reason the interview is complete: the research plan was fully covered, the participant said they were done, or the participant could not continue."}];
+
+  // A short, participant-facing recap of what this participant shared, shown to
+  // them on the completion screen. Populate it from the whole interview when you
+  // complete — second person, their own words, no research-plan jargon.
+  InterviewSummary summary = 2 [(alis.open.options.v1.field).json_schema = {description: "A short participant-facing recap of what the participant shared, shown to them on the completion screen. Fill it from the whole interview, in the participant's own framing."}];
+
+  // A participant-facing recap of an interview contribution.
+  message InterviewSummary {
+    string headline = 1 [(alis.open.options.v1.field).json_schema = {description: "One warm sentence naming what the participant helped with, in their own words (not the team's jargon)."}];
+    repeated string points = 2 [(alis.open.options.v1.field).json_schema = {description: "3-5 short bullets, each a concrete thing the participant told you, in second person (e.g. 'You walked through the morning reconciliation across three stores')."}];
+  }
 }

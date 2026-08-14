@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-06-12 06:56:01 UTC
+// Generated on: 2026-08-14 09:39:09 UTC
 
 package usersv1
 
@@ -45,47 +45,41 @@ func Address_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema
 
 	schema.Properties["street"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The street address including house number and street name.",
 	}
 
 	schema.Properties["city"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The city name.",
 	}
 
 	schema.Properties["state"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The state or province name.",
 	}
 
 	schema.Properties["zip_code"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The postal or zip code.",
 	}
 
 	schema.Properties["country"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The country name or code.",
 	}
 
 	schema.Properties["latitude"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
 		Description: "The latitude coordinate of the address.",
 	}
 
 	schema.Properties["longitude"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
 		Description: "The longitude coordinate of the address.",
 	}
 
 	schema.Properties["address_details"] = Address_AddressDetails_JsonSchema_WithDefs(defs)
+	schema.Properties["address_details"].Description = "Additional address details stored as a nested message."
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Address"}
 }
@@ -123,31 +117,26 @@ func Address_AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Sche
 
 	schema.Properties["street"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The street name.",
 	}
 
 	schema.Properties["city"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The city name.",
 	}
 
 	schema.Properties["state"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The state or province.",
 	}
 
 	schema.Properties["zip_code"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The postal code.",
 	}
 
 	schema.Properties["country"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The country code.",
 	}
 
@@ -188,51 +177,46 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["street"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The street name.",
 	}
 
 	schema.Properties["city"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The city name.",
 	}
 
 	schema.Properties["state"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The state or province.",
 	}
 
 	schema.Properties["zip_code"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The postal code.",
 	}
 
 	schema.Properties["country"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The country code.",
 	}
 
 	schema.Properties["nested_address_details"] = AddressDetails_JsonSchema_WithDefs(defs)
+	schema.Properties["nested_address_details"].Description = "Nested address details."
 
 	schema.Properties["repeated_address_details"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Repeated address details.",
 		Items:       AddressDetails_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["map_address_details"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of address details.",
 		AdditionalProperties: AddressDetails_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["optional_address_details"] = AddressDetails_JsonSchema_WithDefs(defs)
+	schema.Properties["optional_address_details"].Description = "Optional address details."
 
 	schema.Properties["AddressDetails"] = &jsonschema.Schema{
 		OneOf: []*jsonschema.Schema{
@@ -293,19 +277,16 @@ func ContactInfo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 
 	schema.Properties["mobile"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Mobile phone number in E.164 format.",
 	}
 
 	schema.Properties["fax"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Fax number if available.",
 	}
 
 	schema.Properties["emails"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of email addresses associated with the contact.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -344,7 +325,6 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 
 	schema.Properties["tags"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string tags for categorization.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -353,7 +333,6 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 
 	schema.Properties["numeric_tags"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of numeric tags with string values.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -364,6 +343,7 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 	}
 
 	schema.Properties["extra_data"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
+	schema.Properties["extra_data"].Description = "Additional unstructured data stored as a protobuf Struct."
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Metadata"}
 }
@@ -424,111 +404,93 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Unique identifier for the user.",
 	}
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Full name of the user.",
 	}
 
 	schema.Properties["is_active"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "Whether the user account is currently active.",
 	}
 
 	schema.Properties["age"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Age of the user in years.",
 	}
 
 	schema.Properties["user_id"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Unique user ID as a 64-bit integer.",
 	}
 
 	schema.Properties["score"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "User score as an unsigned 32-bit integer.",
 	}
 
 	schema.Properties["account_number"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Account number as an unsigned 64-bit integer.",
 	}
 
 	schema.Properties["signed_score"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Signed score using zigzag encoding.",
 	}
 
 	schema.Properties["signed_id"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Signed ID using zigzag encoding.",
 	}
 
 	schema.Properties["fixed_uint"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Fixed-width unsigned 32-bit integer.",
 	}
 
 	schema.Properties["fixed_ulong"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Fixed-width unsigned 64-bit integer.",
 	}
 
 	schema.Properties["sfixed_int"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Fixed-width signed 32-bit integer.",
 	}
 
 	schema.Properties["sfixed_long"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Fixed-width signed 64-bit integer.",
 	}
 
 	schema.Properties["rating"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
 		Description: "User rating as a single-precision float.",
 	}
 
 	schema.Properties["balance"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
 		Description: "Account balance as a double-precision float.",
 	}
 
 	schema.Properties["avatar"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "User avatar image as raw bytes.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["signature"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "Digital signature as raw bytes.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["status"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Current status of the user account.",
 		Enum: []any{
 			0,
@@ -541,7 +503,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["account_type"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Type of account subscription.",
 		Enum: []any{
 			0,
@@ -552,14 +513,16 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["address"].Description = "Primary address of the user."
 
 	schema.Properties["contact"] = ContactInfo_JsonSchema_WithDefs(defs)
+	schema.Properties["contact"].Description = "Contact information for the user."
 
 	schema.Properties["metadata"] = Metadata_JsonSchema_WithDefs(defs)
+	schema.Properties["metadata"].Description = "Additional metadata associated with the user."
 
 	schema.Properties["tags"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of tags associated with the user.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -568,7 +531,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["scores"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Historical scores for the user.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -577,7 +539,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["flags"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Boolean flags for various user settings.",
 		Items: &jsonschema.Schema{
 			Type: "boolean",
@@ -586,7 +547,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["ratings"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Historical ratings for the user.",
 		Items: &jsonschema.Schema{
 			Type: "number",
@@ -595,7 +555,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["balances"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Historical balance snapshots.",
 		Items: &jsonschema.Schema{
 			Type: "number",
@@ -604,7 +563,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["images"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Additional image data.",
 		Items: &jsonschema.Schema{
 			Type:            "string",
@@ -614,7 +572,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["status_history"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "History of user status changes.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -630,7 +587,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["priorities"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of priority levels assigned to the user.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -646,21 +602,18 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["addresses"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of all addresses associated with the user.",
 		Items:       Address_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["contacts"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of contact information entries.",
 		Items:       ContactInfo_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["attributes"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string attributes with string values.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -669,7 +622,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["numeric_attributes"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of numeric attributes with string values.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -681,7 +633,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["string_to_int"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string keys to integer values.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -690,7 +641,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["string_to_bool"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string keys to boolean values.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "boolean",
@@ -699,14 +649,12 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["address_map"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of string keys to Address message values.",
 		AdditionalProperties: Address_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["status_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string keys to UserStatus enum values.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -722,42 +670,42 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["address_details_map"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of string keys to Address.AddressDetails message values.",
 		AdditionalProperties: Address_AddressDetails_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["created_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["created_at"].Description = "Timestamp when the user account was created."
 
 	schema.Properties["updated_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["updated_at"].Description = "Timestamp when the user account was last updated."
 
 	schema.Properties["session_duration"] = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+	schema.Properties["session_duration"].Description = "Duration of the current user session."
 
 	schema.Properties["extra_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	schema.Properties["extra_data"].Description = "Additional data stored as Any type."
 
 	schema.Properties["dynamic_data"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
+	schema.Properties["dynamic_data"].Description = "Dynamic data stored as Struct type."
 
 	schema.Properties["nickname"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Optional nickname for the user.",
 	}
 
 	schema.Properties["optional_age"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Optional age if not provided in the main age field.",
 	}
 
 	schema.Properties["optional_flag"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "Optional boolean flag.",
 	}
 
 	schema.Properties["optional_status"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Optional status override.",
 		Enum: []any{
 			0,
@@ -769,8 +717,10 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["optional_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["optional_address"].Description = "Optional alternate address."
 
 	schema.Properties["common"] = Common_JsonSchema_WithDefs(defs)
+	schema.Properties["common"].Description = "Common fields section"
 
 	schema.Properties["Identifier"] = &jsonschema.Schema{
 		OneOf: []*jsonschema.Schema{
@@ -783,7 +733,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"Email": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Email address as identifier.",
 							},
 						},
@@ -794,7 +743,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"Username": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Username as identifier.",
 							},
 						},
@@ -805,7 +753,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"UserNumber": &jsonschema.Schema{
 								Type:        "integer",
-								Title:       "",
 								Description: "User number as identifier.",
 							},
 						},
@@ -827,7 +774,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"CreditCard": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Credit card number.",
 							},
 						},
@@ -838,7 +784,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"BankAccount": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Bank account number.",
 							},
 						},
@@ -849,7 +794,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"CryptoWallet": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Cryptocurrency wallet address.",
 							},
 						},
@@ -869,14 +813,22 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"ContactInfo": ContactInfo_JsonSchema_WithDefs(defs),
+							"ContactInfo": func() *jsonschema.Schema {
+								s := ContactInfo_JsonSchema_WithDefs(defs)
+								s.Description = "Preferred contact information"
+								return s
+							}(),
 						},
 						Required: []string{"ContactInfo"},
 					},
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"MailingAddress": Address_JsonSchema_WithDefs(defs),
+							"MailingAddress": func() *jsonschema.Schema {
+								s := Address_JsonSchema_WithDefs(defs)
+								s.Description = "Preferred mailing address."
+								return s
+							}(),
 						},
 						Required: []string{"MailingAddress"},
 					},
@@ -922,31 +874,26 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Unique identifier for the user.",
 	}
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Full name of the user.",
 	}
 
 	schema.Properties["email"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Email address of the user.",
 	}
 
 	schema.Properties["password"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Hashed password (never store plain text passwords).",
 	}
 
 	schema.Properties["status"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Current status of the user account.",
 		Enum: []any{
 			0,
@@ -958,6 +905,7 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 	}
 
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["address"].Description = "Primary address of the user."
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.User"}
 }
@@ -993,23 +941,21 @@ func CreateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Full name of the user to create.",
 	}
 
 	schema.Properties["email"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Email address for the new user account.",
 	}
 
 	schema.Properties["password"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Password for the new user account (will be hashed).",
 	}
 
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["address"].Description = "Optional address for the new user."
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateUserRequest"}
 }
@@ -1043,7 +989,6 @@ func GetUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The unique identifier of the user to retrieve.",
 	}
 
@@ -1078,6 +1023,7 @@ func UpdateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	defs["users.v1.UpdateUserRequest"] = schema
 
 	schema.Properties["user"] = User_JsonSchema_WithDefs(defs)
+	schema.Properties["user"].Description = "The user object with updated fields.\n Only provided fields will be updated."
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.UpdateUserRequest"}
 }
@@ -1111,7 +1057,6 @@ func DeleteUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The unique identifier of the user to delete.",
 	}
 
@@ -1147,7 +1092,6 @@ func DeleteUserResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["success"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "True if the user was successfully deleted, false otherwise.",
 	}
 
@@ -1182,10 +1126,10 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 	defs["users.v1.CreateComprehensiveUserRequest"] = schema
 
 	schema.Properties["user"] = ComprehensiveUser_JsonSchema_WithDefs(defs)
+	schema.Properties["user"].Description = "The comprehensive user object to create."
 
 	schema.Properties["metadata"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Additional metadata to associate with the user.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1194,7 +1138,6 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 
 	schema.Properties["tags"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Tags to categorize the user.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -1230,7 +1173,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 
 	schema.Properties["ids"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of user IDs to retrieve.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -1239,7 +1181,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 
 	schema.Properties["user_numbers"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of user numbers to retrieve.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1248,7 +1189,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 
 	schema.Properties["filters"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of filter criteria (e.g., {\"status\": \"active\"}).",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1266,7 +1206,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 						Properties: map[string]*jsonschema.Schema{
 							"EmailQuery": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Query users by email address.",
 							},
 						},
@@ -1277,7 +1216,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 						Properties: map[string]*jsonschema.Schema{
 							"NameQuery": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "Query users by name (partial match).",
 							},
 						},
@@ -1288,7 +1226,6 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 						Properties: map[string]*jsonschema.Schema{
 							"StatusFilter": &jsonschema.Schema{
 								Type:        "integer",
-								Title:       "",
 								Description: "Filter users by status.",
 								Enum: []any{
 									0,
@@ -1340,24 +1277,22 @@ func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schem
 
 	schema.Properties["users"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of retrieved users.",
 		Items:       ComprehensiveUser_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["total_count"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Total count of users matching the query.",
 	}
 
 	schema.Properties["has_more"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "Whether there are more users available (for pagination).",
 	}
 
 	schema.Properties["query_timestamp"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["query_timestamp"].Description = "Timestamp when the query was executed."
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersResponse"}
 }
@@ -1391,22 +1326,22 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 	defs["users.v1.UserProfile"] = schema
 
 	schema.Properties["user"] = ComprehensiveUser_JsonSchema_WithDefs(defs)
+	schema.Properties["user"].Description = "The comprehensive user information."
 
 	schema.Properties["shipping_addresses"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of shipping addresses for the user.",
 		Items:       Address_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["contact_methods"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of contact methods keyed by method type.",
 		AdditionalProperties: ContactInfo_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["custom_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	schema.Properties["custom_data"].Description = "Additional custom data stored as Any type."
 
 	schema.Properties["ProfileType"] = &jsonschema.Schema{
 		OneOf: []*jsonschema.Schema{
@@ -1417,14 +1352,22 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Personal": PersonalProfile_JsonSchema_WithDefs(defs),
+							"Personal": func() *jsonschema.Schema {
+								s := PersonalProfile_JsonSchema_WithDefs(defs)
+								s.Description = "Personal profile information."
+								return s
+							}(),
 						},
 						Required: []string{"Personal"},
 					},
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Business": BusinessProfile_JsonSchema_WithDefs(defs),
+							"Business": func() *jsonschema.Schema {
+								s := BusinessProfile_JsonSchema_WithDefs(defs)
+								s.Description = "Business profile information."
+								return s
+							}(),
 						},
 						Required: []string{"Business"},
 					},
@@ -1467,21 +1410,19 @@ func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 
 	schema.Properties["first_name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "First name of the user.",
 	}
 
 	schema.Properties["last_name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Last name of the user.",
 	}
 
 	schema.Properties["date_of_birth"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["date_of_birth"].Description = "Date of birth of the user."
 
 	schema.Properties["interests"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of user interests or hobbies.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -1522,21 +1463,19 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 
 	schema.Properties["company_name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Name of the company.",
 	}
 
 	schema.Properties["tax_id"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "Tax identification number for the business.",
 	}
 
 	schema.Properties["business_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["business_address"].Description = "Business address."
 
 	schema.Properties["departments"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of department names in the company.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -1545,7 +1484,6 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 
 	schema.Properties["employee_counts"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of department names to employee counts.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -1581,7 +1519,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["string_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of strings.",
 		Items: &jsonschema.Schema{
 			Type: "string",
@@ -1590,7 +1527,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["int_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of 32-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1599,7 +1535,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["long_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of 64-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1608,7 +1543,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["uint_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of unsigned 32-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1617,7 +1551,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["ulong_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of unsigned 64-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1626,7 +1559,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["sint_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of signed 32-bit integers (zigzag encoded).",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1635,7 +1567,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["slong_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of signed 64-bit integers (zigzag encoded).",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1644,7 +1575,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["fixed_uint_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of fixed-width unsigned 32-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1653,7 +1583,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["fixed_ulong_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of fixed-width unsigned 64-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1662,7 +1591,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["sfixed_int_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of fixed-width signed 32-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1671,7 +1599,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["sfixed_long_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of fixed-width signed 64-bit integers.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1680,7 +1607,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["float_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of single-precision floats.",
 		Items: &jsonschema.Schema{
 			Type: "number",
@@ -1689,7 +1615,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["double_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of double-precision floats.",
 		Items: &jsonschema.Schema{
 			Type: "number",
@@ -1698,7 +1623,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["bool_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of boolean values.",
 		Items: &jsonschema.Schema{
 			Type: "boolean",
@@ -1707,7 +1631,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["bytes_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of byte arrays.",
 		Items: &jsonschema.Schema{
 			Type:            "string",
@@ -1717,7 +1640,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["enum_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of UserStatus enum values.",
 		Items: &jsonschema.Schema{
 			Type: "integer",
@@ -1733,7 +1655,6 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 
 	schema.Properties["message_list"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of Address messages.",
 		Items:       Address_JsonSchema_WithDefs(defs),
 	}
@@ -1767,7 +1688,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to string.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1776,7 +1696,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_int_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to 32-bit integer.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -1785,7 +1704,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_long_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to 64-bit integer.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -1794,7 +1712,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_bool_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to boolean.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "boolean",
@@ -1803,7 +1720,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_float_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to single-precision float.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "number",
@@ -1812,7 +1728,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_double_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to double-precision float.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "number",
@@ -1821,7 +1736,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_bytes_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to byte array.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type:            "string",
@@ -1831,7 +1745,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_enum_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of string to UserStatus enum.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -1847,14 +1760,12 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_message_map"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of string to Address message.",
 		AdditionalProperties: Address_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["int_string_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of 32-bit integer to string.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1866,7 +1777,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["long_string_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of 64-bit integer to string.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1878,7 +1788,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["uint_string_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of unsigned 32-bit integer to string.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1890,7 +1799,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["bool_string_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of boolean to string.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "string",
@@ -1902,7 +1810,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["int_int_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "",
 		Description: "Map of 32-bit integer to 32-bit integer.",
 		AdditionalProperties: &jsonschema.Schema{
 			Type: "integer",
@@ -1914,7 +1821,6 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 
 	schema.Properties["string_timestamp_map"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of string to Timestamp.",
 		AdditionalProperties: user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
 	}
@@ -1954,7 +1860,6 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["short_name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "String with length and pattern bounds.",
 		Pattern:     "^[a-z][a-z0-9-]*$",
 		MinLength:   &[]int{2}[0],
@@ -1963,7 +1868,6 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["page_size"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Integer with inclusive numeric bounds.",
 		Minimum:     &[]float64{1}[0],
 		Maximum:     &[]float64{1000}[0],
@@ -1971,7 +1875,6 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["ratio"] = &jsonschema.Schema{
 		Type:             "number",
-		Title:            "",
 		Description:      "Double with exclusive numeric bounds — verifies the draft 2020-12\n semantic swap (ExclusiveMinimum/Maximum replace Minimum/Maximum).",
 		ExclusiveMinimum: &[]float64{0}[0],
 		ExclusiveMaximum: &[]float64{1}[0],
@@ -1979,7 +1882,6 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["tags"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Bounded, unique array.",
 		MinItems:    &[]int{1}[0],
 		MaxItems:    &[]int{5}[0],
@@ -1991,7 +1893,6 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	schema.Properties["attributes"] = &jsonschema.Schema{
 		Type:          "object",
-		Title:         "",
 		Description:   "Map with property bounds.",
 		MinProperties: &[]int{1}[0],
 		MaxProperties: &[]int{10}[0],
@@ -2001,6 +1902,7 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 	}
 
 	schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
 
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo"}
 }
@@ -2040,7 +1942,6 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"StringValue": &jsonschema.Schema{
 								Type:        "string",
-								Title:       "",
 								Description: "String value option.",
 							},
 						},
@@ -2051,7 +1952,6 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"IntValue": &jsonschema.Schema{
 								Type:        "integer",
-								Title:       "",
 								Description: "Integer value option.",
 							},
 						},
@@ -2062,7 +1962,6 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"BoolValue": &jsonschema.Schema{
 								Type:        "boolean",
-								Title:       "",
 								Description: "Boolean value option.",
 							},
 						},
@@ -2082,21 +1981,33 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Address": Address_JsonSchema_WithDefs(defs),
+							"Address": func() *jsonschema.Schema {
+								s := Address_JsonSchema_WithDefs(defs)
+								s.Description = "Address message option."
+								return s
+							}(),
 						},
 						Required: []string{"Address"},
 					},
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Contact": ContactInfo_JsonSchema_WithDefs(defs),
+							"Contact": func() *jsonschema.Schema {
+								s := ContactInfo_JsonSchema_WithDefs(defs)
+								s.Description = "ContactInfo message option."
+								return s
+							}(),
 						},
 						Required: []string{"Contact"},
 					},
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Metadata": Metadata_JsonSchema_WithDefs(defs),
+							"Metadata": func() *jsonschema.Schema {
+								s := Metadata_JsonSchema_WithDefs(defs)
+								s.Description = "Metadata message option."
+								return s
+							}(),
 						},
 						Required: []string{"Metadata"},
 					},
@@ -2116,7 +2027,6 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Status": &jsonschema.Schema{
 								Type:        "integer",
-								Title:       "",
 								Description: "UserStatus enum option.",
 								Enum: []any{
 									0,
@@ -2134,7 +2044,6 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Account": &jsonschema.Schema{
 								Type:        "integer",
-								Title:       "",
 								Description: "AccountType enum option.",
 								Enum: []any{
 									0,
@@ -2151,7 +2060,6 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Priority": &jsonschema.Schema{
 								Type:        "integer",
-								Title:       "",
 								Description: "Priority enum option.",
 								Enum: []any{
 									0,
@@ -2178,21 +2086,33 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Timestamp": user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
+							"Timestamp": func() *jsonschema.Schema {
+								s := user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+								s.Description = "Timestamp value option."
+								return s
+							}(),
 						},
 						Required: []string{"Timestamp"},
 					},
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"Duration": user_google_protobuf_Duration_JsonSchema_WithDefs(defs),
+							"Duration": func() *jsonschema.Schema {
+								s := user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+								s.Description = "Duration value option."
+								return s
+							}(),
 						},
 						Required: []string{"Duration"},
 					},
 					{
 						Type: "object",
 						Properties: map[string]*jsonschema.Schema{
-							"AnyData": user_google_protobuf_Any_JsonSchema_WithDefs(defs),
+							"AnyData": func() *jsonschema.Schema {
+								s := user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+								s.Description = "Any type value option."
+								return s
+							}(),
 						},
 						Required: []string{"AnyData"},
 					},
@@ -2237,27 +2157,31 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 	defs["users.v1.WellKnownTypesDemo"] = schema
 
 	schema.Properties["created_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["created_at"].Description = "Timestamp representing creation time."
 
 	schema.Properties["updated_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["updated_at"].Description = "Timestamp representing last update time."
 
 	schema.Properties["time_duration"] = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+	schema.Properties["time_duration"].Description = "Duration representing a time span."
 
 	schema.Properties["any_field"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	schema.Properties["any_field"].Description = "Any type for storing arbitrary protobuf messages."
 
 	schema.Properties["struct_field"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
+	schema.Properties["struct_field"].Description = "Struct type for storing arbitrary JSON-like data."
 
 	schema.Properties["value_field"] = user_google_protobuf_Value_JsonSchema_WithDefs(defs)
+	schema.Properties["value_field"].Description = "Value type for storing a single JSON value."
 
 	schema.Properties["timestamps"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "List of timestamps.",
 		Items:       user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
 	}
 
 	schema.Properties["timestamp_map"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Map of string keys to Timestamp values.",
 		AdditionalProperties: user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
 	}
@@ -2281,8 +2205,8 @@ func user_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschema
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Title:       "`Struct` represents a structured data value, consisting of fields\n which map to dynamically typed values. In some languages, `Struct`\n might be supported by a native representation. For example, in\n scripting languages like JS a struct is represented as an\n object. The details of that representation are described together\n with the proto support for the language.",
-		Description: "The JSON representation for `Struct` is JSON object.",
+		Title:       "Represents a JSON object.",
+		Description: "An unordered key-value map, intending to perfectly capture the semantics of a\n JSON object. This enables parsing any arbitrary JSON payload as a message\n field in ProtoJSON format.\n\n This follows RFC 8259 guidelines for interoperable JSON: notably this type\n cannot represent large Int64 values or `NaN`/`Infinity` numbers,\n since the JSON format generally does not support those values in its number\n type.\n\n If you do not intend to parse arbitrary JSON into your message, a custom\n typed message should be preferred instead of using this type.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
@@ -2292,7 +2216,6 @@ func user_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschema
 
 	schema.Properties["fields"] = &jsonschema.Schema{
 		Type:                 "object",
-		Title:                "",
 		Description:          "Unordered map of dynamically typed values.",
 		AdditionalProperties: user_google_protobuf_Value_JsonSchema_WithDefs(defs),
 	}
@@ -2316,8 +2239,8 @@ func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Title:       "`Value` represents a dynamically typed value which can be either\n null, a number, a string, a boolean, a recursive struct value, or a\n list of values. A producer of value is expected to set one of these\n variants. Absence of any variant indicates an error.",
-		Description: "The JSON representation for `Value` is JSON value.",
+		Title:       "Represents a JSON value.",
+		Description: "`Value` represents a dynamically typed value which can be either\n null, a number, a string, a boolean, a recursive struct value, or a\n list of values. A producer of value is expected to set one of these\n variants. Absence of any variant is an invalid state.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
@@ -2327,8 +2250,7 @@ func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.
 
 	schema.Properties["null_value"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Represents a null value.",
+		Description: "Represents a JSON `null`.",
 		Enum: []any{
 			0,
 		},
@@ -2336,25 +2258,24 @@ func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.
 
 	schema.Properties["number_value"] = &jsonschema.Schema{
 		Type:        "number",
-		Title:       "",
-		Description: "Represents a double value.",
+		Description: "Represents a JSON number. Must not be `NaN`, `Infinity` or\n `-Infinity`, since those are not supported in JSON. This also cannot\n represent large Int64 values, since JSON format generally does not\n support them in its number type.",
 	}
 
 	schema.Properties["string_value"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
-		Description: "Represents a string value.",
+		Description: "Represents a JSON string.",
 	}
 
 	schema.Properties["bool_value"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
-		Description: "Represents a boolean value.",
+		Description: "Represents a JSON boolean (`true` or `false` literal in JSON).",
 	}
 
 	schema.Properties["struct_value"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
+	schema.Properties["struct_value"].Description = "Represents a JSON object."
 
 	schema.Properties["list_value"] = user_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
+	schema.Properties["list_value"].Description = "Represents a JSON array."
 
 	schema.OneOf = []*jsonschema.Schema{
 		{Required: []string{"null_value"}},
@@ -2391,8 +2312,7 @@ func user_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsch
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Title:       "`ListValue` is a wrapper around a repeated field of values.",
-		Description: "The JSON representation for `ListValue` is JSON array.",
+		Description: "Represents a JSON array.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
@@ -2402,7 +2322,6 @@ func user_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonsch
 
 	schema.Properties["values"] = &jsonschema.Schema{
 		Type:        "array",
-		Title:       "",
 		Description: "Repeated field of dynamically typed values.",
 		Items:       user_google_protobuf_Value_JsonSchema_WithDefs(defs),
 	}
@@ -2427,7 +2346,7 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
-		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A proto3 JSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a proto3 JSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
+		Description: "All minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\n second table is needed for interpretation, using a [24-hour linear\n smear](https://developers.google.com/time/smear).\n\n The range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\n restricting to that range, we ensure that we can convert to and from [RFC\n 3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n # Examples\n\n Example 1: Compute Timestamp from POSIX `time()`.\n\n     Timestamp timestamp;\n     timestamp.set_seconds(time(NULL));\n     timestamp.set_nanos(0);\n\n Example 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n     struct timeval tv;\n     gettimeofday(&tv, NULL);\n\n     Timestamp timestamp;\n     timestamp.set_seconds(tv.tv_sec);\n     timestamp.set_nanos(tv.tv_usec * 1000);\n\n Example 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n     FILETIME ft;\n     GetSystemTimeAsFileTime(&ft);\n     UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n     // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n     // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n     Timestamp timestamp;\n     timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n     timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\n Example 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n     long millis = System.currentTimeMillis();\n\n     Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n         .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n Example 5: Compute Timestamp from Java `Instant.now()`.\n\n     Instant now = Instant.now();\n\n     Timestamp timestamp =\n         Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n             .setNanos(now.getNano()).build();\n\n Example 6: Compute Timestamp from current time in Python.\n\n     timestamp = Timestamp()\n     timestamp.GetCurrentTime()\n\n # JSON Mapping\n\n In JSON format, the Timestamp type is encoded as a string in the\n [RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\n format is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\n where {year} is always expressed using four digits while {month}, {day},\n {hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\n seconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\n are optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\n is required. A ProtoJSON serializer should always use UTC (as indicated by\n \"Z\") when printing the Timestamp type and a ProtoJSON parser should be\n able to accept both UTC and other timezones (as indicated by an offset).\n\n For example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n 01:30 UTC on January 15, 2017.\n\n In JavaScript, one can convert a Date object to this format using the\n standard\n [toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\n method. In Python, a standard `datetime.datetime` object can be converted\n to this format using\n [`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\n the time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\n the Joda Time's [`ISODateTimeFormat.dateTime()`](\n http://joda-time.sourceforge.net/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime()\n ) to obtain a formatter capable of generating timestamps in this format.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"seconds",
@@ -2441,14 +2360,12 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Represents seconds of UTC time since Unix epoch\n 1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n 9999-12-31T23:59:59Z inclusive.",
+		Description: "Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must\n be between -62135596800 and 253402300799 inclusive (which corresponds to\n 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
-		Description: "Non-negative fractions of a second at nanosecond resolution. Negative\n second values with fractions must still have non-negative nanos values\n that count forward in time. Must be from 0 to 999,999,999\n inclusive.",
+		Description: "Non-negative fractions of a second at nanosecond resolution. This field is\n the nanosecond portion of the duration, not an alternative to seconds.\n Negative second values with fractions must still have non-negative nanos\n values that count forward in time. Must be between 0 and 999,999,999\n inclusive.",
 	}
 
 	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
@@ -2485,13 +2402,11 @@ func user_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsche
 
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Signed seconds of the span of time. Must be from -315,576,000,000\n to +315,576,000,000 inclusive. Note: these bounds are computed from:\n 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years",
 	}
 
 	schema.Properties["nanos"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Signed fractions of a second at nanosecond resolution of the span\n of time. Durations less than one second are represented with a 0\n `seconds` field and a positive or negative `nanos` field. For durations\n of one second or more, a non-zero value for the `nanos` field must be\n of the same sign as the `seconds` field. Must be from -999,999,999\n to +999,999,999 inclusive.",
 	}
 
@@ -2515,7 +2430,7 @@ func user_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "`Any` contains an arbitrary serialized protocol buffer message along with a\n URL that describes the type of the serialized message.",
-		Description: "Protobuf library provides support to pack/unpack Any values in the form\n of utility functions or additional generated methods of the Any type.\n\n Example 1: Pack and unpack a message in C++.\n\n     Foo foo = ...;\n     Any any;\n     any.PackFrom(foo);\n     ...\n     if (any.UnpackTo(&foo)) {\n       ...\n     }\n\n Example 2: Pack and unpack a message in Java.\n\n     Foo foo = ...;\n     Any any = Any.pack(foo);\n     ...\n     if (any.is(Foo.class)) {\n       foo = any.unpack(Foo.class);\n     }\n     // or ...\n     if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n       foo = any.unpack(Foo.getDefaultInstance());\n     }\n\n  Example 3: Pack and unpack a message in Python.\n\n     foo = Foo(...)\n     any = Any()\n     any.Pack(foo)\n     ...\n     if any.Is(Foo.DESCRIPTOR):\n       any.Unpack(foo)\n       ...\n\n  Example 4: Pack and unpack a message in Go\n\n      foo := &pb.Foo{...}\n      any, err := anypb.New(foo)\n      if err != nil {\n        ...\n      }\n      ...\n      foo := &pb.Foo{}\n      if err := any.UnmarshalTo(foo); err != nil {\n        ...\n      }\n\n The pack methods provided by protobuf library will by default use\n 'type.googleapis.com/full.type.name' as the type URL and the unpack\n methods only use the fully qualified type name after the last '/'\n in the type URL, for example \"foo.bar.com/x/y.z\" will yield type\n name \"y.z\".\n\n JSON\n ====\n The JSON representation of an `Any` value uses the regular\n representation of the deserialized, embedded message, with an\n additional field `@type` which contains the type URL. Example:\n\n     package google.profile;\n     message Person {\n       string first_name = 1;\n       string last_name = 2;\n     }\n\n     {\n       \"@type\": \"type.googleapis.com/google.profile.Person\",\n       \"firstName\": <string>,\n       \"lastName\": <string>\n     }\n\n If the embedded message type is well-known and has a custom JSON\n representation, that representation will be embedded adding a field\n `value` which holds the custom JSON in addition to the `@type`\n field. Example (for message [google.protobuf.Duration][]):\n\n     {\n       \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n       \"value\": \"1.212s\"\n     }",
+		Description: "In its binary encoding, an `Any` is an ordinary message; but in other wire\n forms like JSON, it has a special encoding. The format of the type URL is\n described on the `type_url` field.\n\n Protobuf APIs provide utilities to interact with `Any` values:\n\n - A 'pack' operation accepts a message and constructs a generic `Any` wrapper\n   around it.\n - An 'unpack' operation reads the content of an `Any` message, either into an\n   existing message or a new one. Unpack operations must check the type of the\n   value they unpack against the declared `type_url`.\n - An 'is' operation decides whether an `Any` contains a message of the given\n   type, i.e. whether it can 'unpack' that type.\n\n The JSON format representation of an `Any` follows one of these cases:\n\n - For types without special-cased JSON encodings, the JSON format\n   representation of the `Any` is the same as that of the message, with an\n   additional `@type` field which contains the type URL.\n - For types with special-cased JSON encodings (typically called 'well-known'\n   types, listed in https://protobuf.dev/programming-guides/json/#any), the\n   JSON format representation has a key `@type` which contains the type URL\n   and a key `value` which contains the JSON-serialized value.\n\n The text format representation of an `Any` is like a message with one field\n whose name is the type URL in brackets. For example, an `Any` containing a\n `foo.Bar` message may be written `[type.googleapis.com/foo.Bar] { a: 2 }`.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
 			"type_url",
@@ -2529,14 +2444,13 @@ func user_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 
 	schema.Properties["type_url"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "A URL/resource name that uniquely identifies the type of the serialized\n protocol buffer message. This string must contain at least\n one \"/\" character. The last segment of the URL's path must represent\n the fully qualified name of the type (as in\n `path/google.protobuf.Duration`). The name should be in a canonical form\n (e.g., leading \".\" is not accepted).",
-		Description: "In practice, teams usually precompile into the binary all types that they\n expect it to use in the context of Any. However, for URLs which use the\n scheme `http`, `https`, or no scheme, one can optionally set up a type\n server that maps type URLs to message definitions as follows:\n\n * If no scheme is provided, `https` is assumed.\n * An HTTP GET on the URL must yield a [google.protobuf.Type][]\n   value in binary format, or produce an error.\n * Applications are allowed to cache lookup results based on the\n   URL, or have them precompiled into a binary to avoid any\n   lookup. Therefore, binary compatibility needs to be preserved\n   on changes to types. (Use versioned type names to manage\n   breaking changes.)\n\n Note: this functionality is not currently available in the official\n protobuf release, and it is not used for type URLs beginning with\n type.googleapis.com. As of May 2023, there are no widely used type server\n implementations and no plans to implement one.\n\n Schemes other than `http`, `https` (or the empty scheme) might be\n used with implementation specific semantics.",
+		Title:       "Identifies the type of the serialized Protobuf message with a URI reference\n consisting of a prefix ending in a slash and the fully-qualified type name.",
+		Description: "Example: type.googleapis.com/google.protobuf.StringValue\n\n This string must contain at least one `/` character, and the content after\n the last `/` must be the fully-qualified name of the type in canonical\n form, without a leading dot. Do not write a scheme on these URI references\n so that clients do not attempt to contact them.\n\n The prefix is arbitrary and Protobuf implementations are expected to\n simply strip off everything up to and including the last `/` to identify\n the type. `type.googleapis.com/` is a common default prefix that some\n legacy implementations require. This prefix does not indicate the origin of\n the type, and URIs containing it are not expected to respond to any\n requests.\n\n All type URL strings must be legal URI references with the additional\n restriction (for the text format) that the content of the reference\n must consist only of alphanumeric characters, percent-encoded escapes, and\n characters in the following set (not including the outer backticks):\n `/-.~_!$&()*+,;=`. Despite our allowing percent encodings, implementations\n should not unescape them to prevent confusion with existing parsers. For\n example, `type.googleapis.com%2FFoo` should be rejected.\n\n In the original design of `Any`, the possibility of launching a type\n resolution service at these type URLs was considered but Protobuf never\n implemented one and considers contacting these URLs to be problematic and\n a potential security issue. Do not attempt to contact type URLs.",
 	}
 
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
-		Description:     "Must be a valid serialized protocol buffer of the above specified type.",
+		Description:     "Holds a Protobuf serialization of the type described by type_url.",
 		ContentEncoding: "base64",
 	}
 
@@ -2582,7 +2496,6 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
-		Title:       "",
 		Description: "The resource name of the service account key in the following format\n `projects/{PROJECT_ID}/serviceAccounts/{ACCOUNT}/keys/{key}`.",
 	}
 
@@ -2599,7 +2512,6 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 
 	schema.Properties["key_algorithm"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "Specifies the algorithm (and possibly key size) for the key.",
 		Enum: []any{
 			0,
@@ -2610,25 +2522,24 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 
 	schema.Properties["private_key_data"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The private key data. Only provided in `CreateServiceAccountKey`\n responses. Make sure to keep the private key data secure because it\n allows for the assertion of the service account identity.\n When base64 decoded, the private key data can be used to authenticate with\n Google API client libraries and with\n <a href=\"/sdk/gcloud/reference/auth/activate-service-account\">gcloud\n auth activate-service-account</a>.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["public_key_data"] = &jsonschema.Schema{
 		Type:            "string",
-		Title:           "",
 		Description:     "The public key data. Only provided in `GetServiceAccountKey` responses.",
 		ContentEncoding: "base64",
 	}
 
 	schema.Properties["valid_after_time"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_after_time"].Description = "The key can be used after this timestamp."
 
 	schema.Properties["valid_before_time"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_before_time"].Description = "The key can be used before this timestamp.\n For system-managed key pairs, this timestamp is the end time for the\n private key signing operation. The public key could still be used\n for verification for a few hours after this time."
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The key origin.",
 		Enum: []any{
 			0,
@@ -2639,7 +2550,6 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 
 	schema.Properties["key_type"] = &jsonschema.Schema{
 		Type:        "integer",
-		Title:       "",
 		Description: "The key type.",
 		Enum: []any{
 			0,
@@ -2650,7 +2560,6 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 
 	schema.Properties["disabled"] = &jsonschema.Schema{
 		Type:        "boolean",
-		Title:       "",
 		Description: "The key status.",
 	}
 

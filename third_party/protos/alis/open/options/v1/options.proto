@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package alis.open.options.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option go_package = "open.alis.services/protobuf/alis/open/options/v1";
+
+// FileOptions
+message FileOptions {
+  // Options for the JSON schema generation.
+  JsonSchema json_schema = 1;
+
+  message JsonSchema {
+    // If true, schemas will be generated for all messages in this file, unless
+    // explicitly disabled on the message.
+    bool generate = 1;
+  }
+}
+
+// FileOptions for the JSON schema generation.
+// These are applied to the entire file.
+extend google.protobuf.FileOptions {
+  // Usage: option (alis.open.options.v1.file).json_schema.generate = true;
+  FileOptions file = 1001;
+}
+
+// Message Options
+message MessageOptions {
+  // Options for the JSON schema generation.
+  JsonSchema json_schema = 1;
+
+  message JsonSchema {
+    // If true, a JSON schema will be generated for this message.
+    bool generate = 1;
+  }
+}
+
+// MessageOptions for the JSON schema generation.
+// These are applied to the entire message.
+extend google.protobuf.MessageOptions {
+  // Usage: option (alis.open.options.v1.message).json_schema.generate = true;
+  MessageOptions message = 1001;
+}
+
+// Field Options
+message FieldOptions {
+  // Options for the JSON schema generation.
+  JsonSchema json_schema = 1;
+
+  message JsonSchema {
+    // The title of the field.
+    optional string title = 1;
+    // The description of the field.
+    optional string description = 2;
+    // Hides this field from the generated JSON schema entirely.
+    optional bool ignore = 3;
+    // Regex pattern (e.g. "^[A-Z]+$")
+    optional string pattern = 4;
+    // Standard formats (email, uuid, ipv4, uri, etc.)
+    optional string format = 5;
+    // The content encoding of the field.
+    optional string content_encoding = 6;
+    // The content media type of the field.
+    optional string content_media_type = 7;
+    // The minimum length of the field.
+    optional int64 min_length = 8;
+    // The maximum length of the field.
+    optional int64 max_length = 9;
+    // The minimum value of the field.
+    optional double minimum = 10;
+    // The maximum value of the field.
+    optional double maximum = 11;
+    // Whether the minimum value is exclusive.
+    optional bool exclusive_minimum = 12;
+    // Whether the maximum value is exclusive.
+    optional bool exclusive_maximum = 13;
+    // The minimum number of items in the field.
+    optional int64 min_items = 14;
+    // The maximum number of items in the field.
+    optional int64 max_items = 15;
+    // Whether the items in the field are unique.
+    optional bool unique_items = 16;
+    // The minimum number of properties in the field.
+    optional int64 min_properties = 17;
+    // The maximum number of properties in the field.
+    optional int64 max_properties = 18;
+  }
+}
+
+// FieldOptions for the JSON schema generation.
+// These are applied to the individual fields.
+extend google.protobuf.FieldOptions {
+  // Usage:
+  // string email = 1 [
+  //   (alis.open.options.v1.field).json_schema = {
+  //     required: true,
+  //     format: "email",
+  //     title: "Primary Email"
+  //   }
+  // ];
+  FieldOptions field = 1001;
+}

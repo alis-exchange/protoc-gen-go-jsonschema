@@ -1,5 +1,3 @@
-//go:build plugintest
-
 package plugintest
 
 import (
@@ -36,9 +34,6 @@ type PluginTestSuite struct {
 
 	// file is the target proto file within the plugin
 	file *protogen.File
-
-	// helper exposes internal plugin functionality for testing
-	helper plugin.TestingHelper
 }
 
 // SetupSuite runs once before all tests in the suite.
@@ -69,69 +64,29 @@ func (s *PluginTestSuite) TearDownTest() {
 
 // findWorkspaceRoot finds the root of the Go module by looking for go.mod.
 func (s *PluginTestSuite) findWorkspaceRoot() string {
-	// Try using go list first
-	cmd := exec.Command("go", "list", "-m", "-f", "{{.Dir}}")
-	output, err := cmd.Output()
-	if err == nil {
-		return strings.TrimSpace(string(output))
-	}
-
-	// Fallback: walk up from current directory
-	dir, err := os.Getwd()
-	s.Require().NoError(err, "Failed to get working directory")
-
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			s.T().Fatal("Could not find go.mod in any parent directory")
-		}
-		dir = parent
-	}
+	return findWorkspaceRoot(s.T())
 }
 
-// regenerateDescriptorSet generates the FileDescriptorSet from the proto files.
-// This ensures tests always use fresh descriptors matching the current protos.
+// regenerateDescriptorSet generates the FileDescriptorSet from the proto files,
+// so tests always use fresh descriptors matching the current protos. When
+// protoc is not installed, it falls back to the checked-in descriptor set so
+// `go test ./...` still runs.
 // Includes all proto files in the users/v1 package to support multi-file scenarios.
 func (s *PluginTestSuite) regenerateDescriptorSet() {
-	protoPath := filepath.Join(s.workspaceRoot, "testdata", "protos")
 	// Include all proto files in the package - user.proto imports common.proto
 	protoFiles := []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto"}
 	outputPath := filepath.Join(s.workspaceRoot, "testdata", "descriptors", "user.pb")
 
-	// Create output directory if it doesn't exist
-	err := os.MkdirAll(filepath.Dir(outputPath), 0o755)
-	s.Require().NoError(err, "Failed to create descriptor output directory")
-
-	// Build protoc command arguments
-	args := []string{
-		"--descriptor_set_out=" + outputPath,
-		"--include_imports",
-		"--include_source_info",
-		"--proto_path=" + protoPath,
-	}
-
-	// Find alis proto path if available (for custom options)
-	// Use home directory to make path portable across systems
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
-		if _, err := os.Stat(alisPath); err == nil {
-			args = append(args, "--proto_path="+alisPath)
+	if _, err := exec.LookPath("protoc"); err != nil {
+		if _, statErr := os.Stat(outputPath); statErr != nil {
+			s.T().Skip("protoc not found and no checked-in descriptor set; skipping suite")
 		}
+		s.fds = s.loadDescriptorSetFromPath(outputPath)
+		s.T().Logf("protoc not found; using checked-in descriptor set with %d files", len(s.fds.File))
+		return
 	}
 
-	// Add all proto files
-	args = append(args, protoFiles...)
-
-	// Run protoc
-	cmd := exec.Command("protoc", args...)
-	output, err := cmd.CombinedOutput()
-	s.Require().NoError(err, "Failed to run protoc: %s\nArgs: %v", string(output), args)
-
-	// Load the generated descriptor set
-	s.fds = s.loadDescriptorSetFromPath(outputPath)
+	s.fds = buildDescriptorSet(s.T(), s.workspaceRoot, protoFiles, outputPath)
 	s.T().Logf("Regenerated descriptor set with %d files", len(s.fds.File))
 }
 
@@ -163,10 +118,6 @@ func (s *PluginTestSuite) loadPlugin() {
 
 	s.plugin = p
 	s.file = s.findFile("user.proto")
-
-	helper, err := plugin.NewTestingHelper(s.plugin, s.file)
-	s.Require().NoError(err, "Failed to create TestingHelper")
-	s.helper = helper
 }
 
 // findFile finds a file in the plugin by path suffix.
@@ -200,11 +151,6 @@ func (s *PluginTestSuite) FindField(msg *protogen.Message, name string) *protoge
 	}
 	s.T().Fatalf("Could not find field %q in message %q", name, msg.Desc.Name())
 	return nil
-}
-
-// TestingHelper returns the TestingHelper instance.
-func (s *PluginTestSuite) TestingHelper() plugin.TestingHelper {
-	return s.helper
 }
 
 // RunGenerate runs the Generate function and returns the generated content.

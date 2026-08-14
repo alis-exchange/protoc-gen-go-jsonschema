@@ -1,5 +1,3 @@
-//go:build plugintest
-
 package plugintest
 
 import (
@@ -11,10 +9,6 @@ import (
 
 	"github.com/alis-exchange/protoc-gen-go-jsonschema/plugin"
 	"github.com/stretchr/testify/suite"
-	"google.golang.org/protobuf/compiler/protogen"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/descriptorpb"
-	"google.golang.org/protobuf/types/pluginpb"
 )
 
 // IntegrationTestSuite contains integration tests that test the full plugin pipeline.
@@ -67,16 +61,46 @@ func (s *IntegrationTestSuite) buildPlugin() {
 	s.T().Logf("Built plugin binary: %s", s.pluginBinary)
 }
 
-// TestGoldenFile tests that generated output matches the golden file.
+// TestGoldenFile generates schemas for every proto package under
+// testdata/protos and compares each generated file against its golden file.
+// New protos are picked up automatically; each directory is one Go package and
+// its files are compiled together so cross-file references resolve.
+// Run `go test ./plugin_test/... -update` to (re)create goldens; goldens whose
+// protos disappeared fail the test (and are removed with -update).
 func (s *IntegrationTestSuite) TestGoldenFile() {
-	contents := s.RunGenerate()
+	requireProtoc(s.T())
+
 	goldenBase := filepath.Join(s.WorkspaceRoot(), "testdata", "golden")
+	generated := make(map[string]bool)
 
-	for name, content := range contents {
-		baseName := filepath.Base(name)
-		goldenPath := filepath.Join(goldenBase, baseName+".golden")
+	for dir, protoFiles := range discoverProtoDirs(s.T(), s.WorkspaceRoot()) {
+		s.Run(strings.ReplaceAll(dir, "/", "_"), func() {
+			descPath := filepath.Join(tempDir(s.T()), "descriptors.pb")
+			fds := buildDescriptorSet(s.T(), s.WorkspaceRoot(), protoFiles, descPath)
+			p := createTestPlugin(s.T(), fds, protoFiles)
+			s.Require().NoError(plugin.Generate(p, "test"), "Generate failed for %s", dir)
 
-		assertGoldenFile(s.T(), content, goldenPath, *updateGolden)
+			for name, content := range getGeneratedContent(s.T(), p) {
+				baseName := filepath.Base(name)
+				generated[baseName+".golden"] = true
+				assertGoldenFile(s.T(), content, filepath.Join(goldenBase, baseName+".golden"), *updateGolden)
+			}
+		})
+	}
+
+	// A golden with no generating proto pins behaviour nothing produces anymore.
+	entries, err := os.ReadDir(goldenBase)
+	s.Require().NoError(err, "Failed to read golden directory")
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".golden") || generated[e.Name()] {
+			continue
+		}
+		if *updateGolden {
+			s.Require().NoError(os.Remove(filepath.Join(goldenBase, e.Name())))
+			s.T().Logf("Removed stale golden: %s", e.Name())
+			continue
+		}
+		s.T().Errorf("Stale golden %s has no generating proto; run -update to remove it", e.Name())
 	}
 }
 
@@ -150,28 +174,17 @@ func (s *IntegrationTestSuite) TestEndToEndWithProtoc() {
 	err := os.MkdirAll(outputDir, 0o755)
 	s.Require().NoError(err, "Failed to create output directory")
 
-	// Determine proto paths
-	protoBasePath := filepath.Join(s.workspaceRoot, "testdata", "protos")
 	protoFile := "users/v1/user.proto"
-
-	// Check for additional proto paths (alis options)
-	// Use home directory to make path portable across systems
-	var additionalPaths []string
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
-		if _, err := os.Stat(alisPath); err == nil {
-			additionalPaths = append(additionalPaths, "--proto_path="+alisPath)
-		}
-	}
 
 	// Run protoc with our plugin
 	args := []string{
 		"--plugin=protoc-gen-go-jsonschema=" + s.pluginBinary,
 		"--go-jsonschema_out=" + outputDir,
 		"--go-jsonschema_opt=paths=source_relative",
-		"--proto_path=" + protoBasePath,
 	}
-	args = append(args, additionalPaths...)
+	for _, path := range protoPaths(s.workspaceRoot) {
+		args = append(args, "--proto_path="+path)
+	}
 	args = append(args, protoFile)
 
 	protocCmd := exec.Command("protoc", args...)
@@ -227,21 +240,10 @@ func (s *IntegrationTestSuite) TestDescriptorSetGeneration() {
 
 	tmpDir := s.TempDir()
 
-	protoPath := filepath.Join(s.workspaceRoot, "testdata", "protos")
 	protoFile := "users/v1/user.proto"
 	outputPath := filepath.Join(tmpDir, "test.pb")
 
-	// Check for additional proto paths
-	// Use home directory to make path portable across systems
-	var additionalPaths []string
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
-		if _, err := os.Stat(alisPath); err == nil {
-			additionalPaths = append(additionalPaths, alisPath)
-		}
-	}
-
-	fds := generateDescriptorSet(s.T(), protoPath, protoFile, outputPath, additionalPaths...)
+	fds := buildDescriptorSet(s.T(), s.workspaceRoot, []string{protoFile}, outputPath)
 
 	s.Require().NotNil(fds, "Failed to generate descriptor set")
 	s.Require().NotEmpty(fds.File, "Descriptor set has no files")
@@ -1256,61 +1258,16 @@ require github.com/google/jsonschema-go v0.3.0
 // TestWeatherForecastSchemaValidation tests the weather forecast proto with comprehensive
 // JSON marshalling/unmarshalling validation to ensure all schema types work correctly.
 func (s *IntegrationTestSuite) TestWeatherForecastSchemaValidation() {
-	// Generate descriptor set for weather proto
-	workspaceRoot := s.findWorkspaceRoot()
-	protoPath := filepath.Join(workspaceRoot, "testdata", "protos")
+	requireProtoc(s.T())
+
 	weatherProto := "weather/v1/weather.proto"
-	outputPath := filepath.Join(workspaceRoot, "testdata", "descriptors", "weather.pb")
+	outputPath := filepath.Join(tempDir(s.T()), "weather.pb")
+	fds := buildDescriptorSet(s.T(), s.workspaceRoot, []string{weatherProto}, outputPath)
 
-	// Create output directory if it doesn't exist
-	err := os.MkdirAll(filepath.Dir(outputPath), 0o755)
-	s.Require().NoError(err, "Failed to create descriptor output directory")
-
-	// Build protoc command arguments
-	args := []string{
-		"--descriptor_set_out=" + outputPath,
-		"--include_imports",
-		"--include_source_info",
-		"--proto_path=" + protoPath,
-	}
-
-	// Find alis proto path if available (for custom options)
-	// Use home directory to make path portable across systems
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
-		if _, err := os.Stat(alisPath); err == nil {
-			args = append(args, "--proto_path="+alisPath)
-		}
-	}
-
-	// Add the proto file
-	args = append(args, weatherProto)
-
-	// Run protoc
-	cmd := exec.Command("protoc", args...)
-	output, err := cmd.CombinedOutput()
-	s.Require().NoError(err, "Failed to run protoc for weather proto: %s\nArgs: %v", string(output), args)
-
-	// Load the descriptor set
-	data, err := os.ReadFile(outputPath)
-	s.Require().NoError(err, "Failed to read weather descriptor set")
-
-	var fds descriptorpb.FileDescriptorSet
-	err = proto.Unmarshal(data, &fds)
-	s.Require().NoError(err, "Failed to unmarshal weather descriptor set")
-
-	// Create plugin request
-	req := &pluginpb.CodeGeneratorRequest{
-		FileToGenerate: []string{weatherProto},
-		ProtoFile:      fds.File,
-	}
-
-	// Create plugin
-	p, err := protogen.Options{}.New(req)
-	s.Require().NoError(err, "Failed to create plugin for weather proto")
+	p := createTestPlugin(s.T(), fds, []string{weatherProto})
 
 	// Generate schema code
-	err = plugin.Generate(p, "test")
+	err := plugin.Generate(p, "test")
 	s.Require().NoError(err, "Failed to generate weather schema")
 
 	resp := p.Response()
@@ -1870,9 +1827,9 @@ require github.com/google/jsonschema-go v0.3.0
 	s.Require().NoError(err)
 
 	// Run go mod tidy
-	cmd = exec.Command("go", "mod", "tidy")
+	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = tmpDir
-	output, err = cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	s.Require().NoError(err, "go mod tidy failed: %s", string(output))
 
 	// Run the tests
@@ -1885,83 +1842,19 @@ require github.com/google/jsonschema-go v0.3.0
 	s.Require().NoError(err, "Weather forecast schema tests failed: %s\n\nThis indicates issues with schema generation or JSON marshalling.", string(output))
 }
 
-// Helper function to find workspace root (duplicated from suite_test.go)
-func (s *IntegrationTestSuite) findWorkspaceRoot() string {
-	cwd, err := os.Getwd()
-	s.Require().NoError(err, "Failed to get current working directory")
-
-	dir := cwd
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			s.T().Fatalf("Could not find workspace root (go.mod) starting from %s", cwd)
-			return ""
-		}
-		dir = parent
-	}
-}
-
 // TestNoJsonSchemaOptionsProto tests that no jsonschema file is generated when
 // a proto file has no json_schema options at any level (file, message, or field).
 func (s *IntegrationTestSuite) TestNoJsonSchemaOptionsProto() {
-	// Generate descriptor set for no_options proto
-	workspaceRoot := s.findWorkspaceRoot()
-	protoPath := filepath.Join(workspaceRoot, "testdata", "protos")
+	requireProtoc(s.T())
+
 	noOptionsProto := "no_options/v1/no_options.proto"
-	outputPath := filepath.Join(workspaceRoot, "testdata", "descriptors", "no_options.pb")
+	outputPath := filepath.Join(tempDir(s.T()), "no_options.pb")
+	fds := buildDescriptorSet(s.T(), s.workspaceRoot, []string{noOptionsProto}, outputPath)
 
-	// Create output directory if it doesn't exist
-	err := os.MkdirAll(filepath.Dir(outputPath), 0o755)
-	s.Require().NoError(err, "Failed to create descriptor output directory")
-
-	// Build protoc command arguments
-	args := []string{
-		"--descriptor_set_out=" + outputPath,
-		"--include_imports",
-		"--include_source_info",
-		"--proto_path=" + protoPath,
-	}
-
-	// Find alis proto path if available (for custom options - not needed for this proto but keep for consistency)
-	// Use home directory to make path portable across systems
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
-		if _, err := os.Stat(alisPath); err == nil {
-			args = append(args, "--proto_path="+alisPath)
-		}
-	}
-
-	// Add the proto file
-	args = append(args, noOptionsProto)
-
-	// Run protoc
-	cmd := exec.Command("protoc", args...)
-	output, err := cmd.CombinedOutput()
-	s.Require().NoError(err, "Failed to run protoc for no_options proto: %s\nArgs: %v", string(output), args)
-
-	// Load the descriptor set
-	data, err := os.ReadFile(outputPath)
-	s.Require().NoError(err, "Failed to read no_options descriptor set")
-
-	var fds descriptorpb.FileDescriptorSet
-	err = proto.Unmarshal(data, &fds)
-	s.Require().NoError(err, "Failed to unmarshal no_options descriptor set")
-
-	// Create plugin request
-	req := &pluginpb.CodeGeneratorRequest{
-		FileToGenerate: []string{noOptionsProto},
-		ProtoFile:      fds.File,
-	}
-
-	// Create plugin
-	p, err := protogen.Options{}.New(req)
-	s.Require().NoError(err, "Failed to create plugin for no_options proto")
+	p := createTestPlugin(s.T(), fds, []string{noOptionsProto})
 
 	// Generate schema code
-	err = plugin.Generate(p, "test")
+	err := plugin.Generate(p, "test")
 	s.Require().NoError(err, "Generate should not fail even when no schemas are generated")
 
 	resp := p.Response()
@@ -2000,28 +1893,17 @@ func (s *IntegrationTestSuite) TestNoJsonSchemaOptionsWithProtoc() {
 	err := os.MkdirAll(outputDir, 0o755)
 	s.Require().NoError(err, "Failed to create output directory")
 
-	// Determine proto paths
-	protoBasePath := filepath.Join(s.workspaceRoot, "testdata", "protos")
 	protoFile := "no_options/v1/no_options.proto"
-
-	// Check for additional proto paths (alis options - not needed but keep for consistency)
-	// Use home directory to make path portable across systems
-	var additionalPaths []string
-	if homeDir, err := os.UserHomeDir(); err == nil {
-		alisPath := filepath.Join(homeDir, "alis.build", "alis", "define")
-		if _, err := os.Stat(alisPath); err == nil {
-			additionalPaths = append(additionalPaths, "--proto_path="+alisPath)
-		}
-	}
 
 	// Run protoc with our plugin
 	args := []string{
 		"--plugin=protoc-gen-go-jsonschema=" + s.pluginBinary,
 		"--go-jsonschema_out=" + outputDir,
 		"--go-jsonschema_opt=paths=source_relative",
-		"--proto_path=" + protoBasePath,
 	}
-	args = append(args, additionalPaths...)
+	for _, path := range protoPaths(s.workspaceRoot) {
+		args = append(args, "--proto_path="+path)
+	}
 	args = append(args, protoFile)
 
 	protocCmd := exec.Command("protoc", args...)

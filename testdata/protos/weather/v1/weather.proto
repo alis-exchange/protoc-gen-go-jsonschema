@@ -177,7 +177,7 @@ message GetWeatherForecastRequest {
   // Location Preferences
   //
   // Primary location preferences including coordinates and metadata.
-  LocationPreferences location_preferences = 30;
+  LocationPreferences location_preferences = 30 [(alis.open.options.v1.field).json_schema = {description: "Primary location preferences including coordinates and metadata."}];
 
   // Alternative Locations
   //
