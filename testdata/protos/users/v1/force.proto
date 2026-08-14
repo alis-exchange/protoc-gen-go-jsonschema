@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package force_test.v1;
+package users.v1;
 
 import "alis/open/options/v1/options.proto";
 
-option go_package = "github.com/newtonnthiga/force_test/v1;forcetestv1";
+option go_package = "example.com/users/v1;usersv1";
 
 // Parent message with generate=true
 message ParentWithNested {

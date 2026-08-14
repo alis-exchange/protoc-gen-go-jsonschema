@@ -4,58 +4,58 @@ package options_demo.v1;
 
 import "alis/open/options/v1/options.proto";
 
-option go_package = "github.com/newtonnthiga/options_demo/v1;optionsdemov1";
+option go_package = "example.com/options_demo/v1;optionsdemov1";
 option (alis.open.options.v1.file).json_schema.generate = true;
 
-// GetSummaryRequest mirrors an LLM-facing request with mutually exclusive
-// period shapes: exactly one of the three period fields must be set, and at
-// most one of label/code may be set.
-message GetSummaryRequest {
+// CheckoutRequest mirrors an LLM-facing request with mutually exclusive
+// payment shapes: exactly one of the three payment fields must be set, and at
+// most one of promo_code/gift_card_code may be set.
+message CheckoutRequest {
   option (alis.open.options.v1.message).json_schema.oneof = {
-    fields: ["financial_period", "season_period", "rolling_period"],
+    fields: ["card", "bank_transfer", "mobile_money"],
     required: true
   };
   option (alis.open.options.v1.message).json_schema.oneof = {
-    fields: ["label", "code"]
+    fields: ["promo_code", "gift_card_code"]
   };
 
-  // A named financial year period.
-  FinancialPeriod financial_period = 1;
-  // A season-grouped period.
-  SeasonPeriod season_period = 2;
-  // An explicit rolling date window.
-  RollingPeriod rolling_period = 3;
+  // Pay with a saved card.
+  Card card = 1;
+  // Pay by bank transfer.
+  BankTransfer bank_transfer = 2;
+  // Pay with mobile money.
+  MobileMoney mobile_money = 3;
 
-  // Optional display label.
-  string label = 4;
-  // Optional short code.
-  string code = 5;
+  // Optional promotional code.
+  string promo_code = 4;
+  // Optional gift card code.
+  string gift_card_code = 5;
 }
 
-// FinancialPeriod selects a financial year.
-message FinancialPeriod {
-  // Four-digit financial year.
-  int64 year = 1 [(alis.open.options.v1.field).json_schema = {
-    minimum: 2020,
+// Card selects a saved card to charge.
+message Card {
+  // Card expiry year.
+  int64 expiry_year = 1 [(alis.open.options.v1.field).json_schema = {
+    minimum: 2000,
     maximum: 2100
   }];
 }
 
-// SeasonPeriod selects a season window.
-message SeasonPeriod {
-  // Season name.
-  string season = 1 [(alis.open.options.v1.field).json_schema = {
-    enum_string: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+// BankTransfer selects a bank transfer payment.
+message BankTransfer {
+  // Settlement currency.
+  string currency = 1 [(alis.open.options.v1.field).json_schema = {
+    enum_string: ["USD", "EUR", "KES"]
   }];
 }
 
-// RollingPeriod selects an explicit window length.
-message RollingPeriod {
-  // Window length in months; must be greater than 0.
-  int64 months = 1 [(alis.open.options.v1.field).json_schema = {
+// MobileMoney selects a mobile money payment.
+message MobileMoney {
+  // Amount in cents; must be greater than 0.
+  int64 amount_cents = 1 [(alis.open.options.v1.field).json_schema = {
     minimum: 0,
     exclusive_minimum: true,
-    maximum: 24
+    maximum: 500000
   }];
 }
 
@@ -117,11 +117,11 @@ message KeywordShowcase {
     default_int: 1
   }];
 
-  // Superseded period reference; the annotation and description ride the
+  // Superseded card reference; the annotation and description ride the
   // $ref as sibling keywords.
-  FinancialPeriod old_period = 10 [(alis.open.options.v1.field).json_schema = {
+  Card legacy_card = 10 [(alis.open.options.v1.field).json_schema = {
     deprecated: true,
-    description: "Use GetSummaryRequest.financial_period instead."
+    description: "Use CheckoutRequest.card instead."
   }];
 
   // Status of the showcase entity.

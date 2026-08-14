@@ -46,10 +46,10 @@ require github.com/google/jsonschema-go v0.4.3
 
 	stubTypes := `package optionsdemov1
 
-type GetSummaryRequest struct{}
-type FinancialPeriod struct{}
-type SeasonPeriod struct{}
-type RollingPeriod struct{}
+type CheckoutRequest struct{}
+type Card struct{}
+type BankTransfer struct{}
+type MobileMoney struct{}
 type KeywordShowcase struct{}
 type KeywordShowcase_Status int32
 type RealOneofDemo struct{}
@@ -71,48 +71,48 @@ func validShowcase() map[string]any {
 	return map[string]any{
 		"weekday": 1, "rate": 0.5, "mode": "compact", "verbose": true,
 		"step": 10, "legacy_id": "x", "etag": "e", "status": 1,
-		"old_period": map[string]any{"year": 2024},
-		"tags":       []any{"a"},
+		"legacy_card": map[string]any{"expiry_year": 2030},
+		"tags":        []any{"a"},
 	}
 }
 
-func TestExactlyOnePeriodGroup(t *testing.T) {
-	resolved, err := ValidateSchemaWithName("GetSummaryRequest", (&GetSummaryRequest{}).JsonSchema())
+func TestExactlyOnePaymentGroup(t *testing.T) {
+	resolved, err := ValidateSchemaWithName("CheckoutRequest", (&CheckoutRequest{}).JsonSchema())
 	if err != nil {
 		t.Fatalf("resolve failed: %v", err)
 	}
 
-	one := map[string]any{"financial_period": map[string]any{"year": 2024}}
+	one := map[string]any{"card": map[string]any{"expiry_year": 2030}}
 	if err := resolved.Validate(one); err != nil {
-		t.Errorf("exactly one period should validate: %v", err)
+		t.Errorf("exactly one payment method should validate: %v", err)
 	}
 
 	if err := resolved.Validate(map[string]any{}); err == nil {
-		t.Error("no period set should fail the required oneof group")
+		t.Error("no payment method set should fail the required oneof group")
 	}
 
 	two := map[string]any{
-		"financial_period": map[string]any{"year": 2024},
-		"season_period":    map[string]any{"season": "SPRING"},
+		"card":          map[string]any{"expiry_year": 2030},
+		"bank_transfer": map[string]any{"currency": "USD"},
 	}
 	if err := resolved.Validate(two); err == nil {
-		t.Error("two periods set should fail the oneof group")
+		t.Error("two payment methods set should fail the oneof group")
 	}
 
-	// The label/code group is at-most-one: both absent is fine, both set fails.
-	labelAndCode := map[string]any{
-		"financial_period": map[string]any{"year": 2024},
-		"label":            "l", "code": "c",
+	// The promo/gift-card group is at-most-one: both absent is fine, both set fails.
+	bothCodes := map[string]any{
+		"card":       map[string]any{"expiry_year": 2030},
+		"promo_code": "p", "gift_card_code": "g",
 	}
-	if err := resolved.Validate(labelAndCode); err == nil {
-		t.Error("label and code together should fail the at-most-one group")
+	if err := resolved.Validate(bothCodes); err == nil {
+		t.Error("promo and gift card codes together should fail the at-most-one group")
 	}
-	labelOnly := map[string]any{
-		"financial_period": map[string]any{"year": 2024},
-		"label":            "l",
+	promoOnly := map[string]any{
+		"card":       map[string]any{"expiry_year": 2030},
+		"promo_code": "p",
 	}
-	if err := resolved.Validate(labelOnly); err != nil {
-		t.Errorf("label alone should validate: %v", err)
+	if err := resolved.Validate(promoOnly); err != nil {
+		t.Errorf("promo code alone should validate: %v", err)
 	}
 }
 

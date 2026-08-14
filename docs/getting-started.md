@@ -39,7 +39,7 @@ package weather.v1;
 
 import "alis/open/options/v1/options.proto";
 
-option go_package = "github.com/acme/weather/v1;weatherv1";
+option go_package = "example.com/weather/v1;weatherv1";
 
 // Generate schemas for every message in this file.
 option (alis.open.options.v1.file).json_schema.generate = true;
@@ -93,7 +93,7 @@ the same invocation, so cross-file schema references resolve at compile time.
 ## 5. Use the schema
 
 ```go
-import weatherv1 "github.com/acme/weather/v1"
+import weatherv1 "example.com/weather/v1"
 
 schema := (&weatherv1.GetForecastRequest{}).JsonSchema()
 

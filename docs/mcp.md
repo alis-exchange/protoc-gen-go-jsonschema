@@ -16,19 +16,19 @@ uses internally — so they plug into `mcp.AddTool` directly.
 ```go
 import (
     "github.com/modelcontextprotocol/go-sdk/mcp"
-    demov1 "github.com/acme/demo/v1"
+    demov1 "example.com/demo/v1"
 )
 
 server := mcp.NewServer(&mcp.Implementation{Name: "demo", Version: "1.0.0"}, nil)
 
 tool := &mcp.Tool{
-    Name:         "get_summary",
-    Description:  "Get a summary for a period",
-    InputSchema:  (&demov1.GetSummaryRequest{}).JsonSchema(),
-    OutputSchema: (&demov1.SummaryResponse{}).JsonSchema(),
+    Name:         "create_task",
+    Description:  "Create a task",
+    InputSchema:  (&demov1.CreateTaskRequest{}).JsonSchema(),
+    OutputSchema: (&demov1.Task{}).JsonSchema(),
 }
 
-mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, input *demov1.GetSummaryRequest) (*mcp.CallToolResult, *demov1.SummaryResponse, error) {
+mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, input *demov1.CreateTaskRequest) (*mcp.CallToolResult, *demov1.Task, error) {
     // input has already been validated against the schema by the SDK.
     ...
 })
@@ -54,7 +54,7 @@ Two things happen with the schema:
 Everything the model needs rides in the schema:
 
 - **Comments become descriptions** — write proto comments as instructions to
-  the caller ("Use only when the user says 'season'.").
+  the caller ("Use only when the user asks for a due date.").
 - **[Oneof groups](oneof-groups.md)** make "pick exactly one of these
   request shapes" a hard constraint instead of prose.
 - **`default_*` / `examples_*`** give the model anchors for well-formed values.
@@ -67,7 +67,7 @@ Everything the model needs rides in the schema:
 The same schemas work standalone:
 
 ```go
-schema := (&demov1.GetSummaryRequest{}).JsonSchema()
+schema := (&demov1.CreateTaskRequest{}).JsonSchema()
 resolved, err := schema.Resolve(&jsonschema.ResolveOptions{ValidateDefaults: true})
 if err != nil { ... }
 

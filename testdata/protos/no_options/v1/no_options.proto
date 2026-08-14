@@ -6,7 +6,7 @@ package no_options.v1;
 // It is used to test that the plugin correctly skips generation when no
 // json_schema options are present at the file, message, or field level.
 
-option go_package = "github.com/newtonnthiga/no_options/v1;nooptionsv1";
+option go_package = "example.com/no_options/v1;nooptionsv1";
 
 // SimpleStatus represents a basic status enum.
 enum SimpleStatus {

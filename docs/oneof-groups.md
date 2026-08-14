@@ -16,26 +16,26 @@ pattern as `buf.validate.message.oneof`, carried into the JSON Schema.
 ## The motivating shape
 
 ```protobuf
-message GetSummaryRequest {
+message CheckoutRequest {
   option (alis.open.options.v1.message).json_schema.oneof = {
-    fields: ["financial_period", "season_period", "rolling_period"],
+    fields: ["card", "bank_transfer", "mobile_money"],
     required: true   // exactly one must be set
   };
   option (alis.open.options.v1.message).json_schema.oneof = {
-    fields: ["label", "code"]   // at most one may be set
+    fields: ["promo_code", "gift_card_code"]   // at most one may be set
   };
 
-  // A named financial year period.
-  FinancialPeriod financial_period = 1;
-  // A season-grouped period.
-  SeasonPeriod season_period = 2;
-  // An explicit rolling date window.
-  RollingPeriod rolling_period = 3;
+  // Pay with a saved card.
+  Card card = 1;
+  // Pay by bank transfer.
+  BankTransfer bank_transfer = 2;
+  // Pay with mobile money.
+  MobileMoney mobile_money = 3;
 
-  // Optional display label.
-  string label = 4;
-  // Optional short code.
-  string code = 5;
+  // Optional promotional code.
+  string promo_code = 4;
+  // Optional gift card code.
+  string gift_card_code = 5;
 }
 ```
 
@@ -46,14 +46,14 @@ description) and adds root-level constraints:
 {
   "allOf": [
     { "oneOf": [
-        { "required": ["financial_period"] },
-        { "required": ["season_period"] },
-        { "required": ["rolling_period"] }
+        { "required": ["card"] },
+        { "required": ["bank_transfer"] },
+        { "required": ["mobile_money"] }
     ]},
     { "oneOf": [
-        { "required": ["label"] },
-        { "required": ["code"] },
-        { "not": { "anyOf": [ { "required": ["label"] }, { "required": ["code"] } ] } }
+        { "required": ["promo_code"] },
+        { "required": ["gift_card_code"] },
+        { "not": { "anyOf": [ { "required": ["promo_code"] }, { "required": ["gift_card_code"] } ] } }
     ]}
   ]
 }
@@ -94,7 +94,7 @@ is the point.
 present in the JSON. `json.Marshal` omits unset message fields (accurate) but
 also omits zero-valued scalars (`omitempty`), so a scalar member set to its
 zero value reads as "not set". Groups over message-typed fields — like the
-period shapes above — behave exactly as declared.
+payment shapes above — behave exactly as declared.
 
 ## Validation
 

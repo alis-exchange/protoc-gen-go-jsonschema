@@ -9,7 +9,7 @@ import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "users/v1/common.proto";
 
-option go_package = "github.com/newtonnthiga/users/v1;usersv1";
+option go_package = "example.com/users/v1;usersv1";
 option (alis.open.options.v1.file).json_schema.generate = true;
 
 // UserStatus represents the current status of a user account.

@@ -34,7 +34,7 @@ func loadTestPlugin(t *testing.T) *protogen.Plugin {
 	}
 
 	req := &pluginpb.CodeGeneratorRequest{
-		FileToGenerate: []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto"},
+		FileToGenerate: []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto", "users/v1/force.proto"},
 		ProtoFile:      fds.File,
 	}
 	p, err := protogen.Options{}.New(req)

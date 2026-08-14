@@ -74,7 +74,7 @@ func (s *PluginTestSuite) findWorkspaceRoot() string {
 // Includes all proto files in the users/v1 package to support multi-file scenarios.
 func (s *PluginTestSuite) regenerateDescriptorSet() {
 	// Include all proto files in the package - user.proto imports common.proto
-	protoFiles := []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto"}
+	protoFiles := []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto", "users/v1/force.proto"}
 	outputPath := filepath.Join(s.workspaceRoot, "testdata", "descriptors", "user.pb")
 
 	if _, err := exec.LookPath("protoc"); err != nil {
@@ -108,7 +108,7 @@ func (s *PluginTestSuite) loadPlugin() {
 	req := &pluginpb.CodeGeneratorRequest{
 		// Include all proto files in the package - they share the same Go package
 		// and reference each other, so they must be generated together
-		FileToGenerate: []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto"},
+		FileToGenerate: []string{"users/v1/user.proto", "users/v1/common.proto", "users/v1/admin.proto", "users/v1/force.proto"},
 		ProtoFile:      s.fds.File,
 	}
 

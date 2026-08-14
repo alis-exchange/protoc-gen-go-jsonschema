@@ -302,14 +302,14 @@ Declares mutually exclusive field groups for the schema — the LLM-facing
 `buf.validate.message.oneof`):
 
 ```protobuf
-message GetSummaryRequest {
+message CheckoutRequest {
   option (alis.open.options.v1.message).json_schema.oneof = {
-    fields: ["financial_period", "season_period", "rolling_period"],
+    fields: ["card", "bank_transfer", "mobile_money"],
     required: true   // exactly one; false/unset = at most one
   };
-  FinancialPeriod financial_period = 1;
-  SeasonPeriod season_period = 2;
-  RollingPeriod rolling_period = 3;
+  Card card = 1;
+  BankTransfer bank_transfer = 2;
+  MobileMoney mobile_money = 3;
 }
 ```
 
@@ -416,8 +416,12 @@ tools and runs the full suite on every PR and push to main.
   requires a golden (`-update` creates it); goldens whose protos disappeared
   fail the test.
 - All proto imports resolve from the repo itself: third-party protos
-  (alis options, google/iam and transitive deps) are vendored under
-  `third_party/protos/`. No machine-specific paths.
+  (alis options, google/iam and transitive deps, and the google/protobuf
+  well-known types) are vendored under `third_party/protos/`. The WKTs are
+  vendored deliberately: golden files embed their doc comments, and protoc's
+  built-in copies vary by protoc version — the explicit `--proto_path` copy
+  wins, keeping output identical on every protoc version. No machine-specific
+  paths.
 - `testdata/descriptors/user.pb` is checked in as the no-protoc fallback for
   the main suite and the in-package model tests.
 

@@ -10,7 +10,7 @@ import "alis/open/options/v1/options.proto";
 import "google/protobuf/wrappers.proto";
 import "users/v1/common.proto";
 
-option go_package = "github.com/newtonnthiga/users/v1;usersv1";
+option go_package = "example.com/users/v1;usersv1";
 
 option (alis.open.options.v1.file).json_schema.generate = true;
 

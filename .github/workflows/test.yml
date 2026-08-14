@@ -8,19 +8,25 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PROTOC_VERSION: "35.1"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
 
+      # Installed directly from the protobuf release (pinned) instead of a
+      # setup action. The exact protoc version does not affect generated
+      # output — the well-known types are vendored under third_party/protos.
       - name: Install protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sSLo /tmp/protoc.zip "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+          sudo unzip -q /tmp/protoc.zip bin/protoc -d /usr/local
+          protoc --version
 
       - name: Install protoc-gen-go
         run: go install google.golang.org/protobuf/cmd/protoc-gen-go@latest

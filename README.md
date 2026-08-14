@@ -43,7 +43,7 @@ package example.v1;
 
 import "alis/open/options/v1/options.proto";
 
-option go_package = "github.com/example/api/v1;examplev1";
+option go_package = "example.com/api/v1;examplev1";
 
 // Enable JSON Schema generation for all messages in this file
 option (alis.open.options.v1.file).json_schema.generate = true;
@@ -73,7 +73,7 @@ import (
     "encoding/json"
     "fmt"
 
-    examplev1 "github.com/example/api/v1"
+    examplev1 "example.com/api/v1"
 )
 
 func main() {

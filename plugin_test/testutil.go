@@ -306,6 +306,12 @@ type Common struct{}
 type Admin struct{}
 type CompleteInterviewRequest struct{}
 type CompleteInterviewRequest_InterviewSummary struct{}
+type ParentWithNested struct{}
+type ParentWithNested_NestedMessage struct{}
+type ParentWithForcedNested struct{}
+type ParentWithForcedNested_ForcedNested struct{}
+type ParentWithForcedDependency struct{}
+type DependencyMessage struct{}
 `
 }
 

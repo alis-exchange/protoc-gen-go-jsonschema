@@ -4,7 +4,7 @@ package recursive.v1;
 
 import "alis/open/options/v1/options.proto";
 
-option go_package = "github.com/newtonnthiga/recursive/v1;recursivev1";
+option go_package = "example.com/recursive/v1;recursivev1";
 option (alis.open.options.v1.file).json_schema.generate = true;
 
 message GetRecursiveConfigRequest {

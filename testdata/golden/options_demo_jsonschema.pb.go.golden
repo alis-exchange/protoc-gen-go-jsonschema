@@ -3,7 +3,7 @@
 // Source: options_demo/v1/options_demo.proto
 // Plugin version: test
 //
-// Generated on: 2026-08-14 10:53:51 UTC
+// Generated on: 2026-08-14 12:28:03 UTC
 
 package optionsdemov1
 
@@ -15,184 +15,183 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 )
 
-// JsonSchema returns the JSON schema for the GetSummaryRequest message.
-func (x *GetSummaryRequest) JsonSchema() *jsonschema.Schema {
+// JsonSchema returns the JSON schema for the CheckoutRequest message.
+func (x *CheckoutRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = GetSummaryRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.GetSummaryRequest", Type: "object"}
+	_ = CheckoutRequest_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.CheckoutRequest", Type: "object"}
 	root.Defs = defs
 	return root
 }
 
-func GetSummaryRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.GetSummaryRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.GetSummaryRequest"}
+func CheckoutRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["options_demo.v1.CheckoutRequest"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.CheckoutRequest"}
 	}
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Description: "GetSummaryRequest mirrors an LLM-facing request with mutually exclusive\n period shapes: exactly one of the three period fields must be set, and at\n most one of label/code may be set.",
+		Description: "CheckoutRequest mirrors an LLM-facing request with mutually exclusive\n payment shapes: exactly one of the three payment fields must be set, and at\n most one of promo_code/gift_card_code may be set.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
 	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.GetSummaryRequest"] = schema
+	defs["options_demo.v1.CheckoutRequest"] = schema
 
-	schema.Properties["financial_period"] = FinancialPeriod_JsonSchema_WithDefs(defs)
-	schema.Properties["financial_period"].Description = "A named financial year period."
+	schema.Properties["card"] = Card_JsonSchema_WithDefs(defs)
+	schema.Properties["card"].Description = "Pay with a saved card."
 
-	schema.Properties["season_period"] = SeasonPeriod_JsonSchema_WithDefs(defs)
-	schema.Properties["season_period"].Description = "A season-grouped period."
+	schema.Properties["bank_transfer"] = BankTransfer_JsonSchema_WithDefs(defs)
+	schema.Properties["bank_transfer"].Description = "Pay by bank transfer."
 
-	schema.Properties["rolling_period"] = RollingPeriod_JsonSchema_WithDefs(defs)
-	schema.Properties["rolling_period"].Description = "An explicit rolling date window."
+	schema.Properties["mobile_money"] = MobileMoney_JsonSchema_WithDefs(defs)
+	schema.Properties["mobile_money"].Description = "Pay with mobile money."
 
-	schema.Properties["label"] = &jsonschema.Schema{
+	schema.Properties["promo_code"] = &jsonschema.Schema{
 		Type:        "string",
-		Description: "Optional display label.",
+		Description: "Optional promotional code.",
 	}
 
-	schema.Properties["code"] = &jsonschema.Schema{
+	schema.Properties["gift_card_code"] = &jsonschema.Schema{
 		Type:        "string",
-		Description: "Optional short code.",
+		Description: "Optional gift card code.",
 	}
 
 	schema.AllOf = []*jsonschema.Schema{
 		{
 			OneOf: []*jsonschema.Schema{
-				{Required: []string{"financial_period"}},
-				{Required: []string{"season_period"}},
-				{Required: []string{"rolling_period"}},
+				{Required: []string{"card"}},
+				{Required: []string{"bank_transfer"}},
+				{Required: []string{"mobile_money"}},
 			},
 		},
 		{
 			OneOf: []*jsonschema.Schema{
-				{Required: []string{"label"}},
-				{Required: []string{"code"}},
+				{Required: []string{"promo_code"}},
+				{Required: []string{"gift_card_code"}},
 				{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-					{Required: []string{"label"}},
-					{Required: []string{"code"}},
+					{Required: []string{"promo_code"}},
+					{Required: []string{"gift_card_code"}},
 				}}},
 			},
 		},
 	}
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.GetSummaryRequest"}
+	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.CheckoutRequest"}
 }
 
-// JsonSchema returns the JSON schema for the FinancialPeriod message.
-func (x *FinancialPeriod) JsonSchema() *jsonschema.Schema {
+// JsonSchema returns the JSON schema for the Card message.
+func (x *Card) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = FinancialPeriod_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.FinancialPeriod", Type: "object"}
+	_ = Card_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.Card", Type: "object"}
 	root.Defs = defs
 	return root
 }
 
-func FinancialPeriod_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.FinancialPeriod"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.FinancialPeriod"}
+func Card_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["options_demo.v1.Card"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.Card"}
 	}
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Description: "FinancialPeriod selects a financial year.",
+		Description: "Card selects a saved card to charge.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
-			"year",
+			"expiry_year",
 		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
 	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.FinancialPeriod"] = schema
+	defs["options_demo.v1.Card"] = schema
 
-	schema.Properties["year"] = &jsonschema.Schema{
+	schema.Properties["expiry_year"] = &jsonschema.Schema{
 		Type:        "integer",
-		Description: "Four-digit financial year.",
-		Minimum:     &[]float64{2020}[0],
+		Description: "Card expiry year.",
+		Minimum:     &[]float64{2000}[0],
 		Maximum:     &[]float64{2100}[0],
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.FinancialPeriod"}
+	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.Card"}
 }
 
-// JsonSchema returns the JSON schema for the SeasonPeriod message.
-func (x *SeasonPeriod) JsonSchema() *jsonschema.Schema {
+// JsonSchema returns the JSON schema for the BankTransfer message.
+func (x *BankTransfer) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = SeasonPeriod_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.SeasonPeriod", Type: "object"}
+	_ = BankTransfer_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.BankTransfer", Type: "object"}
 	root.Defs = defs
 	return root
 }
 
-func SeasonPeriod_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.SeasonPeriod"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.SeasonPeriod"}
+func BankTransfer_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["options_demo.v1.BankTransfer"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.BankTransfer"}
 	}
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Description: "SeasonPeriod selects a season window.",
+		Description: "BankTransfer selects a bank transfer payment.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
-			"season",
+			"currency",
 		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
 	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.SeasonPeriod"] = schema
+	defs["options_demo.v1.BankTransfer"] = schema
 
-	schema.Properties["season"] = &jsonschema.Schema{
+	schema.Properties["currency"] = &jsonschema.Schema{
 		Type:        "string",
-		Description: "Season name.",
+		Description: "Settlement currency.",
 		Enum: []any{
-			"SPRING",
-			"SUMMER",
-			"AUTUMN",
-			"WINTER",
+			"USD",
+			"EUR",
+			"KES",
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.SeasonPeriod"}
+	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.BankTransfer"}
 }
 
-// JsonSchema returns the JSON schema for the RollingPeriod message.
-func (x *RollingPeriod) JsonSchema() *jsonschema.Schema {
+// JsonSchema returns the JSON schema for the MobileMoney message.
+func (x *MobileMoney) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = RollingPeriod_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.RollingPeriod", Type: "object"}
+	_ = MobileMoney_JsonSchema_WithDefs(defs)
+	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.MobileMoney", Type: "object"}
 	root.Defs = defs
 	return root
 }
 
-func RollingPeriod_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.RollingPeriod"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.RollingPeriod"}
+func MobileMoney_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	if _, ok := defs["options_demo.v1.MobileMoney"]; ok {
+		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.MobileMoney"}
 	}
 
 	schema := &jsonschema.Schema{
 		Type:        "object",
-		Description: "RollingPeriod selects an explicit window length.",
+		Description: "MobileMoney selects a mobile money payment.",
 		Properties:  make(map[string]*jsonschema.Schema),
 		Required: []string{
-			"months",
+			"amount_cents",
 		},
 	}
 
 	// Register schema BEFORE processing fields to handle self-references.
 	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.RollingPeriod"] = schema
+	defs["options_demo.v1.MobileMoney"] = schema
 
-	schema.Properties["months"] = &jsonschema.Schema{
+	schema.Properties["amount_cents"] = &jsonschema.Schema{
 		Type:             "integer",
-		Description:      "Window length in months; must be greater than 0.",
+		Description:      "Amount in cents; must be greater than 0.",
 		ExclusiveMinimum: &[]float64{0}[0],
-		Maximum:          &[]float64{24}[0],
+		Maximum:          &[]float64{500000}[0],
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.RollingPeriod"}
+	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.MobileMoney"}
 }
 
 // JsonSchema returns the JSON schema for the KeywordShowcase message.
@@ -222,7 +221,7 @@ func KeywordShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			"legacy_id",
 			"etag",
 			"status",
-			"old_period",
+			"legacy_card",
 		},
 	}
 
@@ -327,9 +326,9 @@ func KeywordShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 		Default: json.RawMessage("1"),
 	}
 
-	schema.Properties["old_period"] = FinancialPeriod_JsonSchema_WithDefs(defs)
-	schema.Properties["old_period"].Description = "Use GetSummaryRequest.financial_period instead."
-	schema.Properties["old_period"].Deprecated = true
+	schema.Properties["legacy_card"] = Card_JsonSchema_WithDefs(defs)
+	schema.Properties["legacy_card"].Description = "Use CheckoutRequest.card instead."
+	schema.Properties["legacy_card"].Deprecated = true
 
 	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.KeywordShowcase"}
 }
