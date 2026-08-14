@@ -267,7 +267,7 @@ The prefix is derived from the proto file name (`users/v1/admin.proto` → `admi
 
 ## Options System
 
-The plugin uses custom proto options from `open.alis.services/protobuf` (vendored for tests at `third_party/protos/alis/open/options/v1/options.proto`).
+The plugin uses custom proto options from `go.alis.build/common/alis/open/options` (publicly resolvable; vendored for tests at `third_party/protos/alis/open/options/v1/options.proto`).
 
 ### File-Level Options
 
@@ -284,12 +284,60 @@ message User {
 }
 ```
 
+`generate` is presence-based (`optional bool`): only an explicitly set value
+overrides the file-level default. Declaring other message-level options (such
+as `oneof` below) does **not** change whether the message generates.
+
 **Force Logic for Dependencies and Nested Messages**: when a message has
 `generate = true`, its **field dependencies** and **nested messages** are
 **forced to generate** even with explicit `generate = false`, so `$ref`
 pointers always resolve. Implemented in `getMessagesWithForce()`
 (`plugin/collect.go`); map fields force their value message (field 2 of the
 synthetic entry).
+
+### Message-Level Oneof Groups (`json_schema.oneof`)
+
+Declares mutually exclusive field groups for the schema — the LLM-facing
+"pick exactly one request shape" construct (same pattern as
+`buf.validate.message.oneof`):
+
+```protobuf
+message GetSummaryRequest {
+  option (alis.open.options.v1.message).json_schema.oneof = {
+    fields: ["financial_period", "season_period", "rolling_period"],
+    required: true   // exactly one; false/unset = at most one
+  };
+  FinancialPeriod financial_period = 1;
+  SeasonPeriod season_period = 2;
+  RollingPeriod rolling_period = 3;
+}
+```
+
+Semantics (decided in `buildDeclaredOneofGroups`, `plugin/model.go`):
+
+- **Members leave the plain `required` array** — they are conditionally
+  required by the group. This is also the clean escape hatch from "all
+  singular message fields are required".
+- Emitted at the message root: one group → `oneOf` of per-member presence
+  branches; several groups → `allOf` of such `oneOf`s. `required: true` omits
+  the "none present" branch (exactly-one); otherwise it is included
+  (at-most-one). Google-type proto oneofs share this machinery
+  (`oneofConstraintGroup` / `presenceNode`).
+- Presence branches: ordinary fields → `{required: ["field_name"]}`; members
+  of a real proto `oneof` block → the PascalCase wrapper form
+  `{required: ["Wrapper"], properties: {"Wrapper": {type: "object", required:
+  ["Variant"]}}}` (the wrapper key is always present under encoding/json, null
+  when unset).
+- Validation (generation-time errors): ≥ 2 members, all names must exist, no
+  repeated/map/ignored members, a field in at most one group.
+- **Subset narrowing is allowed by design** (2026-08 decision): a group may
+  cover only some members of a proto `oneof` — the schema then narrows the
+  contract, same philosophy as `enum_int` narrowing a proto enum. With
+  `required: true`, a legal proto value that sets an uncovered variant fails
+  schema validation; that is the point, not a bug. Don't add a full-coverage
+  guard without new evidence.
+- Caveat: presence of a *scalar* member with a zero value is invisible to
+  `json.Marshal` (omitempty) — groups work best over message-typed fields.
 
 ### Field-Level Options
 
@@ -304,19 +352,36 @@ string email = 1 [(alis.open.options.v1.field).json_schema = {
 Available: `ignore`, `title`, `description`, `format`, `pattern`, `minimum`,
 `maximum`, `exclusive_minimum`, `exclusive_maximum`, `min_length`,
 `max_length`, `min_items`, `max_items`, `unique_items`, `min_properties`,
-`max_properties`, `content_encoding`, `content_media_type`.
+`max_properties`, `content_encoding`, `content_media_type`, plus the typed
+variants: `enum_string`/`enum_int`/`enum_number`, `deprecated`, `read_only`,
+`write_only`, `multiple_of`, `default_string`/`default_int`/`default_number`/
+`default_bool`, `examples_string`/`examples_int`/`examples_number`.
 
 Application rules (all decided in `plugin/model.go`):
 
 - Scalar fields: metadata + container + value constraints at the root.
 - Arrays/maps: metadata + container constraints at the root; value constraints
-  on the element (`items` / `additionalProperties`).
+  (incl. `enum_*` and `multiple_of`) on the element (`items` /
+  `additionalProperties`).
 - Message-typed fields and oneof message variants: everything emits as `$ref`
   **siblings** (see above).
-- Exclusive bounds: `exclusive_minimum: true` emits `ExclusiveMinimum` with the
-  `minimum` value (even 0) and skips `Minimum`; a bare non-zero `minimum` emits
-  `Minimum`. Proto3 zero values make an explicit `minimum: 0` without the
-  exclusive flag indistinguishable from unset. Same for maximum.
+- **Annotations** (`deprecated`/`read_only`/`write_only`): always on the
+  field's schema root — on containers they mark the array/object itself, on
+  message fields they ride the `$ref` as siblings.
+- **Reads are presence-based** (the option fields are proto3 optional):
+  `minimum: 0`, `min_items: 0` etc. are expressible. `exclusive_minimum: true`
+  emits the `minimum` value as `ExclusiveMinimum` and skips `Minimum`;
+  `exclusive_minimum` without `minimum` is a generation-time error. Same for
+  maximum.
+- **Typed variants are validated at generation time** (errors name the field,
+  in `validateFieldOptions`): at most one variant per group; the variant must
+  match the value's JSON type (string/bytes → `_string`; integers and proto
+  enums → `_int`; float/double → `_number`; bool → `default_bool`);
+  `default_*`/`examples_*` only on singular scalar fields; `multiple_of` > 0
+  and numeric-only; `enum_int` on a proto enum must be a subset of its
+  declared values and **replaces** the auto-emitted full value list.
+- `Default` is emitted as `json.RawMessage` (the typed value marshaled at
+  generation time); `Enum`/`Examples` as typed `[]any` literals.
 
 ---
 
@@ -440,7 +505,20 @@ Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
   properties, PascalCase oneof wrappers, numeric enums.
 - **The model is the test surface**: unit tests assert decided models
   in-package; generated-source string matching is reserved for pinning output
-  shapes, and goldens pin everything else.
+  shapes, and goldens pin everything else. Invalid option combinations cannot
+  live under `testdata/protos` (they abort generation) — their tests build
+  dynamic in-memory descriptors (`dynMessage` in `plugin/model_test.go`).
+- **Presence-based option reads** (2026-08): pointer/len presence replaced the
+  `!= 0` heuristics. Awakening note: an explicit `minimum: 0` (previously
+  silently dropped) now emits, and `exclusive_minimum` without a bound is now
+  an error instead of emitting 0.
+- **`generate` needs presence** (2026-08): message-level `generate` is
+  `optional bool` — without presence, declaring any other message-level option
+  (e.g. `json_schema.oneof`) was misread as an explicit `generate = false` and
+  silently disabled the message's schema. Requires options module >= v1.8.0.
+- **Declared oneof members leave `required`** (2026-08): a field named in a
+  `json_schema.oneof` group is conditionally required by the group constraint,
+  never by the plain `required` array.
 
 ---
 

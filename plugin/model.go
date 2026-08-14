@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
+	optionsPb "go.alis.build/common/alis/open/options"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	optionsPb "open.alis.services/protobuf/alis/open/options/v1"
 )
 
 // -----------------------------------------------------------------------------
@@ -133,9 +133,14 @@ type valueConstraints struct {
 	minimum          *float64
 	exclusiveMaximum *float64
 	maximum          *float64
+	multipleOf       *float64
 	minLength        *int64
 	maxLength        *int64
-	enum             []int32
+
+	// enum holds the allowed values: int32 elements for auto-derived proto
+	// enum values, int64/float64/string elements from the enum_* options
+	// (which replace the auto-derived list when set).
+	enum []any
 }
 
 // elementNode is the schema of an array's items or a map's values: either a
@@ -171,6 +176,18 @@ type fieldNode struct {
 	// value constrains the root value for scalar fields (unused when element
 	// is set — constraints then live on the element).
 	value valueConstraints
+
+	// Annotations from field options, applied at the schema root (never on
+	// container elements) and included in $ref siblings for message fields.
+	deprecated bool
+	readOnly   bool
+	writeOnly  bool
+
+	// defaultValue is the field's JSON Schema default (nil = unset) and
+	// examples its example values. Valid on singular scalar fields only;
+	// typed as string/int64/float64/bool, marshaled to JSON by the printer.
+	defaultValue any
+	examples     []any
 
 	// element is the items/additionalProperties schema for arrays and maps.
 	element *elementNode
@@ -218,11 +235,33 @@ type oneofWrapperNode struct {
 	variants []oneofVariantNode
 }
 
-// flatOneofGroup is one oneof group of a Google type, emitted as flat
-// root-level constraints (Required alternatives plus a none-set branch).
-type flatOneofGroup struct {
-	name   string
-	fields []string
+// presenceNode expresses "member field X is set" as one branch of a
+// root-level oneof constraint.
+type presenceNode struct {
+	// fieldName, when set, renders as {Required: ["field_name"]} — the member
+	// is an ordinary flat property.
+	fieldName string
+
+	// wrapperKey/variantKey render the real-proto-oneof member form: the
+	// member's property is its PascalCase wrapper, which is always present
+	// (null when unset), so presence is expressed as
+	// {Properties: {wrapperKey: {Type: "object", Required: [variantKey]}}}.
+	wrapperKey string
+	variantKey string
+}
+
+// oneofConstraintGroup is a mutually-exclusive group of fields emitted as
+// root-level constraints. Two producers share this machinery: proto oneofs of
+// Google types (flat, at-most-one) and user-declared json_schema.oneof groups
+// (virtual oneofs, at-most-one or exactly-one).
+type oneofConstraintGroup struct {
+	name string
+
+	// required selects exactly-one semantics (no none-set branch) over
+	// at-most-one (a none-set branch joins the alternatives).
+	required bool
+
+	members []presenceNode
 }
 
 // messageSchemaModel is the complete decided schema for one message: what the
@@ -242,9 +281,11 @@ type messageSchemaModel struct {
 	// fields are the property assignments for regular fields, in field order.
 	fields []propertyNode
 
-	// flatGroups holds Google-type oneof groups (sorted by group name); one
-	// group emits schema.OneOf, several emit schema.AllOf.
-	flatGroups []flatOneofGroup
+	// constraintGroups holds root-level oneof constraints: Google-type proto
+	// oneofs (sorted by group name) or user-declared json_schema.oneof groups
+	// (declaration order); one group emits schema.OneOf, several emit
+	// schema.AllOf.
+	constraintGroups []oneofConstraintGroup
 
 	// oneofWrappers holds user-message oneof wrapper properties, in oneof
 	// declaration order.
@@ -270,15 +311,26 @@ func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageS
 		description: description,
 	}
 
+	// --- Declared Oneof Groups (message-level json_schema.oneof option) ---
+	declaredGroups, declaredMembers, err := buildDeclaredOneofGroups(message)
+	if err != nil {
+		return nil, err
+	}
+
 	// --- Required Fields ---
 	// A field is required only if it's a singular scalar/message field that is
 	// not optional. Fields in oneofs, marked optional, repeated (arrays), or
-	// maps are not required. An unset message field still marshals as an
-	// omitted key under encoding/json's omitempty tags; that known tension is
-	// accepted — the schema states the proto3 contract.
+	// maps are not required. Members of a declared oneof group are excluded
+	// too: they are conditionally required by the group's constraint. An unset
+	// message field still marshals as an omitted key under encoding/json's
+	// omitempty tags; that known tension is accepted — the schema states the
+	// proto3 contract.
 	for _, field := range message.Fields {
 		opts := getFieldJsonSchemaOptions(field)
 		if opts.GetIgnore() {
+			continue
+		}
+		if declaredMembers[getFieldName(field)] {
 			continue
 		}
 		if field.Oneof == nil && !field.Desc.HasOptionalKeyword() && !field.Desc.IsList() && !field.Desc.IsMap() {
@@ -320,9 +372,15 @@ func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageS
 		}
 		sort.Strings(groupNames)
 		for _, name := range groupNames {
-			m.flatGroups = append(m.flatGroups, flatOneofGroup{name: name, fields: oneofGroups[name]})
+			group := oneofConstraintGroup{name: name}
+			for _, fieldName := range oneofGroups[name] {
+				group.members = append(group.members, presenceNode{fieldName: fieldName})
+			}
+			m.constraintGroups = append(m.constraintGroups, group)
 		}
 	}
+
+	m.constraintGroups = append(m.constraintGroups, declaredGroups...)
 
 	// --- User Message Oneof Wrappers ---
 	if !id.isGoogle {
@@ -346,6 +404,9 @@ func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageS
 // buildFieldProperty decides the schema for a single field: a reference for
 // message-typed fields, or an inline schema for everything else.
 func buildFieldProperty(field *protogen.Field, filePrefix string) (propertyNode, error) {
+	if err := validateFieldOptions(field); err != nil {
+		return propertyNode{}, err
+	}
 	title, description := getTitleAndDescription(field.Desc)
 
 	switch {
@@ -386,6 +447,7 @@ func buildScalarNode(field *protogen.Field, title, description string) (*fieldNo
 	node := &fieldNode{typeName: kindTypeName}
 	applyMetadata(node, title, description, opts)
 	applyContainerOptions(node, opts)
+	applyRootOptions(node, opts)
 
 	var base valueConstraints
 	switch field.Desc.Kind() {
@@ -407,6 +469,7 @@ func buildArrayNode(field *protogen.Field, title, description string, filePrefix
 	node := &fieldNode{typeName: jsArray}
 	applyMetadata(node, title, description, opts)
 	applyContainerOptions(node, opts)
+	applyRootOptions(node, opts)
 	element, err := buildElement(field.Desc, field, field.Message, opts, filePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("field %s: %w", field.Desc.FullName(), err)
@@ -424,6 +487,7 @@ func buildMapNode(field *protogen.Field, title, description string, filePrefix s
 	node := &fieldNode{typeName: jsObject, elementIsAdditionalProperties: true}
 	applyMetadata(node, title, description, opts)
 	applyContainerOptions(node, opts)
+	applyRootOptions(node, opts)
 
 	switch field.Desc.MapKey().Kind() {
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
@@ -475,7 +539,7 @@ func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, 
 		return &elementNode{ref: &id}, nil
 
 	case protoreflect.EnumKind:
-		var enum []int32
+		var enum []any
 		if enumField != nil {
 			enum = getEnumValues(enumField)
 		} else {
@@ -499,6 +563,9 @@ func buildOneofWrapper(oneof *protogen.Oneof, filePrefix string) (oneofWrapperNo
 		opts := getFieldJsonSchemaOptions(field)
 		if opts.GetIgnore() {
 			continue
+		}
+		if err := validateFieldOptions(field); err != nil {
+			return oneofWrapperNode{}, false, err
 		}
 		variant := oneofVariantNode{key: field.GoName}
 		title, description := getTitleAndDescription(field.Desc)
@@ -531,6 +598,7 @@ func buildRefSiblings(field *protogen.Field, title, description string) *fieldNo
 	node := &fieldNode{}
 	applyMetadata(node, title, description, opts)
 	applyContainerOptions(node, opts)
+	applyRootOptions(node, opts)
 	node.value = applyValueOptions(valueConstraints{}, opts)
 	if node.isEmpty() {
 		return nil
@@ -543,6 +611,8 @@ func (n *fieldNode) isEmpty() bool {
 	return n.typeName == "" && n.title == "" && n.description == "" &&
 		n.minItems == nil && n.maxItems == nil && !n.uniqueItems &&
 		n.minProperties == nil && n.maxProperties == nil &&
+		!n.deprecated && !n.readOnly && !n.writeOnly &&
+		n.defaultValue == nil && len(n.examples) == 0 &&
 		n.element == nil && n.propertyNamesPattern == "" &&
 		n.value.isEmpty()
 }
@@ -553,6 +623,7 @@ func (vc valueConstraints) isEmpty() bool {
 		vc.contentEncoding == "" && vc.contentMediaType == "" &&
 		vc.exclusiveMinimum == nil && vc.minimum == nil &&
 		vc.exclusiveMaximum == nil && vc.maximum == nil &&
+		vc.multipleOf == nil &&
 		vc.minLength == nil && vc.maxLength == nil &&
 		len(vc.enum) == 0
 }
@@ -570,38 +641,77 @@ func applyMetadata(node *fieldNode, title, description string, opts *optionsPb.F
 }
 
 // applyContainerOptions sets array/object container constraints from options.
+// Reads are presence-based (the option fields are proto3 optional), so an
+// explicit 0 is expressible.
 func applyContainerOptions(node *fieldNode, opts *optionsPb.FieldOptions_JsonSchema) {
-	if v := opts.GetMinItems(); v != 0 {
-		node.minItems = &v
+	if opts == nil {
+		return
 	}
-	if v := opts.GetMaxItems(); v != 0 {
-		node.maxItems = &v
+	if opts.MinItems != nil {
+		node.minItems = opts.MinItems
+	}
+	if opts.MaxItems != nil {
+		node.maxItems = opts.MaxItems
 	}
 	if opts.GetUniqueItems() {
 		node.uniqueItems = true
 	}
-	if v := opts.GetMinProperties(); v != 0 {
-		node.minProperties = &v
+	if opts.MinProperties != nil {
+		node.minProperties = opts.MinProperties
 	}
-	if v := opts.GetMaxProperties(); v != 0 {
-		node.maxProperties = &v
+	if opts.MaxProperties != nil {
+		node.maxProperties = opts.MaxProperties
+	}
+}
+
+// applyRootOptions applies root-level annotations and default/examples from
+// field options. These always live on the field's schema root (never on
+// container elements); validateFieldOptions has already established that
+// default/examples only appear on singular scalar fields.
+func applyRootOptions(node *fieldNode, opts *optionsPb.FieldOptions_JsonSchema) {
+	if opts == nil {
+		return
+	}
+	node.deprecated = opts.GetDeprecated()
+	node.readOnly = opts.GetReadOnly()
+	node.writeOnly = opts.GetWriteOnly()
+
+	switch {
+	case opts.DefaultString != nil:
+		node.defaultValue = *opts.DefaultString
+	case opts.DefaultInt != nil:
+		node.defaultValue = *opts.DefaultInt
+	case opts.DefaultNumber != nil:
+		node.defaultValue = *opts.DefaultNumber
+	case opts.DefaultBool != nil:
+		node.defaultValue = *opts.DefaultBool
+	}
+
+	switch {
+	case len(opts.GetExamplesString()) > 0:
+		node.examples = toAnySlice(opts.GetExamplesString())
+	case len(opts.GetExamplesInt()) > 0:
+		node.examples = toAnySlice(opts.GetExamplesInt())
+	case len(opts.GetExamplesNumber()) > 0:
+		node.examples = toAnySlice(opts.GetExamplesNumber())
 	}
 }
 
 // applyValueOptions merges field options into base value constraints. Options
 // override the base for format/pattern/contentEncoding; numeric and length
-// bounds come from options alone.
+// bounds come from options alone. Reads are presence-based, so explicit zero
+// bounds (e.g. minimum: 0) are expressible.
 //
 // Per JSON Schema draft 2020-12, ExclusiveMinimum/ExclusiveMaximum are
 // standalone numeric values that replace (not supplement) the inclusive
-// bounds. The proto option model pairs a bool exclusive flag with a float
-// value, so we translate: when exclusive_minimum=true we use the minimum value
-// as ExclusiveMinimum (even if that value is 0) and skip Minimum. Otherwise we
-// use Minimum only when the value is non-zero — proto3 scalar defaults give us
-// no way to distinguish an unset minimum from an explicit minimum of 0 without
-// the exclusive flag. Same logic for maximum.
+// bounds: when exclusive_minimum=true the minimum value is emitted as
+// ExclusiveMinimum and Minimum is skipped (validateFieldOptions guarantees the
+// bound is set). Same for maximum.
 func applyValueOptions(base valueConstraints, opts *optionsPb.FieldOptions_JsonSchema) valueConstraints {
 	vc := base
+	if opts == nil {
+		return vc
+	}
 	if opts.GetFormat() != "" {
 		vc.format = opts.GetFormat()
 	}
@@ -615,28 +725,246 @@ func applyValueOptions(base valueConstraints, opts *optionsPb.FieldOptions_JsonS
 		vc.contentMediaType = opts.GetContentMediaType()
 	}
 
-	minVal := opts.GetMinimum()
-	maxVal := opts.GetMaximum()
 	switch {
 	case opts.GetExclusiveMinimum():
-		vc.exclusiveMinimum = &minVal
-	case minVal != 0:
-		vc.minimum = &minVal
+		vc.exclusiveMinimum = opts.Minimum
+	case opts.Minimum != nil:
+		vc.minimum = opts.Minimum
 	}
 	switch {
 	case opts.GetExclusiveMaximum():
-		vc.exclusiveMaximum = &maxVal
-	case maxVal != 0:
-		vc.maximum = &maxVal
+		vc.exclusiveMaximum = opts.Maximum
+	case opts.Maximum != nil:
+		vc.maximum = opts.Maximum
 	}
 
-	if v := opts.GetMinLength(); v != 0 {
-		vc.minLength = &v
+	if opts.MultipleOf != nil {
+		vc.multipleOf = opts.MultipleOf
 	}
-	if v := opts.GetMaxLength(); v != 0 {
-		vc.maxLength = &v
+	if opts.MinLength != nil {
+		vc.minLength = opts.MinLength
+	}
+	if opts.MaxLength != nil {
+		vc.maxLength = opts.MaxLength
+	}
+
+	// enum_* replaces any auto-derived enum value list.
+	switch {
+	case len(opts.GetEnumString()) > 0:
+		vc.enum = toAnySlice(opts.GetEnumString())
+	case len(opts.GetEnumInt()) > 0:
+		vc.enum = toAnySlice(opts.GetEnumInt())
+	case len(opts.GetEnumNumber()) > 0:
+		vc.enum = toAnySlice(opts.GetEnumNumber())
 	}
 	return vc
+}
+
+func toAnySlice[T any](values []T) []any {
+	out := make([]any, len(values))
+	for i, v := range values {
+		out[i] = v
+	}
+	return out
+}
+
+// jsonTypeFamily classifies a field descriptor's JSON value type for option
+// validation.
+func jsonTypeFamily(desc protoreflect.FieldDescriptor) string {
+	switch desc.Kind() {
+	case protoreflect.StringKind, protoreflect.BytesKind:
+		return jsString
+	case protoreflect.EnumKind,
+		protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
+		protoreflect.Fixed32Kind, protoreflect.Sfixed32Kind,
+		protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Uint64Kind,
+		protoreflect.Fixed64Kind, protoreflect.Sfixed64Kind:
+		return jsInteger
+	case protoreflect.FloatKind, protoreflect.DoubleKind:
+		return jsNumber
+	case protoreflect.BoolKind:
+		return jsBoolean
+	case protoreflect.MessageKind, protoreflect.GroupKind:
+		return jsObject
+	default:
+		return ""
+	}
+}
+
+// validateFieldOptions enforces the kind-dependent rules of the typed option
+// variants for one field, before any of them are applied. Every violation is
+// a generation-time error naming the field — never a silent drop.
+func validateFieldOptions(field *protogen.Field) error {
+	opts := getFieldJsonSchemaOptions(field)
+	if opts == nil {
+		return nil
+	}
+	name := field.Desc.FullName()
+
+	// Value-level options are governed by the JSON type of the field's value:
+	// the element for repeated fields (Kind() already is the element kind),
+	// the value for maps.
+	valueDesc := field.Desc
+	if field.Desc.IsMap() {
+		valueDesc = field.Desc.MapValue()
+	}
+	family := jsonTypeFamily(valueDesc)
+
+	// --- enum_*: one variant, matching the value's JSON type ---
+	enumFamilies := countSetVariants(
+		setVariant{jsString, len(opts.GetEnumString()) > 0},
+		setVariant{jsInteger, len(opts.GetEnumInt()) > 0},
+		setVariant{jsNumber, len(opts.GetEnumNumber()) > 0},
+	)
+	if len(enumFamilies) > 1 {
+		return fmt.Errorf("field %s: at most one enum_* variant may be set", name)
+	}
+	if len(enumFamilies) == 1 && enumFamilies[0] != family {
+		return fmt.Errorf("field %s: the enum_* variant for JSON type %q does not match the field's JSON type %q", name, enumFamilies[0], family)
+	}
+
+	// enum_int on a proto enum field must be a subset of its declared values.
+	if len(opts.GetEnumInt()) > 0 && valueDesc.Kind() == protoreflect.EnumKind {
+		declared := make(map[int64]bool)
+		values := valueDesc.Enum().Values()
+		for i := 0; i < values.Len(); i++ {
+			declared[int64(values.Get(i).Number())] = true
+		}
+		for _, v := range opts.GetEnumInt() {
+			if !declared[v] {
+				return fmt.Errorf("field %s: enum_int value %d is not a declared value of enum %s", name, v, valueDesc.Enum().FullName())
+			}
+		}
+	}
+
+	// --- multiple_of: numeric values only, > 0 ---
+	if opts.MultipleOf != nil {
+		if family != jsInteger && family != jsNumber {
+			return fmt.Errorf("field %s: multiple_of applies to numeric fields only", name)
+		}
+		if *opts.MultipleOf <= 0 {
+			return fmt.Errorf("field %s: multiple_of must be greater than 0", name)
+		}
+	}
+
+	// --- exclusive bounds require their bound ---
+	if opts.GetExclusiveMinimum() && opts.Minimum == nil {
+		return fmt.Errorf("field %s: exclusive_minimum requires minimum to be set", name)
+	}
+	if opts.GetExclusiveMaximum() && opts.Maximum == nil {
+		return fmt.Errorf("field %s: exclusive_maximum requires maximum to be set", name)
+	}
+
+	// --- default_* / examples_*: singular scalar fields, matching variant ---
+	singularScalar := !field.Desc.IsList() && !field.Desc.IsMap() && family != jsObject
+
+	defaultFamilies := countSetVariants(
+		setVariant{jsString, opts.DefaultString != nil},
+		setVariant{jsInteger, opts.DefaultInt != nil},
+		setVariant{jsNumber, opts.DefaultNumber != nil},
+		setVariant{jsBoolean, opts.DefaultBool != nil},
+	)
+	if len(defaultFamilies) > 1 {
+		return fmt.Errorf("field %s: at most one default_* variant may be set", name)
+	}
+	if len(defaultFamilies) == 1 {
+		if !singularScalar {
+			return fmt.Errorf("field %s: default_* is only valid on singular scalar fields", name)
+		}
+		if defaultFamilies[0] != family {
+			return fmt.Errorf("field %s: the default_* variant for JSON type %q does not match the field's JSON type %q", name, defaultFamilies[0], family)
+		}
+	}
+
+	examplesFamilies := countSetVariants(
+		setVariant{jsString, len(opts.GetExamplesString()) > 0},
+		setVariant{jsInteger, len(opts.GetExamplesInt()) > 0},
+		setVariant{jsNumber, len(opts.GetExamplesNumber()) > 0},
+	)
+	if len(examplesFamilies) > 1 {
+		return fmt.Errorf("field %s: at most one examples_* variant may be set", name)
+	}
+	if len(examplesFamilies) == 1 {
+		if !singularScalar {
+			return fmt.Errorf("field %s: examples_* is only valid on singular scalar fields", name)
+		}
+		if examplesFamilies[0] != family {
+			return fmt.Errorf("field %s: the examples_* variant for JSON type %q does not match the field's JSON type %q", name, examplesFamilies[0], family)
+		}
+	}
+
+	return nil
+}
+
+type setVariant struct {
+	family string
+	set    bool
+}
+
+func countSetVariants(variants ...setVariant) []string {
+	var families []string
+	for _, v := range variants {
+		if v.set {
+			families = append(families, v.family)
+		}
+	}
+	return families
+}
+
+// buildDeclaredOneofGroups reads the message-level json_schema.oneof option
+// and turns each declared group into a root-level constraint. The second
+// return value is the set of member field names, used to exclude members from
+// the plain required list (they are conditionally required by their group).
+func buildDeclaredOneofGroups(message *protogen.Message) ([]oneofConstraintGroup, map[string]bool, error) {
+	declared := getMessageJsonSchemaOptions(message).GetOneof()
+	if len(declared) == 0 {
+		return nil, nil, nil
+	}
+	msgName := message.Desc.FullName()
+
+	fieldsByName := make(map[string]*protogen.Field, len(message.Fields))
+	for _, field := range message.Fields {
+		fieldsByName[getFieldName(field)] = field
+	}
+
+	members := make(map[string]bool)
+	var groups []oneofConstraintGroup
+	for i, decl := range declared {
+		names := decl.GetFields()
+		if len(names) < 2 {
+			return nil, nil, fmt.Errorf("message %s: json_schema.oneof group %d must name at least two fields", msgName, i)
+		}
+		group := oneofConstraintGroup{
+			name:     fmt.Sprintf("oneof_%d", i),
+			required: decl.GetRequired(),
+		}
+		for _, fieldName := range names {
+			field, ok := fieldsByName[fieldName]
+			if !ok {
+				return nil, nil, fmt.Errorf("message %s: json_schema.oneof group %d references unknown field %q", msgName, i, fieldName)
+			}
+			if field.Desc.IsList() || field.Desc.IsMap() {
+				return nil, nil, fmt.Errorf("message %s: json_schema.oneof member %q must not be a repeated or map field", msgName, fieldName)
+			}
+			if getFieldJsonSchemaOptions(field).GetIgnore() {
+				return nil, nil, fmt.Errorf("message %s: json_schema.oneof member %q is excluded from the schema by ignore", msgName, fieldName)
+			}
+			if members[fieldName] {
+				return nil, nil, fmt.Errorf("message %s: field %q may only appear once across json_schema.oneof groups", msgName, fieldName)
+			}
+			members[fieldName] = true
+
+			if oneof := field.Oneof; oneof != nil && !oneof.Desc.IsSynthetic() {
+				// Real proto-oneof member: its property is the PascalCase
+				// wrapper, which is always present (null when unset).
+				group.members = append(group.members, presenceNode{wrapperKey: oneof.GoName, variantKey: field.GoName})
+			} else {
+				group.members = append(group.members, presenceNode{fieldName: fieldName})
+			}
+		}
+		groups = append(groups, group)
+	}
+	return groups, members, nil
 }
 
 // -----------------------------------------------------------------------------
@@ -718,9 +1046,9 @@ func getTitleAndDescription(desc protoreflect.Descriptor) (title string, descrip
 }
 
 // getEnumValues extracts the allowed enum numeric values from a field.
-// Returns numeric values (int32) for encoding/json compatibility.
-func getEnumValues(field *protogen.Field) []int32 {
-	var enumValues []int32
+// Returns numeric values (int32 elements) for encoding/json compatibility.
+func getEnumValues(field *protogen.Field) []any {
+	var enumValues []any
 	for _, value := range field.Enum.Values {
 		enumValues = append(enumValues, int32(value.Desc.Number()))
 	}
@@ -729,8 +1057,8 @@ func getEnumValues(field *protogen.Field) []int32 {
 
 // getEnumValuesFromDescriptor extracts enum numeric values from a descriptor.
 // Used for map value enums where only the EnumDescriptor is available.
-func getEnumValuesFromDescriptor(enumDesc protoreflect.EnumDescriptor) []int32 {
-	var enumValues []int32
+func getEnumValuesFromDescriptor(enumDesc protoreflect.EnumDescriptor) []any {
+	var enumValues []any
 	values := enumDesc.Values()
 	for i := 0; i < values.Len(); i++ {
 		enumValues = append(enumValues, int32(values.Get(i).Number()))

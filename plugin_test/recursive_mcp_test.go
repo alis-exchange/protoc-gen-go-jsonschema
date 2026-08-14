@@ -56,17 +56,16 @@ func (s *IntegrationTestSuite) TestRecursiveSchemaWithMCP() {
 		s.Require().NoError(os.WriteFile(outPath, []byte(content), 0o644))
 	}
 
-	// open.alis.services/protobuf is declared explicitly: the alis registry
-	// answers 401 (not 404) for the subpath candidates go mod tidy probes
-	// during module discovery, so discovery for that package must be avoided.
+	// The alis options module is declared explicitly to pin its version; the
+	// generated .pb.go imports it (options.proto's go_package).
 	goMod := `module testmcp
 
-go 1.25.0
+go 1.26
 
 require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/modelcontextprotocol/go-sdk v1.6.1
-	open.alis.services/protobuf v1.200.13
+	go.alis.build/common/alis/open/options v1.8.0
 )
 `
 	s.Require().NoError(os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0o644))
@@ -256,13 +255,11 @@ func TestJsonSchemaResolveWithMCP(t *testing.T) {
 
 	cmd = exec.Command("go", "mod", "tidy")
 	cmd.Dir = tmpDir
-	cmd.Env = alisModuleEnv()
 	output, err = cmd.CombinedOutput()
 	s.Require().NoError(err, "go mod tidy failed: %s", string(output))
 
 	cmd = exec.Command("go", "test", "-v", "-timeout", "120s", "./...")
 	cmd.Dir = tmpDir
-	cmd.Env = alisModuleEnv()
 	output, err = cmd.CombinedOutput()
 	s.T().Logf("Recursive MCP test output:\n%s", string(output))
 	s.Require().NoError(err, "recursive MCP tests failed: %s", string(output))

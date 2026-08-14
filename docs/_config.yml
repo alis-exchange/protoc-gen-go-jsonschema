@@ -1,0 +1,12 @@
+title: protoc-gen-go-jsonschema
+description: >-
+  A protoc plugin that generates Go code producing JSON Schema (Draft 2020-12)
+  for your protobuf messages — built for agents and MCP tools.
+remote_theme: just-the-docs/just-the-docs
+plugins:
+  - jekyll-remote-theme
+search_enabled: true
+heading_anchors: true
+aux_links:
+  GitHub: https://github.com/alis-exchange/protoc-gen-go-jsonschema
+color_scheme: light

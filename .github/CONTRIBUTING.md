@@ -19,20 +19,12 @@ Useful contributions include bug reports with reproduction steps, failing tests,
 
 ### Requirements
 
-- **Go** version matching [go.mod](go.mod) (currently `go 1.25.0` or newer within that toolchain policy).
+- **Go** version matching [go.mod](go.mod) (currently `go 1.26` or newer within that toolchain policy).
 - **protoc** on your `PATH` if you run integration-style tests or regenerate descriptor sets (the test suite shells out to `protoc` where needed).
 
-### Private module access
+### Getting the code
 
-This module depends on `open.alis.services/protobuf` from Artifact Registry. Configure Go the same way as in the README so `go mod download` and `go test` resolve dependencies:
-
-```shell
-export GOPROXY=https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,https://proxy.golang.org,direct
-export GONOPROXY=github.com/alis-exchange/protoc-gen-go-jsonschema
-export GONOSUMDB=open.alis.services/protobuf
-```
-
-Then:
+All dependencies (including the alis options module `go.alis.build/common/alis/open/options`) resolve from the public Go module proxy — no special configuration is needed.
 
 ```shell
 git clone https://github.com/alis-exchange/protoc-gen-go-jsonschema.git

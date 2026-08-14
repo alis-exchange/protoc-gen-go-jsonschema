@@ -53,20 +53,6 @@ func createTestPlugin(t *testing.T, fds *descriptorpb.FileDescriptorSet, filesTo
 	return p
 }
 
-// alisModuleEnv returns the process environment extended with the Go registry
-// settings that resolve open.alis.services/protobuf (same setup as the release
-// workflow; the registry allows public reads). Temp test modules whose
-// generated .pb.go files import the alis options package need this when the
-// host has no alis registry configured.
-func alisModuleEnv() []string {
-	// proxy.golang.org must come first: the alis registry answers 401 (not 404)
-	// for modules it does not host, and Go only falls through on 404/410.
-	return append(os.Environ(),
-		"GOPROXY=https://proxy.golang.org,https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,direct",
-		"GONOSUMDB=open.alis.services/protobuf",
-	)
-}
-
 // requireProtoc skips the test if protoc is not installed.
 func requireProtoc(t *testing.T) {
 	t.Helper()

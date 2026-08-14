@@ -2,6 +2,8 @@
 
 A Protocol Buffers compiler (protoc) plugin that generates Go code for creating JSON Schema (Draft 2020-12) representations of your proto messages at runtime.
 
+**📖 Documentation: [alis-exchange.github.io/protoc-gen-go-jsonschema](https://alis-exchange.github.io/protoc-gen-go-jsonschema/)** — or browse the [docs/](docs/) folder.
+
 > [!IMPORTANT]
 > This plugin is designed to be used alongside [protoc-gen-go](https://pkg.go.dev/google.golang.org/protobuf/cmd/protoc-gen-go). It generates additional Go code that provides `JsonSchema()` methods for your proto messages.
 
@@ -18,20 +20,11 @@ A Protocol Buffers compiler (protoc) plugin that generates Go code for creating 
 
 ### Using go install
 
-This plugin depends on a private module (`open.alis.services/protobuf`), so you'll need to configure Go's module proxy settings:
+All dependencies (including the alis options module `go.alis.build/common/alis/open/options`) resolve from the public Go module proxy — no special configuration is needed:
 
 ```shell
-GOPROXY=https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,https://proxy.golang.org,direct \
-GONOPROXY=github.com/alis-exchange/protoc-gen-go-jsonschema \
-GONOSUMDB=open.alis.services/protobuf \
 go install github.com/alis-exchange/protoc-gen-go-jsonschema/cmd/protoc-gen-go-jsonschema@latest
 ```
-
-**Environment Variables Explained:**
-
-- `GOPROXY`: Configures the module proxy chain, including the Artifact Registry Repository for `open.alis.services/protobuf`
-- `GONOPROXY`: Excludes this public GitHub module from the Artifact Registry Repository
-- `GONOSUMDB`: Disables checksum verification for the Artifact Registry Repository
 
 ### Download Pre-built Binary
 

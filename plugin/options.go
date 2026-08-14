@@ -1,9 +1,9 @@
 package plugin
 
 import (
+	optionsPb "go.alis.build/common/alis/open/options"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
-	optionsPb "open.alis.services/protobuf/alis/open/options/v1"
 )
 
 // This file extracts JSON Schema options from Protocol Buffer definitions.

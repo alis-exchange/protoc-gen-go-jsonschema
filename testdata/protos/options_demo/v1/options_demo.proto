@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package options_demo.v1;
+
+import "alis/open/options/v1/options.proto";
+
+option go_package = "github.com/newtonnthiga/options_demo/v1;optionsdemov1";
+option (alis.open.options.v1.file).json_schema.generate = true;
+
+// GetSummaryRequest mirrors an LLM-facing request with mutually exclusive
+// period shapes: exactly one of the three period fields must be set, and at
+// most one of label/code may be set.
+message GetSummaryRequest {
+  option (alis.open.options.v1.message).json_schema.oneof = {
+    fields: ["financial_period", "season_period", "rolling_period"],
+    required: true
+  };
+  option (alis.open.options.v1.message).json_schema.oneof = {
+    fields: ["label", "code"]
+  };
+
+  // A named financial year period.
+  FinancialPeriod financial_period = 1;
+  // A season-grouped period.
+  SeasonPeriod season_period = 2;
+  // An explicit rolling date window.
+  RollingPeriod rolling_period = 3;
+
+  // Optional display label.
+  string label = 4;
+  // Optional short code.
+  string code = 5;
+}
+
+// FinancialPeriod selects a financial year.
+message FinancialPeriod {
+  // Four-digit financial year.
+  int64 year = 1 [(alis.open.options.v1.field).json_schema = {
+    minimum: 2020,
+    maximum: 2100
+  }];
+}
+
+// SeasonPeriod selects a season window.
+message SeasonPeriod {
+  // Season name.
+  string season = 1 [(alis.open.options.v1.field).json_schema = {
+    enum_string: ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+  }];
+}
+
+// RollingPeriod selects an explicit window length.
+message RollingPeriod {
+  // Window length in months; must be greater than 0.
+  int64 months = 1 [(alis.open.options.v1.field).json_schema = {
+    minimum: 0,
+    exclusive_minimum: true,
+    maximum: 24
+  }];
+}
+
+// KeywordShowcase exercises every new field option on happy paths.
+message KeywordShowcase {
+  // Weekday index.
+  int32 weekday = 1 [(alis.open.options.v1.field).json_schema = {
+    enum_int: [0, 1, 2, 3, 4, 5, 6],
+    default_int: 1,
+    examples_int: [1, 5]
+  }];
+
+  // Sampling rate.
+  double rate = 2 [(alis.open.options.v1.field).json_schema = {
+    enum_number: [0.25, 0.5, 1],
+    default_number: 0.5,
+    examples_number: [0.25, 1]
+  }];
+
+  // Output mode.
+  string mode = 3 [(alis.open.options.v1.field).json_schema = {
+    enum_string: ["compact", "detailed"],
+    default_string: "compact",
+    examples_string: ["compact"]
+  }];
+
+  // Verbose flag.
+  bool verbose = 4 [(alis.open.options.v1.field).json_schema = {
+    default_bool: true
+  }];
+
+  // Step size in items.
+  int64 step = 5 [(alis.open.options.v1.field).json_schema = {
+    multiple_of: 5
+  }];
+
+  // Legacy identifier, kept for backwards compatibility.
+  string legacy_id = 6 [(alis.open.options.v1.field).json_schema = {
+    deprecated: true,
+    write_only: true
+  }];
+
+  // Server-assigned entity tag.
+  string etag = 7 [(alis.open.options.v1.field).json_schema = {
+    read_only: true
+  }];
+
+  // Tags: enum_string constrains each element; deprecated marks the array
+  // itself; min_items 0 exercises presence-based zero bounds.
+  repeated string tags = 8 [(alis.open.options.v1.field).json_schema = {
+    enum_string: ["a", "b", "c"],
+    deprecated: true,
+    min_items: 0
+  }];
+
+  // Status narrowed to a subset of the enum's declared values.
+  Status status = 9 [(alis.open.options.v1.field).json_schema = {
+    enum_int: [1, 2],
+    default_int: 1
+  }];
+
+  // Superseded period reference; the annotation and description ride the
+  // $ref as sibling keywords.
+  FinancialPeriod old_period = 10 [(alis.open.options.v1.field).json_schema = {
+    deprecated: true,
+    description: "Use GetSummaryRequest.financial_period instead."
+  }];
+
+  // Status of the showcase entity.
+  enum Status {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_ACTIVE = 1;
+    STATUS_INACTIVE = 2;
+  }
+}
+
+// RealOneofDemo declares a json_schema.oneof group whose members belong to a
+// real proto oneof block (presence is expressed through the PascalCase
+// wrapper property).
+message RealOneofDemo {
+  option (alis.open.options.v1.message).json_schema.oneof = {
+    fields: ["by_id", "by_name"],
+    required: true
+  };
+
+  oneof selector {
+    // Numeric id selector.
+    int64 by_id = 1;
+    // Name selector.
+    string by_name = 2;
+  }
+}

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	optionsPb "go.alis.build/common/alis/open/options"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -223,8 +224,8 @@ func TestGetEnumValuesFromDescriptor(t *testing.T) {
 	if len(enumValues) == 0 {
 		t.Fatal("Expected enum values")
 	}
-	if enumValues[0] != 0 {
-		t.Errorf("First enum value = %d, want 0 (USER_STATUS_UNSPECIFIED)", enumValues[0])
+	if enumValues[0] != any(int32(0)) {
+		t.Errorf("First enum value = %v, want int32 0 (USER_STATUS_UNSPECIFIED)", enumValues[0])
 	}
 }
 
@@ -448,8 +449,8 @@ func TestBuildMessageSchemaOneofShape(t *testing.T) {
 
 	m := mustBuildMessageSchema(t, msg, "user")
 
-	if len(m.flatGroups) != 0 {
-		t.Errorf("User message should have no flat oneof groups, got %d", len(m.flatGroups))
+	if len(m.constraintGroups) != 0 {
+		t.Errorf("User message without declared groups should have no root constraint groups, got %d", len(m.constraintGroups))
 	}
 	wantWrappers := []string{"Identifier", "PaymentMethod", "ContactPreference"}
 	if len(m.oneofWrappers) != len(wantWrappers) {
@@ -495,16 +496,19 @@ func TestBuildMessageSchemaGoogleFlatOneofs(t *testing.T) {
 	if len(m.oneofWrappers) != 0 {
 		t.Errorf("Google type should have no nested oneof wrappers, got %d", len(m.oneofWrappers))
 	}
-	if len(m.flatGroups) != 1 {
-		t.Fatalf("Expected 1 flat oneof group, got %d", len(m.flatGroups))
+	if len(m.constraintGroups) != 1 {
+		t.Fatalf("Expected 1 root constraint group, got %d", len(m.constraintGroups))
 	}
-	group := m.flatGroups[0]
+	group := m.constraintGroups[0]
 	if group.name != "kind" {
 		t.Errorf("group name = %q, want kind", group.name)
 	}
+	if group.required {
+		t.Error("Google proto oneofs are at-most-one; required should be false")
+	}
 	found := false
-	for _, f := range group.fields {
-		if f == "null_value" {
+	for _, member := range group.members {
+		if member.fieldName == "null_value" {
 			found = true
 		}
 	}
@@ -552,7 +556,7 @@ func TestGetMessagesWithForce(t *testing.T) {
 
 	messageHasExplicitGenerateFalse := func(msg *protogen.Message) bool {
 		opts := getMessageJsonSchemaOptions(msg)
-		return opts != nil && !opts.GetGenerate()
+		return opts != nil && opts.Generate != nil && !*opts.Generate
 	}
 
 	t.Run("collects messages and skips map entries", func(t *testing.T) {
@@ -611,4 +615,330 @@ func TestGetMessagesWithForce(t *testing.T) {
 			}
 		}
 	})
+}
+
+// -----------------------------------------------------------------------------
+// Dynamic descriptors — invalid option combinations cannot live in testdata
+// (they abort generation), so these tests build one-message protos in memory,
+// without protoc.
+// -----------------------------------------------------------------------------
+
+// dynMessage compiles an in-memory proto file holding the given message (plus
+// a Color enum with values 0 and 1 for enum-typed fields) and returns the
+// protogen form of that message.
+func dynMessage(t *testing.T, msg *descriptorpb.DescriptorProto) *protogen.Message {
+	t.Helper()
+
+	fdp := &descriptorpb.FileDescriptorProto{
+		Name:    proto.String("dyn/v1/dyn.proto"),
+		Package: proto.String("dyn.v1"),
+		Syntax:  proto.String("proto3"),
+		Options: &descriptorpb.FileOptions{
+			GoPackage: proto.String("example.com/dyn/v1;dynv1"),
+		},
+		MessageType: []*descriptorpb.DescriptorProto{msg},
+		EnumType: []*descriptorpb.EnumDescriptorProto{{
+			Name: proto.String("Color"),
+			Value: []*descriptorpb.EnumValueDescriptorProto{
+				{Name: proto.String("COLOR_UNSPECIFIED"), Number: proto.Int32(0)},
+				{Name: proto.String("COLOR_RED"), Number: proto.Int32(1)},
+			},
+		}},
+	}
+	req := &pluginpb.CodeGeneratorRequest{
+		FileToGenerate: []string{"dyn/v1/dyn.proto"},
+		ProtoFile:      []*descriptorpb.FileDescriptorProto{fdp},
+	}
+	p, err := protogen.Options{}.New(req)
+	if err != nil {
+		t.Fatalf("Failed to build dynamic plugin: %v", err)
+	}
+	return findMessage(t, p.Files[0], msg.GetName())
+}
+
+// dynField builds a singular field descriptor with optional json_schema options.
+func dynField(name string, number int32, typ descriptorpb.FieldDescriptorProto_Type, js *optionsPb.FieldOptions_JsonSchema) *descriptorpb.FieldDescriptorProto {
+	f := &descriptorpb.FieldDescriptorProto{
+		Name:     proto.String(name),
+		Number:   proto.Int32(number),
+		Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+		Type:     typ.Enum(),
+		JsonName: proto.String(name),
+	}
+	switch typ {
+	case descriptorpb.FieldDescriptorProto_TYPE_ENUM:
+		f.TypeName = proto.String(".dyn.v1.Color")
+	case descriptorpb.FieldDescriptorProto_TYPE_MESSAGE:
+		f.TypeName = proto.String(".dyn.v1.M")
+	}
+	if js != nil {
+		f.Options = &descriptorpb.FieldOptions{}
+		proto.SetExtension(f.Options, optionsPb.E_Field, &optionsPb.FieldOptions{JsonSchema: js})
+	}
+	return f
+}
+
+// dynOneFieldMessage wraps one field into message "M".
+func dynOneFieldMessage(field *descriptorpb.FieldDescriptorProto) *descriptorpb.DescriptorProto {
+	return &descriptorpb.DescriptorProto{
+		Name:  proto.String("M"),
+		Field: []*descriptorpb.FieldDescriptorProto{field},
+	}
+}
+
+func TestValidateFieldOptionsErrors(t *testing.T) {
+	str := descriptorpb.FieldDescriptorProto_TYPE_STRING
+	i64 := descriptorpb.FieldDescriptorProto_TYPE_INT64
+	enum := descriptorpb.FieldDescriptorProto_TYPE_ENUM
+	msgT := descriptorpb.FieldDescriptorProto_TYPE_MESSAGE
+
+	repeated := func(f *descriptorpb.FieldDescriptorProto) *descriptorpb.FieldDescriptorProto {
+		f.Label = descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum()
+		return f
+	}
+
+	tests := []struct {
+		name        string
+		field       *descriptorpb.FieldDescriptorProto
+		wantErr     string
+	}{
+		{
+			"two enum variants",
+			dynField("f", 1, str, &optionsPb.FieldOptions_JsonSchema{EnumString: []string{"a"}, EnumInt: []int64{1}}),
+			"at most one enum_* variant",
+		},
+		{
+			"enum variant type mismatch",
+			dynField("f", 1, str, &optionsPb.FieldOptions_JsonSchema{EnumInt: []int64{1}}),
+			"does not match the field's JSON type",
+		},
+		{
+			"enum_int not a subset of the proto enum",
+			dynField("f", 1, enum, &optionsPb.FieldOptions_JsonSchema{EnumInt: []int64{5}}),
+			"not a declared value",
+		},
+		{
+			"multiple_of on non-numeric field",
+			dynField("f", 1, str, &optionsPb.FieldOptions_JsonSchema{MultipleOf: proto.Float64(2)}),
+			"numeric fields only",
+		},
+		{
+			"multiple_of must be positive",
+			dynField("f", 1, i64, &optionsPb.FieldOptions_JsonSchema{MultipleOf: proto.Float64(0)}),
+			"greater than 0",
+		},
+		{
+			"exclusive_minimum without minimum",
+			dynField("f", 1, i64, &optionsPb.FieldOptions_JsonSchema{ExclusiveMinimum: proto.Bool(true)}),
+			"requires minimum",
+		},
+		{
+			"default variant type mismatch",
+			dynField("f", 1, i64, &optionsPb.FieldOptions_JsonSchema{DefaultString: proto.String("x")}),
+			"does not match the field's JSON type",
+		},
+		{
+			"two default variants",
+			dynField("f", 1, i64, &optionsPb.FieldOptions_JsonSchema{DefaultInt: proto.Int64(1), DefaultBool: proto.Bool(true)}),
+			"at most one default_* variant",
+		},
+		{
+			"default on repeated field",
+			repeated(dynField("f", 1, str, &optionsPb.FieldOptions_JsonSchema{DefaultString: proto.String("x")})),
+			"singular scalar",
+		},
+		{
+			"default on message field",
+			dynField("f", 1, msgT, &optionsPb.FieldOptions_JsonSchema{DefaultString: proto.String("x")}),
+			"singular scalar",
+		},
+		{
+			"examples on repeated field",
+			repeated(dynField("f", 1, str, &optionsPb.FieldOptions_JsonSchema{ExamplesString: []string{"x"}})),
+			"singular scalar",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := dynMessage(t, dynOneFieldMessage(tt.field))
+			_, err := buildFieldProperty(msg.Fields[0], "dyn")
+			if err == nil {
+				t.Fatalf("Expected error containing %q, got nil", tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error = %q, want it to contain %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewFieldOptionsHappyPaths(t *testing.T) {
+	i64 := descriptorpb.FieldDescriptorProto_TYPE_INT64
+	enum := descriptorpb.FieldDescriptorProto_TYPE_ENUM
+	msgT := descriptorpb.FieldDescriptorProto_TYPE_MESSAGE
+
+	t.Run("presence makes minimum zero expressible", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(
+			dynField("f", 1, i64, &optionsPb.FieldOptions_JsonSchema{Minimum: proto.Float64(0)})))
+		prop := mustBuildFieldProperty(t, msg.Fields[0], "dyn")
+		if prop.node.value.minimum == nil || *prop.node.value.minimum != 0 {
+			t.Errorf("minimum = %v, want explicit 0", prop.node.value.minimum)
+		}
+	})
+
+	t.Run("enum_int subset replaces the auto-derived list", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(
+			dynField("f", 1, enum, &optionsPb.FieldOptions_JsonSchema{EnumInt: []int64{1}})))
+		prop := mustBuildFieldProperty(t, msg.Fields[0], "dyn")
+		if len(prop.node.value.enum) != 1 || prop.node.value.enum[0] != any(int64(1)) {
+			t.Errorf("enum = %v, want [int64(1)]", prop.node.value.enum)
+		}
+	})
+
+	t.Run("annotations ride message-field refs as siblings", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(
+			dynField("f", 1, msgT, &optionsPb.FieldOptions_JsonSchema{Deprecated: proto.Bool(true)})))
+		prop := mustBuildFieldProperty(t, msg.Fields[0], "dyn")
+		if prop.ref == nil {
+			t.Fatal("message field should decide to a ref")
+		}
+		if prop.node == nil || !prop.node.deprecated {
+			t.Error("deprecated annotation should ride the $ref as a sibling")
+		}
+	})
+
+	t.Run("default and examples land on the node", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(
+			dynField("f", 1, i64, &optionsPb.FieldOptions_JsonSchema{
+				DefaultInt:  proto.Int64(7),
+				ExamplesInt: []int64{1, 2},
+				MultipleOf:  proto.Float64(1),
+			})))
+		prop := mustBuildFieldProperty(t, msg.Fields[0], "dyn")
+		if prop.node.defaultValue != any(int64(7)) {
+			t.Errorf("defaultValue = %v, want int64(7)", prop.node.defaultValue)
+		}
+		if len(prop.node.examples) != 2 {
+			t.Errorf("examples = %v, want two values", prop.node.examples)
+		}
+		if prop.node.value.multipleOf == nil || *prop.node.value.multipleOf != 1 {
+			t.Errorf("multipleOf = %v, want 1", prop.node.value.multipleOf)
+		}
+	})
+}
+
+// dynMessageWithOneofOption builds message "M" with two string fields a/b and
+// the given json_schema.oneof declarations.
+func dynMessageWithOneofOption(t *testing.T, groups []*optionsPb.MessageOptions_JsonSchema_Oneof, mutate func(*descriptorpb.DescriptorProto)) *protogen.Message {
+	t.Helper()
+	str := descriptorpb.FieldDescriptorProto_TYPE_STRING
+	msg := &descriptorpb.DescriptorProto{
+		Name: proto.String("M"),
+		Field: []*descriptorpb.FieldDescriptorProto{
+			dynField("a", 1, str, nil),
+			dynField("b", 2, str, nil),
+		},
+	}
+	if mutate != nil {
+		mutate(msg)
+	}
+	msg.Options = &descriptorpb.MessageOptions{}
+	proto.SetExtension(msg.Options, optionsPb.E_Message, &optionsPb.MessageOptions{
+		JsonSchema: &optionsPb.MessageOptions_JsonSchema{Oneof: groups},
+	})
+	return dynMessage(t, msg)
+}
+
+func TestDeclaredOneofGroups(t *testing.T) {
+	t.Run("virtual group excludes members from required and builds presence nodes", func(t *testing.T) {
+		msg := dynMessageWithOneofOption(t, []*optionsPb.MessageOptions_JsonSchema_Oneof{
+			{Fields: []string{"a", "b"}, Required: proto.Bool(true)},
+		}, nil)
+		m := mustBuildMessageSchema(t, msg, "dyn")
+
+		if len(m.required) != 0 {
+			t.Errorf("group members must leave the plain required list, got %v", m.required)
+		}
+		if len(m.constraintGroups) != 1 {
+			t.Fatalf("Expected 1 constraint group, got %d", len(m.constraintGroups))
+		}
+		group := m.constraintGroups[0]
+		if !group.required {
+			t.Error("required: true should carry through")
+		}
+		if len(group.members) != 2 || group.members[0].fieldName != "a" || group.members[1].fieldName != "b" {
+			t.Errorf("members = %+v, want virtual presence nodes for a and b", group.members)
+		}
+	})
+
+	t.Run("real proto-oneof members use wrapper presence", func(t *testing.T) {
+		msg := dynMessageWithOneofOption(t, []*optionsPb.MessageOptions_JsonSchema_Oneof{
+			{Fields: []string{"a", "b"}, Required: proto.Bool(true)},
+		}, func(d *descriptorpb.DescriptorProto) {
+			d.OneofDecl = []*descriptorpb.OneofDescriptorProto{{Name: proto.String("sel")}}
+			d.Field[0].OneofIndex = proto.Int32(0)
+			d.Field[1].OneofIndex = proto.Int32(0)
+			d.Field[0].Label = descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum()
+		})
+		m := mustBuildMessageSchema(t, msg, "dyn")
+
+		if len(m.constraintGroups) != 1 {
+			t.Fatalf("Expected 1 constraint group, got %d", len(m.constraintGroups))
+		}
+		member := m.constraintGroups[0].members[0]
+		if member.wrapperKey != "Sel" || member.variantKey != "A" {
+			t.Errorf("member = %+v, want wrapper Sel / variant A", member)
+		}
+	})
+
+	errorTests := []struct {
+		name    string
+		groups  []*optionsPb.MessageOptions_JsonSchema_Oneof
+		mutate  func(*descriptorpb.DescriptorProto)
+		wantErr string
+	}{
+		{
+			"unknown field",
+			[]*optionsPb.MessageOptions_JsonSchema_Oneof{{Fields: []string{"a", "nope"}}},
+			nil,
+			"unknown field",
+		},
+		{
+			"fewer than two members",
+			[]*optionsPb.MessageOptions_JsonSchema_Oneof{{Fields: []string{"a"}}},
+			nil,
+			"at least two fields",
+		},
+		{
+			"repeated member",
+			[]*optionsPb.MessageOptions_JsonSchema_Oneof{{Fields: []string{"a", "b"}}},
+			func(d *descriptorpb.DescriptorProto) {
+				d.Field[0].Label = descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum()
+			},
+			"repeated or map",
+		},
+		{
+			"member in two groups",
+			[]*optionsPb.MessageOptions_JsonSchema_Oneof{
+				{Fields: []string{"a", "b"}},
+				{Fields: []string{"a", "b"}},
+			},
+			nil,
+			"only appear once",
+		},
+	}
+
+	for _, tt := range errorTests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := dynMessageWithOneofOption(t, tt.groups, tt.mutate)
+			_, err := buildMessageSchema(msg, "dyn")
+			if err == nil {
+				t.Fatalf("Expected error containing %q, got nil", tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error = %q, want it to contain %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
 }

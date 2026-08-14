@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -99,17 +100,19 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 		p.g.P("")
 	}
 
-	// --- Google Types: Flat OneOf Constraints ---
-	if len(m.flatGroups) == 1 {
+	// --- Root-Level Oneof Constraints ---
+	// Google-type proto oneofs (flat, at-most-one) and user-declared
+	// json_schema.oneof groups (at-most-one or exactly-one).
+	if len(m.constraintGroups) == 1 {
 		p.g.P(`schema.OneOf = []*jsonschema.Schema{`)
-		p.printFlatGroupBranches(m.flatGroups[0].fields)
+		p.printConstraintGroupBranches(m.constraintGroups[0])
 		p.g.P(`}`)
-	} else if len(m.flatGroups) > 1 {
+	} else if len(m.constraintGroups) > 1 {
 		p.g.P(`schema.AllOf = []*jsonschema.Schema{`)
-		for _, group := range m.flatGroups {
+		for _, group := range m.constraintGroups {
 			p.g.P(`{`)
 			p.g.P(`OneOf: []*jsonschema.Schema{`)
-			p.printFlatGroupBranches(group.fields)
+			p.printConstraintGroupBranches(group)
 			p.g.P(`},`)
 			p.g.P(`},`)
 		}
@@ -127,16 +130,43 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 	p.g.P("}")
 }
 
-// printFlatGroupBranches emits the Required alternatives of a flat Google
-// oneof group plus the "none present" branch that makes the group optional
-// (proto3 semantics: a oneof does not require any alternative to be set).
-func (p *schemaPrinter) printFlatGroupBranches(fields []string) {
-	for _, f := range fields {
-		p.g.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
+// printPresenceBranch emits one "member is set" branch of a root-level oneof
+// constraint.
+func (p *schemaPrinter) printPresenceBranch(member presenceNode) {
+	if member.fieldName != "" {
+		p.g.P(fmt.Sprintf(`{Required: []string{"%s"}},`, member.fieldName))
+		return
+	}
+	// Real proto-oneof member: presence means the PascalCase wrapper holds an
+	// object whose required key is this variant. The wrapper key itself is
+	// required in the branch — Properties alone would pass vacuously for
+	// documents that omit the wrapper entirely (encoding/json always emits
+	// it, but LLM-authored documents may not).
+	p.g.P(`{`)
+	p.g.P(fmt.Sprintf(`Required: []string{"%s"},`, member.wrapperKey))
+	p.g.P(`Properties: map[string]*jsonschema.Schema{`)
+	p.g.P(fmt.Sprintf(`"%s": {`, member.wrapperKey))
+	p.g.P(`Type: "object",`)
+	p.g.P(fmt.Sprintf(`Required: []string{"%s"},`, member.variantKey))
+	p.g.P(`},`)
+	p.g.P(`},`)
+	p.g.P(`},`)
+}
+
+// printConstraintGroupBranches emits the member alternatives of a root-level
+// oneof constraint. For at-most-one groups a "none present" branch joins the
+// alternatives (proto3 semantics: a oneof does not require any alternative to
+// be set); exactly-one groups (required: true) omit it.
+func (p *schemaPrinter) printConstraintGroupBranches(group oneofConstraintGroup) {
+	for _, member := range group.members {
+		p.printPresenceBranch(member)
+	}
+	if group.required {
+		return
 	}
 	p.g.P(`{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{`)
-	for _, f := range fields {
-		p.g.P(fmt.Sprintf(`{Required: []string{"%s"}},`, f))
+	for _, member := range group.members {
+		p.printPresenceBranch(member)
 	}
 	p.g.P(`}}},`)
 }
@@ -219,6 +249,17 @@ func (p *schemaPrinter) printFieldNode(node *fieldNode, prefix, closing string) 
 		p.g.P(fmt.Sprintf(`MaxProperties: &[]int{%d}[0],`, *node.maxProperties))
 	}
 
+	// Root-level annotations (on containers they mark the array/object itself).
+	if node.deprecated {
+		p.g.P(`Deprecated: true,`)
+	}
+	if node.readOnly {
+		p.g.P(`ReadOnly: true,`)
+	}
+	if node.writeOnly {
+		p.g.P(`WriteOnly: true,`)
+	}
+
 	if node.element != nil {
 		targetField := "Items"
 		if node.elementIsAdditionalProperties {
@@ -241,6 +282,17 @@ func (p *schemaPrinter) printFieldNode(node *fieldNode, prefix, closing string) 
 		p.printValueConstraints(node.value)
 	}
 
+	if node.defaultValue != nil {
+		p.g.P(fmt.Sprintf(`Default: %s(%s),`, p.jsonRawMessageIdent(), rawJSONLiteral(node.defaultValue)))
+	}
+	if len(node.examples) > 0 {
+		p.g.P(`Examples: []any{`)
+		for _, v := range node.examples {
+			p.g.P(anyLiteral(v) + `,`)
+		}
+		p.g.P(`},`)
+	}
+
 	if node.propertyNamesPattern != "" {
 		p.g.P(`PropertyNames: &jsonschema.Schema{`)
 		p.g.P(fmt.Sprintf(`Pattern: "%s",`, escapeGoString(node.propertyNamesPattern)))
@@ -248,6 +300,38 @@ func (p *schemaPrinter) printFieldNode(node *fieldNode, prefix, closing string) 
 	}
 
 	p.g.P("}" + closing)
+}
+
+// jsonRawMessageIdent qualifies encoding/json's RawMessage type, registering
+// the import on the generated file.
+func (p *schemaPrinter) jsonRawMessageIdent() string {
+	return p.g.QualifiedGoIdent(protogen.GoIdent{GoName: "RawMessage", GoImportPath: "encoding/json"})
+}
+
+// rawJSONLiteral renders a typed default value as a quoted JSON text literal
+// for embedding in json.RawMessage(...). Marshaling string/int64/float64/bool
+// cannot fail.
+func rawJSONLiteral(v any) string {
+	data, _ := json.Marshal(v)
+	return strconv.Quote(string(data))
+}
+
+// anyLiteral renders one enum/examples element as a Go literal inside []any.
+func anyLiteral(v any) string {
+	switch t := v.(type) {
+	case string:
+		return strconv.Quote(t)
+	case int32:
+		return strconv.FormatInt(int64(t), 10)
+	case int64:
+		return strconv.FormatInt(t, 10)
+	case float64:
+		return strconv.FormatFloat(t, 'g', -1, 64)
+	case bool:
+		return strconv.FormatBool(t)
+	default:
+		return fmt.Sprintf("%v", t)
+	}
 }
 
 // printRefSiblings emits assignment statements that decorate a $ref schema
@@ -277,6 +361,15 @@ func (p *schemaPrinter) printRefSiblings(recv string, node *fieldNode) {
 	if node.maxProperties != nil {
 		p.g.P(fmt.Sprintf(`%s.MaxProperties = &[]int{%d}[0]`, recv, *node.maxProperties))
 	}
+	if node.deprecated {
+		p.g.P(fmt.Sprintf(`%s.Deprecated = true`, recv))
+	}
+	if node.readOnly {
+		p.g.P(fmt.Sprintf(`%s.ReadOnly = true`, recv))
+	}
+	if node.writeOnly {
+		p.g.P(fmt.Sprintf(`%s.WriteOnly = true`, recv))
+	}
 
 	vc := node.value
 	if vc.format != "" {
@@ -301,6 +394,9 @@ func (p *schemaPrinter) printRefSiblings(recv string, node *fieldNode) {
 	} else if vc.maximum != nil {
 		p.g.P(fmt.Sprintf(`%s.Maximum = &[]float64{%g}[0]`, recv, *vc.maximum))
 	}
+	if vc.multipleOf != nil {
+		p.g.P(fmt.Sprintf(`%s.MultipleOf = &[]float64{%g}[0]`, recv, *vc.multipleOf))
+	}
 	if vc.minLength != nil {
 		p.g.P(fmt.Sprintf(`%s.MinLength = &[]int{%d}[0]`, recv, *vc.minLength))
 	}
@@ -310,7 +406,7 @@ func (p *schemaPrinter) printRefSiblings(recv string, node *fieldNode) {
 	if len(vc.enum) > 0 {
 		p.g.P(fmt.Sprintf(`%s.Enum = []any{`, recv))
 		for _, enumValue := range vc.enum {
-			p.g.P(fmt.Sprintf(`%d,`, enumValue))
+			p.g.P(anyLiteral(enumValue) + `,`)
 		}
 		p.g.P(`}`)
 	}
@@ -341,6 +437,9 @@ func (p *schemaPrinter) printValueConstraints(vc valueConstraints) {
 	} else if vc.maximum != nil {
 		p.g.P(fmt.Sprintf(`Maximum: &[]float64{%g}[0],`, *vc.maximum))
 	}
+	if vc.multipleOf != nil {
+		p.g.P(fmt.Sprintf(`MultipleOf: &[]float64{%g}[0],`, *vc.multipleOf))
+	}
 
 	if vc.minLength != nil {
 		p.g.P(fmt.Sprintf(`MinLength: &[]int{%d}[0],`, *vc.minLength))
@@ -352,7 +451,7 @@ func (p *schemaPrinter) printValueConstraints(vc valueConstraints) {
 	if len(vc.enum) > 0 {
 		p.g.P(`Enum: []any{`)
 		for _, enumValue := range vc.enum {
-			p.g.P(fmt.Sprintf(`%d,`, enumValue))
+			p.g.P(anyLiteral(enumValue) + `,`)
 		}
 		p.g.P(`},`)
 	}

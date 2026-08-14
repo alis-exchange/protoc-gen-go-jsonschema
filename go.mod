@@ -1,10 +1,10 @@
 module github.com/alis-exchange/protoc-gen-go-jsonschema
 
-go 1.25.0
+go 1.26
 
 require (
+	go.alis.build/common/alis/open/options v1.8.0
 	google.golang.org/protobuf v1.36.11
-	open.alis.services/protobuf v1.200.13
 )
 
 require (

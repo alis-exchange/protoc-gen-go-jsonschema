@@ -37,11 +37,15 @@ func getMessagesWithForce(messages []*protogen.Message, defaultGenerate bool, fo
 		}
 
 		// --- Determine Generation Flag ---
-		// Start with the inherited default, then check for message-specific override.
-		// If force=true, ignore explicit generate=false to prevent broken $refs.
+		// Start with the inherited default, then check for message-specific
+		// override. The override is presence-based: only an explicitly set
+		// `generate` counts — a message-level options block that merely
+		// declares other options (e.g. json_schema.oneof) does not change
+		// whether the message generates. If force=true, an explicit
+		// generate=false is ignored to prevent broken $refs.
 		shouldGen := defaultGenerate
-		if opts := getMessageJsonSchemaOptions(message); opts != nil {
-			optValue := opts.GetGenerate()
+		if opts := getMessageJsonSchemaOptions(message); opts != nil && opts.Generate != nil {
+			optValue := *opts.Generate
 			if force && !optValue {
 				// When forced (e.g., by parent generating), ignore explicit false.
 				shouldGen = defaultGenerate

@@ -4,99 +4,294 @@ package alis.open.options.v1;
 
 import "google/protobuf/descriptor.proto";
 
-option go_package = "open.alis.services/protobuf/alis/open/options/v1";
+option go_package = "go.alis.build/common/alis/open/options";
 
-// FileOptions
+// FileOptions carries file-level options consumed by alis code generators.
 message FileOptions {
-  // Options for the JSON schema generation.
+  // Options controlling JSON Schema (Draft 2020-12) generation for this
+  // file, consumed by protoc-gen-go-jsonschema.
   JsonSchema json_schema = 1;
 
+  // JsonSchema holds the file-level JSON Schema generation options.
   message JsonSchema {
-    // If true, schemas will be generated for all messages in this file, unless
-    // explicitly disabled on the message.
+    // If true, schemas are generated for every message in this file unless a
+    // message explicitly sets its own `generate = false`. Messages referenced
+    // by a generating message (field dependencies and nested messages) are
+    // always generated regardless, so that `$ref` pointers resolve.
     bool generate = 1;
   }
 }
 
-// FileOptions for the JSON schema generation.
-// These are applied to the entire file.
+// Extends google.protobuf.FileOptions with alis file-level options, applied
+// to the entire file.
 extend google.protobuf.FileOptions {
+  // File-level alis options.
+  //
   // Usage: option (alis.open.options.v1.file).json_schema.generate = true;
   FileOptions file = 1001;
 }
 
-// Message Options
+// MessageOptions carries message-level options consumed by alis code
+// generators.
 message MessageOptions {
-  // Options for the JSON schema generation.
+  // Options controlling JSON Schema (Draft 2020-12) generation for this
+  // message, consumed by protoc-gen-go-jsonschema.
   JsonSchema json_schema = 1;
 
+  // JsonSchema holds the message-level JSON Schema generation options.
   message JsonSchema {
-    // If true, a JSON schema will be generated for this message.
-    bool generate = 1;
+    // Explicitly enables or disables schema generation for this message,
+    // overriding the file-level default. When unset, the file-level default
+    // applies — so setting other options here (such as `oneof`) does not
+    // change whether the message generates. An explicit false is still
+    // overridden when the message is referenced by a generating message (as a
+    // field dependency or nested message): generation is forced so that
+    // `$ref` pointers resolve. `optional` is required for that distinction —
+    // without presence, an explicit false is indistinguishable from unset.
+    optional bool generate = 1;
+
+    // Declares oneof groups over this message's fields for schema purposes.
+    //
+    // Each entry names a set of fields (by proto field name) that are
+    // mutually exclusive. If `required` is true, exactly one of the listed
+    // fields must be set.
+    //
+    // The referenced names may be members of a proto `oneof` block, or
+    // ordinary singular fields treated as a virtual oneof (the same pattern
+    // as `buf.validate.message.oneof`). Repeated and map fields are not
+    // permitted as members.
+    //
+    // A group may deliberately cover only a subset of a proto `oneof`'s
+    // members: the schema then narrows the contract (like enum_int narrows a
+    // proto enum), and with `required: true` a value that sets an uncovered
+    // variant fails schema validation even though it is a legal proto value.
+    repeated Oneof oneof = 2;
+
+    // Oneof declares a mutually-exclusive group of fields on the enclosing
+    // message.
+    message Oneof {
+      // Proto field names that participate in this oneof group. Must name
+      // fields defined on the enclosing message; must be at least two names;
+      // must not include repeated or map fields.
+      repeated string fields = 1;
+
+      // If true, exactly one of `fields` must be set. If false or unset,
+      // at most one may be set.
+      optional bool required = 2;
+    }
   }
 }
 
-// MessageOptions for the JSON schema generation.
-// These are applied to the entire message.
+// Extends google.protobuf.MessageOptions with alis message-level options,
+// applied to the entire message.
 extend google.protobuf.MessageOptions {
-  // Usage: option (alis.open.options.v1.message).json_schema.generate = true;
+  // Message-level alis options.
+  //
+  // Usage:
+  //   option (alis.open.options.v1.message).json_schema.generate = true;
+  //   option (alis.open.options.v1.message).json_schema.oneof = {
+  //     fields: ["field_a", "field_b", "field_c"],
+  //     required: true
+  //   };
   MessageOptions message = 1001;
 }
 
-// Field Options
+// FieldOptions carries field-level options consumed by alis code generators.
 message FieldOptions {
-  // Options for the JSON schema generation.
+  // Options controlling how this field appears in generated JSON Schemas,
+  // consumed by protoc-gen-go-jsonschema.
   JsonSchema json_schema = 1;
 
+  // JsonSchema holds the field-level JSON Schema generation options. Unless a
+  // field's comment says otherwise, an option applies to the field's own
+  // schema for singular fields, and to each element or value for repeated and
+  // map fields; on message-typed fields, options are emitted as sibling
+  // keywords next to the field's `$ref` (JSON Schema Draft 2020-12
+  // semantics).
   message JsonSchema {
-    // The title of the field.
+    // Short human-readable title for the field. Emitted as JSON Schema
+    // `title`, overriding the title derived from the first paragraph of the
+    // field's leading comment. Applies to all field types.
     optional string title = 1;
-    // The description of the field.
+
+    // Human-readable description of the field. Emitted as JSON Schema
+    // `description`, overriding the description derived from the field's
+    // leading comment. Applies to all field types.
     optional string description = 2;
-    // Hides this field from the generated JSON schema entirely.
+
+    // Excludes the field from the generated schema entirely: no property is
+    // emitted and the field never appears in `required`. Applies to all
+    // field types, including oneof members.
     optional bool ignore = 3;
-    // Regex pattern (e.g. "^[A-Z]+$")
+
+    // Regular expression the value must match, e.g. "^[A-Z]+$". Emitted as
+    // JSON Schema `pattern`. Applies to string values; on repeated and map
+    // fields it applies to each element or value.
     optional string pattern = 4;
-    // Standard formats (email, uuid, ipv4, uri, etc.)
+
+    // Semantic format annotation such as "email", "uuid", "ipv4", "uri", or
+    // "date-time". Emitted as JSON Schema `format`. Most validators treat
+    // this as an annotation, not an assertion. Applies to string values; on
+    // repeated and map fields it applies to each element or value.
     optional string format = 5;
-    // The content encoding of the field.
+
+    // Encoding of binary content stored in a string, e.g. "base64". Emitted
+    // as JSON Schema `contentEncoding`. bytes fields default to "base64";
+    // setting this overrides that default.
     optional string content_encoding = 6;
-    // The content media type of the field.
+
+    // Media type of the field's (decoded) content, e.g. "application/json".
+    // Emitted as JSON Schema `contentMediaType`.
     optional string content_media_type = 7;
-    // The minimum length of the field.
+
+    // Minimum string length in characters. Emitted as JSON Schema
+    // `minLength`. Applies to string values; on repeated and map fields it
+    // applies to each element or value.
     optional int64 min_length = 8;
-    // The maximum length of the field.
+
+    // Maximum string length in characters. Emitted as JSON Schema
+    // `maxLength`. Applies to string values; on repeated and map fields it
+    // applies to each element or value.
     optional int64 max_length = 9;
-    // The minimum value of the field.
+
+    // Inclusive lower bound for numeric values, unless `exclusive_minimum`
+    // is set. Emitted as JSON Schema `minimum`. Applies to numeric values;
+    // on repeated and map fields it applies to each element or value.
     optional double minimum = 10;
-    // The maximum value of the field.
+
+    // Inclusive upper bound for numeric values, unless `exclusive_maximum`
+    // is set. Emitted as JSON Schema `maximum`. Applies to numeric values;
+    // on repeated and map fields it applies to each element or value.
     optional double maximum = 11;
-    // Whether the minimum value is exclusive.
+
+    // If true, the `minimum` value is emitted as JSON Schema
+    // `exclusiveMinimum` instead of `minimum` (the bound itself is not an
+    // allowed value). Requires `minimum` to be set.
     optional bool exclusive_minimum = 12;
-    // Whether the maximum value is exclusive.
+
+    // If true, the `maximum` value is emitted as JSON Schema
+    // `exclusiveMaximum` instead of `maximum` (the bound itself is not an
+    // allowed value). Requires `maximum` to be set.
     optional bool exclusive_maximum = 13;
-    // The minimum number of items in the field.
+
+    // Minimum number of elements in a repeated field. Emitted as JSON Schema
+    // `minItems` on the array itself.
     optional int64 min_items = 14;
-    // The maximum number of items in the field.
+
+    // Maximum number of elements in a repeated field. Emitted as JSON Schema
+    // `maxItems` on the array itself.
     optional int64 max_items = 15;
-    // Whether the items in the field are unique.
+
+    // If true, all elements of a repeated field must be distinct. Emitted as
+    // JSON Schema `uniqueItems` on the array itself.
     optional bool unique_items = 16;
-    // The minimum number of properties in the field.
+
+    // Minimum number of entries in a map field. Emitted as JSON Schema
+    // `minProperties` on the object itself.
     optional int64 min_properties = 17;
-    // The maximum number of properties in the field.
+
+    // Maximum number of entries in a map field. Emitted as JSON Schema
+    // `maxProperties` on the object itself.
     optional int64 max_properties = 18;
+
+    // Restricts a string or bytes field's value to a fixed set. Emitted as
+    // JSON Schema `enum`. On repeated and map fields the set applies to each
+    // element or value. Setting more than one enum_* variant, or using this
+    // variant on a field that is not string or bytes, is an error at
+    // generation time.
+    repeated string enum_string = 19;
+
+    // Restricts an integer field's value to a fixed set. Emitted as JSON
+    // Schema `enum`. Applies to integer fields (int32/int64/uint*/sint*/
+    // fixed*) and proto enum fields, where the values must be a subset of the
+    // enum's declared numeric values. On repeated and map fields the set
+    // applies to each element or value. Setting more than one enum_* variant,
+    // or using this variant on a non-integer field, is an error at generation
+    // time. Cannot express uint64 values above 2^63-1.
+    repeated int64 enum_int = 20;
+
+    // Restricts a float or double field's value to a fixed set. Emitted as
+    // JSON Schema `enum`. On repeated and map fields the set applies to each
+    // element or value. Setting more than one enum_* variant, or using this
+    // variant on a non-numeric field, is an error at generation time.
+    repeated double enum_number = 21;
+
+    // Marks the field as deprecated. Emitted as JSON Schema `deprecated`.
+    // Applies to the field's schema root: on repeated and map fields it marks
+    // the array or object itself, not its elements.
+    optional bool deprecated = 22;
+
+    // Marks the field as read-only. Emitted as JSON Schema `readOnly`.
+    // Applies to the field's schema root, like `deprecated`.
+    optional bool read_only = 23;
+
+    // Marks the field as write-only. Emitted as JSON Schema `writeOnly`.
+    // Applies to the field's schema root, like `deprecated`.
+    optional bool write_only = 24;
+
+    // Requires numeric values to be a multiple of this number. Emitted as
+    // JSON Schema `multipleOf`. Numeric fields only; must be greater than 0.
+    // On repeated and map fields it applies to each element or value.
+    optional double multiple_of = 25;
+
+    // Default value for a string or bytes field. Emitted as JSON Schema
+    // `default`. Only valid on singular fields of those types: using it on a
+    // repeated, map, message-typed, or non-string field, or setting more than
+    // one default_* variant, is an error at generation time.
+    optional string default_string = 26;
+
+    // Default value for an integer or proto enum field. Emitted as JSON
+    // Schema `default`. Only valid on singular fields of those types: using
+    // it on a repeated, map, message-typed, or non-integer field, or setting
+    // more than one default_* variant, is an error at generation time.
+    optional int64 default_int = 27;
+
+    // Default value for a float or double field. Emitted as JSON Schema
+    // `default`. Only valid on singular fields of those types: using it on a
+    // repeated, map, message-typed, or non-numeric field, or setting more
+    // than one default_* variant, is an error at generation time.
+    optional double default_number = 28;
+
+    // Default value for a bool field. Emitted as JSON Schema `default`. Only
+    // valid on singular bool fields: using it on a repeated, map,
+    // message-typed, or non-bool field, or setting more than one default_*
+    // variant, is an error at generation time.
+    optional bool default_bool = 29;
+
+    // Example values for a string or bytes field. Emitted as JSON Schema
+    // `examples`. Only valid on singular fields of those types, same rules as
+    // default_string.
+    repeated string examples_string = 30;
+
+    // Example values for an integer or proto enum field. Emitted as JSON
+    // Schema `examples`. Only valid on singular fields of those types, same
+    // rules as default_int.
+    repeated int64 examples_int = 31;
+
+    // Example values for a float or double field. Emitted as JSON Schema
+    // `examples`. Only valid on singular fields of those types, same rules as
+    // default_number. There is deliberately no examples_bool: a boolean
+    // example carries no information.
+    repeated double examples_number = 32;
   }
 }
 
-// FieldOptions for the JSON schema generation.
-// These are applied to the individual fields.
+// Extends google.protobuf.FieldOptions with alis field-level options, applied
+// to individual fields.
 extend google.protobuf.FieldOptions {
+  // Field-level alis options.
+  //
   // Usage:
   // string email = 1 [
   //   (alis.open.options.v1.field).json_schema = {
-  //     required: true,
   //     format: "email",
   //     title: "Primary Email"
+  //   }
+  // ];
+  //
+  // string region = 2 [
+  //   (alis.open.options.v1.field).json_schema = {
+  //     enum_string: ["ALL", "EXPORT", "LOCAL"]
   //   }
   // ];
   FieldOptions field = 1001;

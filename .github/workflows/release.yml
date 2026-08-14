@@ -21,9 +21,6 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Build the plugin
-        env:
-          GOPROXY: https://europe-west1-go.pkg.dev/alis-org-777777/openprotos-go,https://proxy.golang.org,direct
-          GONOSUMDB: open.alis.services/protobuf
         run: |
           chmod +x ./build.sh
           ./build.sh ${{ github.ref_name }} ${{ secrets.GITHUB_TOKEN }}  # Pass the tag as version
