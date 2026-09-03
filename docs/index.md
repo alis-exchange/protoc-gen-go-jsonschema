@@ -25,18 +25,12 @@ schema := (&userpb.User{}).JsonSchema() // *jsonschema.Schema, ready to use
 
 ```json
 {
-  "$ref": "#/$defs/users.v1.User",
   "type": "object",
-  "$defs": {
-    "users.v1.User": {
-      "type": "object",
-      "properties": {
-        "id":    { "type": "string", "description": "Unique identifier for the user." },
-        "email": { "type": "string", "format": "email", "description": "Email address of the user." }
-      },
-      "required": ["id", "email"]
-    }
-  }
+  "properties": {
+    "id":    { "type": "string", "description": "Unique identifier for the user." },
+    "email": { "type": "string", "format": "email", "description": "Email address of the user." }
+  },
+  "required": ["id", "email"]
 }
 ```
 

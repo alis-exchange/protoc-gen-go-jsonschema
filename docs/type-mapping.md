@@ -153,13 +153,14 @@ added to imported types), with a file-name prefix keeping names unique:
 func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema
 ```
 
-Their oneofs keep **flat** properties with root-level `oneOf`/`allOf`
-constraints (e.g. `google.iam.admin.v1.LintPolicyRequest`'s `condition`),
-because those types implement custom `json.Marshaler` methods with proto JSON
-semantics.
+Their oneofs get the same PascalCase wrappers as user messages (for example
+`google.iam.admin.v1.LintPolicyRequest` emits a `LintObject` wrapper holding
+`Condition`): they have no custom `json.Marshaler`, so `encoding/json`
+treats them like any other generated message.
 
 `google.protobuf.Struct`, `google.protobuf.Value` and
 `google.protobuf.ListValue` are the exception: their Go types marshal as plain
 JSON under `encoding/json`, so fields of those types map to free-form schemas
-— `{"type": "object"}`, `{}` (any JSON value) and `{"type": "array"}` — with
-the field's own comment and options. No functions are generated for them.
+— `{"type": "object"}`, `{"type": "array"}`, and for `Value` an explicit `type` list of every JSON type
+(never an empty schema, which would marshal as the boolean `true`) — with the
+field's own comment and options. No functions are generated for them.

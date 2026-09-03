@@ -25,8 +25,8 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 ```
 
 `JsonSchema()` is what you normally call. `_WithDefs` exists so schemas can
-reference each other and so you can compose several messages into one
-definitions map yourself.
+reference each other: an inline message returns its schema and writes nothing
+to `defs`; a recursive message registers itself there and returns a `$ref`.
 
 ## Inline by default, `$defs` for cycles
 
@@ -87,8 +87,9 @@ schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
 schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
 ```
 
-On an inline copy the field's comment/options **override** the message's own
-`title`/`description`; on a `$ref` they are Draft 2020-12 sibling keywords.
+On an inline copy a field comment or `title`/`description` option **replaces**
+the message's own title and description as a pair; on a `$ref` they are Draft
+2020-12 sibling keywords.
 
 ## Multi-file packages
 
@@ -112,7 +113,7 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 You rarely call these directly — they exist to serve your own messages'
 schemas. `google.protobuf.Struct`, `Value` and `ListValue` generate nothing:
 their Go types marshal as plain JSON, so fields of those types emit free-form
-`{"type": "object"}`, `{}` and `{"type": "array"}` nodes.
+nodes — `{"type": "object"}`, `{"type": "array"}`, and for `Value` an explicit `type` list of every JSON type.
 
 ## Stability guarantees
 

@@ -54,7 +54,7 @@ message User {
 
 **Dependencies are always generated.** When a message generates, its
 message-typed field dependencies and nested messages generate too — even with
-an explicit `generate = false` — so `$ref` pointers always resolve.
+an explicit `generate = false` — so every reference resolves.
 
 ### `oneof` — v0.2.0+
 
@@ -113,7 +113,10 @@ string email = 1 [(alis.open.options.v1.field).json_schema = {
 | Singular scalar | field root | — | field root |
 | `repeated T` | array root | array root | `items` |
 | `map<K, V>` | object root | object root | `additionalProperties` |
-| Message-typed | `$ref` siblings | `$ref` siblings | `$ref` siblings |
+| Message-typed | inline copy (replaces the message's own) | inline copy | inline copy |
+
+For a message on a reference cycle the field is a `$ref` instead, and every
+keyword above rides it as a sibling.
 
 *Value constraints:* `format`, `pattern`, `content_encoding`,
 `content_media_type`, bounds, lengths, `enum_*`, `multiple_of`.
@@ -474,7 +477,7 @@ information.)
 ### Message-typed fields
 
 The referenced message is inlined, and the field's comment and options
-override its own `title`/`description` on that copy:
+replace its own `title`/`description` on that copy:
 
 ```protobuf
 // Pay with a saved card.

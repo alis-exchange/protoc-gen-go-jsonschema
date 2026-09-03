@@ -78,14 +78,21 @@ func findField(t *testing.T, msg *protogen.Message, name string) *protogen.Field
 }
 
 // testCtx builds a schema context with the given file prefix and no cycle
-// information: every message is treated as acyclic.
+// information: every message is treated as acyclic. Use msgCtx when the
+// message under test (or a field's target) may sit on a cycle.
 func testCtx(filePrefix string) *schemaContext {
 	return &schemaContext{filePrefix: filePrefix}
 }
 
+// msgCtx builds a schema context whose cycle set is analysed from msg, so
+// the model is exercised with real inline/$defs modes.
+func msgCtx(filePrefix string, msg *protogen.Message) *schemaContext {
+	return &schemaContext{filePrefix: filePrefix, cycles: analyzeCycles([]*protogen.Message{msg})}
+}
+
 func mustBuildFieldProperty(t *testing.T, field *protogen.Field, filePrefix string) propertyNode {
 	t.Helper()
-	prop, err := buildFieldProperty(field, testCtx(filePrefix))
+	prop, err := buildFieldProperty(field, msgCtx(filePrefix, field.Parent))
 	if err != nil {
 		t.Fatalf("buildFieldProperty failed: %v", err)
 	}
@@ -94,7 +101,7 @@ func mustBuildFieldProperty(t *testing.T, field *protogen.Field, filePrefix stri
 
 func mustBuildMessageSchema(t *testing.T, msg *protogen.Message, filePrefix string) *messageSchemaModel {
 	t.Helper()
-	m, err := buildMessageSchema(msg, testCtx(filePrefix))
+	m, err := buildMessageSchema(msg, msgCtx(filePrefix, msg))
 	if err != nil {
 		t.Fatalf("buildMessageSchema failed: %v", err)
 	}
@@ -301,7 +308,12 @@ func TestBuildFreeFormWellKnownTypeFields(t *testing.T) {
 		msg := dynMessage(t, dynOneFieldMessage(dynMsgField("v", 1, valueT)))
 		prop := mustBuildFieldProperty(t, findField(t, msg, "v"), "dyn")
 		if prop.ref != nil || prop.node == nil || prop.node.typeName != "" {
-			t.Errorf("prop = %+v, want an untyped inline node", prop)
+			t.Fatalf("prop = %+v, want an inline node without a single type", prop)
+		}
+		// An empty schema marshals as the boolean `true`, which strict clients
+		// reject: "any value" is spelled out as the full JSON type list.
+		if got := prop.node.types; len(got) != len(anyJSONTypes) {
+			t.Errorf("types = %v, want every JSON type", got)
 		}
 	})
 
@@ -311,8 +323,8 @@ func TestBuildFreeFormWellKnownTypeFields(t *testing.T) {
 		if prop.node == nil || prop.node.typeName != jsArray || prop.node.element == nil {
 			t.Fatalf("prop = %+v, want an array node with an element", prop)
 		}
-		if prop.node.element.ref != nil || prop.node.element.typeName != "" {
-			t.Errorf("element = %+v, want untyped free-form", prop.node.element)
+		if prop.node.element.ref != nil || prop.node.element.typeName != "" || len(prop.node.element.types) != len(anyJSONTypes) {
+			t.Errorf("element = %+v, want the full JSON type list", prop.node.element)
 		}
 	})
 
@@ -416,6 +428,42 @@ func TestBuildRefSiblingsFromOptions(t *testing.T) {
 	if !strings.Contains(prop.node.description, "Shipping address") {
 		t.Errorf("sibling description = %q, want the option override", prop.node.description)
 	}
+}
+
+func TestBuildRefSiblingsReplaceMetadataOnInlineTargets(t *testing.T) {
+	p := loadTestPlugin(t)
+	userFile := findFile(t, p, "user.proto")
+
+	t.Run("inline target: field comment replaces title and description", func(t *testing.T) {
+		wkt := findMessage(t, userFile, "WellKnownTypesDemo")
+		prop := mustBuildFieldProperty(t, findField(t, wkt, "created_at"), "user")
+		if prop.ref == nil || prop.node == nil {
+			t.Fatalf("created_at should be a decorated reference, got %+v", prop)
+		}
+		if !prop.node.replaceMetadata {
+			t.Error("a field comment on an inline target must replace the target's own title/description")
+		}
+	})
+
+	t.Run("cyclic target: metadata stays $ref siblings", func(t *testing.T) {
+		details := findMessage(t, userFile, "AddressDetails")
+		prop := mustBuildFieldProperty(t, findField(t, details, "nested_address_details"), "user")
+		if prop.ref == nil || !prop.ref.cyclic || prop.node == nil {
+			t.Fatalf("nested_address_details should reference the cyclic AddressDetails, got %+v", prop)
+		}
+		if prop.node.replaceMetadata {
+			t.Error("siblings of a $ref must not be marked as replacing metadata")
+		}
+	})
+
+	t.Run("inline target without field metadata keeps the target's own", func(t *testing.T) {
+		// Dynamic descriptors carry no comments: the field contributes nothing.
+		file := dynFile(t, dynMsg("P", dynMsgField("t", 1, "T")), dynMsg("T"))
+		prop := mustBuildFieldProperty(t, findField(t, findMessage(t, file, "P"), "t"), "dyn")
+		if prop.node != nil {
+			t.Errorf("no field metadata: expected a bare reference, got %+v", prop.node)
+		}
+	})
 }
 
 func TestBuildArrayFieldNodes(t *testing.T) {
@@ -565,47 +613,29 @@ func TestBuildMessageSchemaOneofShape(t *testing.T) {
 	}
 }
 
-func TestBuildMessageSchemaGoogleFlatOneofs(t *testing.T) {
+func TestBuildMessageSchemaGoogleOneofsUseWrappers(t *testing.T) {
+	// Google types without a custom json.Marshaler marshal exactly like user
+	// messages under encoding/json: their proto oneofs become PascalCase
+	// wrapper properties, never flat members with root-level constraints.
 	p := loadTestPlugin(t)
+	iamFile := findFile(t, p, "google/iam/admin/v1/iam.proto")
+	lint := findMessage(t, iamFile, "LintPolicyRequest")
 
-	// google.protobuf.Value (imported via struct.proto) has the 'kind' oneof.
-	structFile := findFile(t, p, "google/protobuf/struct.proto")
-	value := findMessage(t, structFile, "Value")
+	m := mustBuildMessageSchema(t, lint, "common")
 
-	m := mustBuildMessageSchema(t, value, "admin")
-
-	if len(m.oneofWrappers) != 0 {
-		t.Errorf("Google type should have no nested oneof wrappers, got %d", len(m.oneofWrappers))
+	if len(m.constraintGroups) != 0 {
+		t.Errorf("Google proto oneofs must not emit root-level constraint groups, got %d", len(m.constraintGroups))
 	}
-	if len(m.constraintGroups) != 1 {
-		t.Fatalf("Expected 1 root constraint group, got %d", len(m.constraintGroups))
+	if len(m.oneofWrappers) != 1 || m.oneofWrappers[0].key != "LintObject" {
+		t.Fatalf("expected one wrapper keyed LintObject, got %+v", m.oneofWrappers)
 	}
-	group := m.constraintGroups[0]
-	if group.name != "kind" {
-		t.Errorf("group name = %q, want kind", group.name)
+	if v := m.oneofWrappers[0].variants; len(v) != 1 || v[0].key != "Condition" || v[0].ref == nil {
+		t.Errorf("expected a single Condition message variant, got %+v", v)
 	}
-	if group.required {
-		t.Error("Google proto oneofs are at-most-one; required should be false")
-	}
-	found := false
-	for _, member := range group.members {
-		if member.fieldName == "null_value" {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("Expected null_value in the flat oneof group")
-	}
-
-	// Oneof members stay flat properties for Google types.
-	flat := false
 	for _, prop := range m.fields {
-		if prop.key == "number_value" {
-			flat = true
+		if prop.key == "condition" {
+			t.Error("oneof member condition must not be a flat property")
 		}
-	}
-	if !flat {
-		t.Error("Google type oneof member number_value should remain a flat property")
 	}
 }
 
@@ -758,6 +788,40 @@ func TestGetMessagesWithForceSkipsFreeFormWellKnownTypes(t *testing.T) {
 	}
 	if !collected["google.protobuf.Timestamp"] {
 		t.Error("google.protobuf.Timestamp is structural and must still be collected")
+	}
+}
+
+func TestValidateFieldOptionsFreeFormFields(t *testing.T) {
+	structT := ".google.protobuf.Struct"
+	valueT := ".google.protobuf.Value"
+	listT := ".google.protobuf.ListValue"
+	withOpts := func(f *descriptorpb.FieldDescriptorProto, js *optionsPb.FieldOptions_JsonSchema) *descriptorpb.FieldDescriptorProto {
+		f.Options = &descriptorpb.FieldOptions{}
+		proto.SetExtension(f.Options, optionsPb.E_Field, &optionsPb.FieldOptions{JsonSchema: js})
+		return f
+	}
+	tests := []struct {
+		name    string
+		field   *descriptorpb.FieldDescriptorProto
+		wantErr string // substring; empty means the options are accepted
+	}{
+		{"Value accepts default_string (any JSON value)", withOpts(dynMsgField("v", 1, valueT), &optionsPb.FieldOptions_JsonSchema{DefaultString: proto.String("x")}), ""},
+		{"Value accepts enum_string", withOpts(dynMsgField("v", 1, valueT), &optionsPb.FieldOptions_JsonSchema{EnumString: []string{"a"}}), ""},
+		{"Value accepts multiple_of", withOpts(dynMsgField("v", 1, valueT), &optionsPb.FieldOptions_JsonSchema{MultipleOf: proto.Float64(2)}), ""},
+		{"ListValue rejects default_string as an array", withOpts(dynMsgField("l", 1, listT), &optionsPb.FieldOptions_JsonSchema{DefaultString: proto.String("x")}), `"array"`},
+		{"Struct rejects default_string as an object", withOpts(dynMsgField("s", 1, structT), &optionsPb.FieldOptions_JsonSchema{DefaultString: proto.String("x")}), "singular scalar"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := dynMessage(t, dynOneFieldMessage(tt.field))
+			err := validateFieldOptions(msg.Fields[0])
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Errorf("unexpected error: %v", err)
+			case tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)):
+				t.Errorf("error = %v, want one containing %q", err, tt.wantErr)
+			}
+		})
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
 )
@@ -140,8 +141,7 @@ func (p *schemaPrinter) printSchemaBody(m *messageSchemaModel) {
 	}
 
 	// --- Root-Level Oneof Constraints ---
-	// Google-type proto oneofs (flat, at-most-one) and user-declared
-	// json_schema.oneof groups (at-most-one or exactly-one).
+	// User-declared json_schema.oneof groups (at-most-one or exactly-one).
 	if len(m.constraintGroups) == 1 {
 		p.g.P(`schema.OneOf = []*jsonschema.Schema{`)
 		p.printConstraintGroupBranches(m.constraintGroups[0])
@@ -158,7 +158,7 @@ func (p *schemaPrinter) printSchemaBody(m *messageSchemaModel) {
 		p.g.P(`}`)
 	}
 
-	// --- User Messages: Nested PascalCase Oneof Wrappers ---
+	// --- Nested PascalCase Oneof Wrappers ---
 	for _, wrapper := range m.oneofWrappers {
 		p.printOneofWrapper(wrapper)
 		p.g.P("")
@@ -206,8 +206,8 @@ func (p *schemaPrinter) printConstraintGroupBranches(group oneofConstraintGroup)
 	p.g.P(`}}},`)
 }
 
-// printOneofWrapper emits the nested PascalCase wrapper property for one user
-// message oneof: a oneOf of a null branch (unset oneof) and an object branch
+// printOneofWrapper emits the nested PascalCase wrapper property for one proto
+// oneof: a oneOf of a null branch (unset oneof) and an object branch
 // whose own oneOf holds one branch per variant.
 func (p *schemaPrinter) printOneofWrapper(wrapper oneofWrapperNode) {
 	p.g.P(fmt.Sprintf(`schema.Properties["%s"] = &jsonschema.Schema{`, wrapper.key))
@@ -256,6 +256,9 @@ func (p *schemaPrinter) printFieldNode(node *fieldNode, prefix, closing string) 
 
 	if node.typeName != "" {
 		p.g.P(fmt.Sprintf(`Type: "%s",`, node.typeName))
+	}
+	if len(node.types) > 0 {
+		p.g.P(`Types: []string{` + quotedList(node.types) + `},`)
 	}
 
 	// Metadata keywords are emitted only when non-empty, matching the
@@ -306,6 +309,9 @@ func (p *schemaPrinter) printFieldNode(node *fieldNode, prefix, closing string) 
 			p.g.P(fmt.Sprintf(`%s: &jsonschema.Schema{`, targetField))
 			if node.element.typeName != "" {
 				p.g.P(fmt.Sprintf(`Type: "%s",`, node.element.typeName))
+			}
+			if len(node.element.types) > 0 {
+				p.g.P(`Types: []string{` + quotedList(node.element.types) + `},`)
 			}
 			p.printValueConstraints(node.element.value)
 			p.g.P(`},`)
@@ -374,11 +380,17 @@ func anyLiteral(v any) string {
 // a local variable. _WithDefs always returns a fresh value, never a stored
 // definition, so mutation is safe.
 func (p *schemaPrinter) printOverrides(recv string, node *fieldNode) {
-	if node.title != "" {
+	if node.replaceMetadata {
+		// Inline copy: the field's metadata replaces the target's as a pair.
 		p.g.P(fmt.Sprintf(`%s.Title = "%s"`, recv, escapeGoString(node.title)))
-	}
-	if node.description != "" {
 		p.g.P(fmt.Sprintf(`%s.Description = "%s"`, recv, escapeGoString(node.description)))
+	} else {
+		if node.title != "" {
+			p.g.P(fmt.Sprintf(`%s.Title = "%s"`, recv, escapeGoString(node.title)))
+		}
+		if node.description != "" {
+			p.g.P(fmt.Sprintf(`%s.Description = "%s"`, recv, escapeGoString(node.description)))
+		}
 	}
 	if node.minItems != nil {
 		p.g.P(fmt.Sprintf(`%s.MinItems = &[]int{%d}[0]`, recv, *node.minItems))
@@ -489,6 +501,15 @@ func (p *schemaPrinter) printValueConstraints(vc valueConstraints) {
 		}
 		p.g.P(`},`)
 	}
+}
+
+// quotedList renders strings as a comma-separated list of Go string literals.
+func quotedList(values []string) string {
+	quoted := make([]string, len(values))
+	for i, v := range values {
+		quoted[i] = strconv.Quote(v)
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // escapeGoString prepares a string for embedding in generated Go source code.

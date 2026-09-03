@@ -210,10 +210,10 @@ User-message oneofs use **nested PascalCase wrappers** to match `encoding/json` 
 }
 ```
 
-Each wrapper accepts either `null` (the oneof is unset — `encoding/json` always emits the key, with value `null`) or an object holding exactly one variant. This differs from flat `protojson`-style oneofs where variant fields appear as snake_case root properties. **Google types** (`google.protobuf.Value`, etc.) keep flat oneof properties because they implement custom `json.Marshaler` with proto JSON semantics.
+Each wrapper accepts either `null` (the oneof is unset — `encoding/json` always emits the key, with value `null`) or an object holding exactly one variant. This differs from flat `protojson`-style oneofs where variant fields appear as snake_case root properties. Google types with oneofs get the same wrappers: they have no custom `json.Marshaler`, so `encoding/json` treats them like any other generated message.
 
 > [!NOTE]
-> Field-level comments and options on message-type fields (including oneof message variants) decorate the referenced message's schema: they override its own `title`/`description` on the inline copy, or ride as `$ref` siblings for recursive messages.
+> Field-level comments and options on message-type fields (including oneof message variants) decorate the referenced message's schema: on the inline copy a field comment replaces the message's own title and description; for recursive messages they ride as `$ref` siblings.
 
 ### Type Conversions
 
@@ -234,7 +234,7 @@ Each wrapper accepts either `null` (the oneof is unset — `encoding/json` alway
 
 All Google types (`google.*` packages including `google.protobuf.*`, `google.type.*`, `google.api.*`, `google.iam.*`, etc.) are handled like normal messages - they generate schemas based on their actual proto field structure, not the special JSON encoding used by `protojson`. This is designed for use with standard `json.Marshal`.
 
-The exceptions are `google.protobuf.Struct`, `Value` and `ListValue`: their Go types implement `json.Marshaler` with plain-JSON semantics, so they map to free-form `{"type": "object"}`, `{}` and `{"type": "array"}` schemas.
+The exceptions are `google.protobuf.Struct`, `Value` and `ListValue`: their Go types implement `json.Marshaler` with plain-JSON semantics, so they map to free-form schemas — `{"type": "object"}`, `{"type": "array"}`, and for `Value` an explicit `type` list of every JSON type.
 
 Since Google types are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness:
 

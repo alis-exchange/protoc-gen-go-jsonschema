@@ -39,8 +39,8 @@ message CheckoutRequest {
 }
 ```
 
-The generated schema keeps each field's normal property (with its `$ref` and
-description) and adds root-level constraints:
+The generated schema keeps each field's normal property (the inlined message
+with the field's description) and adds root-level constraints:
 
 ```json
 {

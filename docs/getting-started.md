@@ -57,8 +57,8 @@ message GetForecastRequest {
 
 Generation can be enabled for a whole file (as above) or per message with
 `option (alis.open.options.v1.message).json_schema.generate = true;`.
-Messages referenced by a generating message are always included, so `$ref`
-pointers resolve. See the [options reference](options.md).
+Messages referenced by a generating message are always included, so every
+reference resolves. See the [options reference](options.md).
 
 ## 4. Run the plugin
 

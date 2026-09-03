@@ -156,11 +156,12 @@ func (s *FunctionsTestSuite) TestOneofMessageVariantOptionsEmitAsRefSiblings() {
 		"Oneof message variant with options should not emit a literal schema (would lose the target structure)")
 }
 
-func (s *FunctionsTestSuite) TestGoogleTypeOneofUnchanged() {
+func (s *FunctionsTestSuite) TestGoogleTypeOneofUsesWrapper() {
 	contents := s.RunGenerate()
 
 	// common_jsonschema.pb.go references google.iam.admin.v1.LintPolicyRequest,
-	// whose proto oneof 'lint_object' must keep the flat Google shape.
+	// whose proto oneof 'lint_object' marshals with a PascalCase wrapper under
+	// encoding/json (no custom json.Marshaler), exactly like user messages.
 	var commonContent string
 	for name, content := range contents {
 		if strings.HasSuffix(name, "common_jsonschema.pb.go") {
@@ -172,8 +173,12 @@ func (s *FunctionsTestSuite) TestGoogleTypeOneofUnchanged() {
 
 	lint := extractGoFuncSection(commonContent, "common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs")
 	s.Require().NotEmpty(lint, "Expected a standalone LintPolicyRequest function")
-	s.Contains(lint, `schema.Properties["condition"]`,
-		"Google type oneof member should stay a flat property")
-	s.Contains(lint, `schema.OneOf = []*jsonschema.Schema{`,
-		"Google type should keep root-level OneOf")
+	s.Contains(lint, `schema.Properties["LintObject"]`,
+		"Google type oneof should become a PascalCase wrapper property")
+	s.Contains(lint, `"Condition":`,
+		"Wrapper should hold the PascalCase variant key")
+	s.NotContains(lint, `schema.Properties["condition"]`,
+		"Google type oneof member must not stay a flat property")
+	s.NotContains(lint, `schema.OneOf = []*jsonschema.Schema{`,
+		"Google type must not emit root-level oneof constraints")
 }
