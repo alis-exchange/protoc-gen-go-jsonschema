@@ -3,7 +3,7 @@
 // Source: users/v1/force.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 14:07:49 UTC
+// Generated on: 2026-09-03 15:55:05 UTC
 
 package usersv1
 
@@ -38,6 +38,7 @@ func ParentWithNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *j
 	}
 
 	schema.Properties["nested"] = ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs)
+	schema.Properties["nested"].Title = ""
 	schema.Properties["nested"].Description = "Field referencing nested message"
 
 	schema.Properties["nested_list"] = &jsonschema.Schema{
@@ -169,6 +170,7 @@ func ParentWithForcedDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.
 	}
 
 	schema.Properties["dependency"] = DependencyMessage_JsonSchema_WithDefs(defs)
+	schema.Properties["dependency"].Title = ""
 	schema.Properties["dependency"].Description = "Field dependency with generate=false - should still generate"
 
 	return schema

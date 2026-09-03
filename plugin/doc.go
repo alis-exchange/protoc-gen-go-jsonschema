@@ -46,11 +46,12 @@
 //   - Messages → object type with properties, inlined; $ref into $defs only for
 //     messages on a reference cycle
 //   - google.protobuf.Struct/Value/ListValue → free-form JSON (their Go types marshal
-//     as plain JSON)
+//     as plain JSON); Value lists every JSON type rather than emitting an empty schema
 //   - Repeated fields → array type
 //   - Map fields → object type with additionalProperties
-//   - Oneofs (user messages) → nested PascalCase wrapper properties matching encoding/json
-//     (Google types keep flat oneof properties with proto JSON semantics)
+//   - Oneofs → nested PascalCase wrapper properties matching encoding/json, for Google
+//     types too (none of them has a custom json.Marshaler once the free-form three are
+//     excluded)
 //
 // # Google Types
 //

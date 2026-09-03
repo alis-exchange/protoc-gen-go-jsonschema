@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	optionsPb "go.alis.build/common/alis/open/options"
@@ -33,8 +32,8 @@ const (
 // messageIdentity answers every naming and strategy question about a message in
 // one place: its $defs key, the base name of its generated functions, whether
 // JsonSchema() is a method (user types) or a standalone function (Google
-// types), and whether its oneofs keep the flat Google shape. It is computed
-// once per message and consumed by both the model builder and the printer.
+// types), and whether it inlines or lives under $defs. It is computed once
+// per message and consumed by both the model builder and the printer.
 type messageIdentity struct {
 	// defKey is the "$defs" map key, e.g. "users.v1.User".
 	defKey string
@@ -55,8 +54,11 @@ type messageIdentity struct {
 	importPath protogen.GoImportPath
 
 	// isGoogle is true for messages in google.* packages: they get standalone
-	// functions (methods cannot be added to imported types) and keep flat
-	// oneof properties (their custom json.Marshalers use proto JSON semantics).
+	// functions, because methods cannot be added to imported types. Their
+	// schemas otherwise follow the same rules as user messages — under
+	// encoding/json they marshal identically (the only Google types with a
+	// custom json.Marshaler, Struct/Value/ListValue, are free-form and never
+	// reach here).
 	isGoogle bool
 
 	// cyclic is true for messages that sit on a reference cycle. Their schema
@@ -112,22 +114,41 @@ func isGoogleType(msg *protogen.Message) bool {
 	return strings.HasPrefix(string(msg.Desc.FullName()), "google.")
 }
 
+// anyJSONTypes is the full Draft 2020-12 type list, spelling out "any JSON
+// value" for google.protobuf.Value. An empty schema would say the same thing,
+// but jsonschema-go marshals it as the boolean schema `true`, which strict
+// consumers (OpenAI, Gemini) reject.
+var anyJSONTypes = []string{jsArray, jsBoolean, jsInteger, jsNull, jsNumber, jsObject, jsString}
+
+// freeFormShape is the JSON shape of a free-form well-known type: a single
+// type name, or the explicit list of every type for "any value".
+type freeFormShape struct {
+	typeName string
+	types    []string
+}
+
 // freeFormJSONType reports whether msg is one of the well-known types whose
 // Go form implements json.Marshaler with plain JSON semantics — Struct, Value
-// and ListValue — and, if so, the JSON Schema type that describes that output:
-// "object" for Struct, "array" for ListValue, and "" (any JSON value) for
-// Value. These never generate schemas of their own and never take part in the
-// reference graph; fields of these types inline as free-form nodes.
-func freeFormJSONType(msg *protogen.Message) (typeName string, ok bool) {
-	switch msg.Desc.FullName() {
+// and ListValue — and, if so, the shape that describes that output: an object
+// for Struct, an array for ListValue, any JSON value for Value. These never
+// generate schemas of their own and never take part in the reference graph;
+// fields of these types inline as free-form nodes.
+func freeFormJSONType(msg *protogen.Message) (freeFormShape, bool) {
+	return freeFormShapeOf(msg.Desc.FullName())
+}
+
+// freeFormShapeOf is freeFormJSONType keyed by full proto name, for callers
+// that only hold a descriptor.
+func freeFormShapeOf(name protoreflect.FullName) (freeFormShape, bool) {
+	switch name {
 	case "google.protobuf.Struct":
-		return jsObject, true
+		return freeFormShape{typeName: jsObject}, true
 	case "google.protobuf.ListValue":
-		return jsArray, true
+		return freeFormShape{typeName: jsArray}, true
 	case "google.protobuf.Value":
-		return "", true
+		return freeFormShape{types: anyJSONTypes}, true
 	}
-	return "", false
+	return freeFormShape{}, false
 }
 
 // mapValueMessage returns the value message of a map field, or nil when the
@@ -205,9 +226,11 @@ type elementNode struct {
 	// ref, when set, prints as a _WithDefs call; all other fields are ignored.
 	ref *messageIdentity
 
-	// typeName is the JSON Schema type of the element; empty (a free-form
-	// google.protobuf.Value) omits the Type keyword, allowing any JSON value.
+	// typeName is the JSON Schema type of the element. types, when set, is
+	// the alternative: an explicit list of allowed types (free-form
+	// google.protobuf.Value lists every JSON type). Never both.
 	typeName string
+	types    []string
 
 	value valueConstraints
 }
@@ -215,12 +238,21 @@ type elementNode struct {
 // fieldNode is the decided schema for one emitted &jsonschema.Schema{...}
 // literal: a field property, or a oneof variant's inner value schema.
 type fieldNode struct {
-	// typeName is the JSON Schema type; empty omits the Type keyword.
+	// typeName is the JSON Schema type; empty omits the Type keyword. types,
+	// when set, is the alternative: an explicit list of allowed types
+	// (free-form google.protobuf.Value lists every JSON type). Never both.
 	typeName string
+	types    []string
 
 	// title and description are emitted only when non-empty.
 	title       string
 	description string
+
+	// replaceMetadata marks a decoration of an inline message copy whose
+	// field-level comment/options replace the target's own title and
+	// description entirely: both keywords are written, an empty one clears.
+	// Never set for $ref targets, whose siblings only add.
+	replaceMetadata bool
 
 	// Container constraints from field options.
 	minItems      *int64
@@ -267,7 +299,7 @@ type propertyNode struct {
 	node *fieldNode
 }
 
-// oneofVariantNode is one variant branch inside a user-message oneof wrapper.
+// oneofVariantNode is one variant branch inside a oneof wrapper.
 type oneofVariantNode struct {
 	// key is the variant's JSON key: field.GoName (PascalCase), because
 	// protoc-gen-go emits no json tags on oneof wrapper structs.
@@ -282,7 +314,7 @@ type oneofVariantNode struct {
 }
 
 // oneofWrapperNode is the nested PascalCase wrapper property emitted for each
-// non-synthetic oneof of a user message. The wrapper is a oneOf of a null
+// non-synthetic proto oneof. The wrapper is a oneOf of a null
 // branch (encoding/json emits the wrapper key as null when the oneof is unset)
 // and an object branch holding the variant oneOf.
 type oneofWrapperNode struct {
@@ -307,8 +339,7 @@ type presenceNode struct {
 }
 
 // oneofConstraintGroup is a mutually-exclusive group of fields emitted as
-// root-level constraints. Two producers share this machinery: proto oneofs of
-// Google types (flat, at-most-one) and user-declared json_schema.oneof groups
+// root-level constraints, produced by user-declared json_schema.oneof groups
 // (virtual oneofs, at-most-one or exactly-one).
 type oneofConstraintGroup struct {
 	name string
@@ -337,13 +368,12 @@ type messageSchemaModel struct {
 	// fields are the property assignments for regular fields, in field order.
 	fields []propertyNode
 
-	// constraintGroups holds root-level oneof constraints: Google-type proto
-	// oneofs (sorted by group name) or user-declared json_schema.oneof groups
-	// (declaration order); one group emits schema.OneOf, several emit
-	// schema.AllOf.
+	// constraintGroups holds root-level constraints from user-declared
+	// json_schema.oneof groups, in declaration order; one group emits
+	// schema.OneOf, several emit schema.AllOf.
 	constraintGroups []oneofConstraintGroup
 
-	// oneofWrappers holds user-message oneof wrapper properties, in oneof
+	// oneofWrappers holds the proto-oneof wrapper properties, in oneof
 	// declaration order.
 	oneofWrappers []oneofWrapperNode
 }
@@ -395,23 +425,16 @@ func buildMessageSchema(message *protogen.Message, ctx *schemaContext) (*message
 	}
 
 	// --- Field Properties ---
-	// Google types keep flat oneof behavior (custom json.Marshalers use proto
-	// JSON semantics): their oneof members are emitted as regular flat
-	// properties and collected into flatGroups. User messages skip oneof
-	// members here — they become nested PascalCase wrappers below.
-	oneofGroups := make(map[string][]string) // only populated for Google types
+	// Members of a real proto oneof are skipped here: they become nested
+	// PascalCase wrappers below (encoding/json emits the oneof's Go field
+	// name, for Google and user messages alike).
 	for _, field := range message.Fields {
 		opts := getFieldJsonSchemaOptions(field)
 		if opts.GetIgnore() {
 			continue
 		}
-
 		if oneof := field.Oneof; oneof != nil && !oneof.Desc.IsSynthetic() {
-			if !id.isGoogle {
-				continue
-			}
-			groupName := string(oneof.Desc.Name())
-			oneofGroups[groupName] = append(oneofGroups[groupName], getFieldName(field))
+			continue
 		}
 
 		prop, err := buildFieldProperty(field, ctx)
@@ -421,36 +444,19 @@ func buildMessageSchema(message *protogen.Message, ctx *schemaContext) (*message
 		m.fields = append(m.fields, prop)
 	}
 
-	if id.isGoogle && len(oneofGroups) > 0 {
-		var groupNames []string
-		for name := range oneofGroups {
-			groupNames = append(groupNames, name)
-		}
-		sort.Strings(groupNames)
-		for _, name := range groupNames {
-			group := oneofConstraintGroup{name: name}
-			for _, fieldName := range oneofGroups[name] {
-				group.members = append(group.members, presenceNode{fieldName: fieldName})
-			}
-			m.constraintGroups = append(m.constraintGroups, group)
-		}
-	}
-
 	m.constraintGroups = append(m.constraintGroups, declaredGroups...)
 
-	// --- User Message Oneof Wrappers ---
-	if !id.isGoogle {
-		for _, oneof := range message.Oneofs {
-			if oneof.Desc.IsSynthetic() {
-				continue
-			}
-			wrapper, ok, err := buildOneofWrapper(oneof, ctx)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				m.oneofWrappers = append(m.oneofWrappers, wrapper)
-			}
+	// --- Oneof Wrappers ---
+	for _, oneof := range message.Oneofs {
+		if oneof.Desc.IsSynthetic() {
+			continue
+		}
+		wrapper, ok, err := buildOneofWrapper(oneof, ctx)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			m.oneofWrappers = append(m.oneofWrappers, wrapper)
 		}
 	}
 
@@ -480,14 +486,14 @@ func buildFieldProperty(field *protogen.Field, ctx *schemaContext) (propertyNode
 		}
 		return propertyNode{key: getFieldName(field), node: node}, nil
 	case field.Desc.Kind() == protoreflect.MessageKind:
-		if typeName, ok := freeFormJSONType(field.Message); ok {
-			return propertyNode{key: getFieldName(field), node: buildFreeFormNode(field, title, description, typeName)}, nil
+		if shape, ok := freeFormJSONType(field.Message); ok {
+			return propertyNode{key: getFieldName(field), node: buildFreeFormNode(field, title, description, shape)}, nil
 		}
 		// Message-type fields reference the target's schema. Field comments
 		// and field-level options decorate the returned schema: overrides on
 		// an inline copy, siblings on a $ref.
 		id := identityFor(field.Message, ctx)
-		return propertyNode{key: getFieldName(field), ref: &id, node: buildRefSiblings(field, title, description)}, nil
+		return propertyNode{key: getFieldName(field), ref: &id, node: buildRefSiblings(field, title, description, !id.cyclic)}, nil
 	default:
 		node, err := buildScalarNode(field, title, description)
 		if err != nil {
@@ -588,8 +594,8 @@ func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, 
 		if msg == nil {
 			return nil, nil
 		}
-		if typeName, ok := freeFormJSONType(msg); ok {
-			return &elementNode{typeName: typeName, value: applyValueOptions(valueConstraints{}, opts)}, nil
+		if shape, ok := freeFormJSONType(msg); ok {
+			return &elementNode{typeName: shape.typeName, types: shape.types, value: applyValueOptions(valueConstraints{}, opts)}, nil
 		}
 		id := identityFor(msg, ctx)
 		return &elementNode{ref: &id}, nil
@@ -611,8 +617,7 @@ func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, 
 	}
 }
 
-// buildOneofWrapper decides the nested wrapper schema for one user-message
-// oneof. Returns ok=false when every variant is ignored.
+// buildOneofWrapper decides the nested wrapper schema for one proto oneof. Returns ok=false when every variant is ignored.
 func buildOneofWrapper(oneof *protogen.Oneof, ctx *schemaContext) (oneofWrapperNode, bool, error) {
 	wrapper := oneofWrapperNode{key: oneof.GoName}
 	for _, field := range oneof.Fields {
@@ -629,12 +634,12 @@ func buildOneofWrapper(oneof *protogen.Oneof, ctx *schemaContext) (oneofWrapperN
 			// Message variant: same rules as buildFieldProperty — free-form
 			// well-known types inline, everything else is a decorated
 			// reference.
-			if typeName, ok := freeFormJSONType(field.Message); ok {
-				variant.node = buildFreeFormNode(field, title, description, typeName)
+			if shape, ok := freeFormJSONType(field.Message); ok {
+				variant.node = buildFreeFormNode(field, title, description, shape)
 			} else {
 				id := identityFor(field.Message, ctx)
 				variant.ref = &id
-				variant.node = buildRefSiblings(field, title, description)
+				variant.node = buildRefSiblings(field, title, description, !id.cyclic)
 			}
 		} else {
 			node, err := buildScalarNode(field, title, description)
@@ -654,9 +659,9 @@ func buildOneofWrapper(oneof *protogen.Oneof, ctx *schemaContext) (oneofWrapperN
 // buildFreeFormNode decides the inline schema for a field whose message type
 // marshals as plain JSON (Struct, Value, ListValue): the free-form type plus
 // the field's own metadata and options. No structure is described.
-func buildFreeFormNode(field *protogen.Field, title, description, typeName string) *fieldNode {
+func buildFreeFormNode(field *protogen.Field, title, description string, shape freeFormShape) *fieldNode {
 	opts := getFieldJsonSchemaOptions(field)
-	node := &fieldNode{typeName: typeName}
+	node := &fieldNode{typeName: shape.typeName, types: shape.types}
 	applyMetadata(node, title, description, opts)
 	applyContainerOptions(node, opts)
 	applyRootOptions(node, opts)
@@ -666,13 +671,16 @@ func buildFreeFormNode(field *protogen.Field, title, description, typeName strin
 
 // buildRefSiblings decides the keywords that decorate the schema returned by a
 // message-typed field's _WithDefs call: comment/option metadata plus any
-// option constraints. They override the target's own metadata on an inline
-// copy and ride as siblings on a $ref. Returns nil when the field contributes
+// option constraints. On an inline copy (inlineTarget) a field comment or
+// metadata option replaces the target's own title and description as a pair,
+// so a field-only description never sits next to the message's own title; on
+// a $ref they ride as siblings. Returns nil when the field contributes
 // nothing beyond the reference itself.
-func buildRefSiblings(field *protogen.Field, title, description string) *fieldNode {
+func buildRefSiblings(field *protogen.Field, title, description string, inlineTarget bool) *fieldNode {
 	opts := getFieldJsonSchemaOptions(field)
 	node := &fieldNode{}
 	applyMetadata(node, title, description, opts)
+	node.replaceMetadata = inlineTarget && (node.title != "" || node.description != "")
 	applyContainerOptions(node, opts)
 	applyRootOptions(node, opts)
 	node.value = applyValueOptions(valueConstraints{}, opts)
@@ -684,7 +692,7 @@ func buildRefSiblings(field *protogen.Field, title, description string) *fieldNo
 
 // isEmpty reports whether a node carries no keywords at all.
 func (n *fieldNode) isEmpty() bool {
-	return n.typeName == "" && n.title == "" && n.description == "" &&
+	return n.typeName == "" && len(n.types) == 0 && n.title == "" && n.description == "" &&
 		n.minItems == nil && n.maxItems == nil && !n.uniqueItems &&
 		n.minProperties == nil && n.maxProperties == nil &&
 		!n.deprecated && !n.readOnly && !n.writeOnly &&
@@ -845,8 +853,14 @@ func toAnySlice[T any](values []T) []any {
 }
 
 // jsonTypeFamily classifies a field descriptor's JSON value type for option
-// validation.
+// validation. The empty family means "any JSON value" (a free-form
+// google.protobuf.Value): typed options are then accepted as written.
 func jsonTypeFamily(desc protoreflect.FieldDescriptor) string {
+	if desc.Kind() == protoreflect.MessageKind {
+		if shape, ok := freeFormShapeOf(desc.Message().FullName()); ok {
+			return shape.typeName
+		}
+	}
 	switch desc.Kind() {
 	case protoreflect.StringKind, protoreflect.BytesKind:
 		return jsString
@@ -885,6 +899,7 @@ func validateFieldOptions(field *protogen.Field) error {
 		valueDesc = field.Desc.MapValue()
 	}
 	family := jsonTypeFamily(valueDesc)
+	anyValue := family == ""
 
 	// --- enum_*: one variant, matching the value's JSON type ---
 	enumFamilies := countSetVariants(
@@ -895,7 +910,7 @@ func validateFieldOptions(field *protogen.Field) error {
 	if len(enumFamilies) > 1 {
 		return fmt.Errorf("field %s: at most one enum_* variant may be set", name)
 	}
-	if len(enumFamilies) == 1 && enumFamilies[0] != family {
+	if len(enumFamilies) == 1 && !anyValue && enumFamilies[0] != family {
 		return fmt.Errorf("field %s: the enum_* variant for JSON type %q does not match the field's JSON type %q", name, enumFamilies[0], family)
 	}
 
@@ -915,7 +930,7 @@ func validateFieldOptions(field *protogen.Field) error {
 
 	// --- multiple_of: numeric values only, > 0 ---
 	if opts.MultipleOf != nil {
-		if family != jsInteger && family != jsNumber {
+		if !anyValue && family != jsInteger && family != jsNumber {
 			return fmt.Errorf("field %s: multiple_of applies to numeric fields only", name)
 		}
 		if *opts.MultipleOf <= 0 {
@@ -947,7 +962,7 @@ func validateFieldOptions(field *protogen.Field) error {
 		if !singularScalar {
 			return fmt.Errorf("field %s: default_* is only valid on singular scalar fields", name)
 		}
-		if defaultFamilies[0] != family {
+		if !anyValue && defaultFamilies[0] != family {
 			return fmt.Errorf("field %s: the default_* variant for JSON type %q does not match the field's JSON type %q", name, defaultFamilies[0], family)
 		}
 	}
@@ -964,7 +979,7 @@ func validateFieldOptions(field *protogen.Field) error {
 		if !singularScalar {
 			return fmt.Errorf("field %s: examples_* is only valid on singular scalar fields", name)
 		}
-		if examplesFamilies[0] != family {
+		if !anyValue && examplesFamilies[0] != family {
 			return fmt.Errorf("field %s: the examples_* variant for JSON type %q does not match the field's JSON type %q", name, examplesFamilies[0], family)
 		}
 	}

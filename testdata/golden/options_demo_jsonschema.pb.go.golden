@@ -3,7 +3,7 @@
 // Source: options_demo/v1/options_demo.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 14:07:49 UTC
+// Generated on: 2026-09-03 15:55:05 UTC
 
 package optionsdemov1
 
@@ -33,12 +33,15 @@ func CheckoutRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 	}
 
 	schema.Properties["card"] = Card_JsonSchema_WithDefs(defs)
+	schema.Properties["card"].Title = ""
 	schema.Properties["card"].Description = "Pay with a saved card."
 
 	schema.Properties["bank_transfer"] = BankTransfer_JsonSchema_WithDefs(defs)
+	schema.Properties["bank_transfer"].Title = ""
 	schema.Properties["bank_transfer"].Description = "Pay by bank transfer."
 
 	schema.Properties["mobile_money"] = MobileMoney_JsonSchema_WithDefs(defs)
+	schema.Properties["mobile_money"].Title = ""
 	schema.Properties["mobile_money"].Description = "Pay with mobile money."
 
 	schema.Properties["promo_code"] = &jsonschema.Schema{
@@ -292,6 +295,7 @@ func KeywordShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 	}
 
 	schema.Properties["legacy_card"] = Card_JsonSchema_WithDefs(defs)
+	schema.Properties["legacy_card"].Title = ""
 	schema.Properties["legacy_card"].Description = "Use CheckoutRequest.card instead."
 	schema.Properties["legacy_card"].Deprecated = true
 

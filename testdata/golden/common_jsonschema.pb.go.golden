@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 14:07:49 UTC
+// Generated on: 2026-09-03 15:55:05 UTC
 
 package usersv1
 
@@ -78,6 +78,7 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 	schema.Properties["service_account_key"] = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
 
 	schema.Properties["lint_policy_request"] = common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs)
+	schema.Properties["lint_policy_request"].Title = ""
 	schema.Properties["lint_policy_request"].Description = "A Google type with a proto oneof (lint_object): keeps the flat shape."
 
 	return schema
@@ -110,6 +111,7 @@ func CompleteInterviewRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 	}
 
 	schema.Properties["summary"] = CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs)
+	schema.Properties["summary"].Title = ""
 	schema.Properties["summary"].Description = "A short participant-facing recap of what the participant shared, shown to them on the completion screen. Fill it from the whole interview, in the participant's own framing."
 
 	return schema
@@ -220,9 +222,11 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 	}
 
 	schema.Properties["valid_after_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_after_time"].Title = ""
 	schema.Properties["valid_after_time"].Description = "The key can be used after this timestamp."
 
 	schema.Properties["valid_before_time"] = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_before_time"].Title = ""
 	schema.Properties["valid_before_time"].Description = "The key can be used before this timestamp.\n For system-managed key pairs, this timestamp is the end time for the\n private key signing operation. The public key could still be used\n for verification for a few hours after this time."
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
@@ -314,15 +318,29 @@ func common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs map[s
 		Description: "The name follows the Google Cloud Platform (GCP) resource format.\n For example, a GCP project with ID `my-project` will be named\n `//cloudresourcemanager.googleapis.com/projects/my-project`.\n\n The resource name is not used to read the policy instance from the Cloud\n IAM database. The candidate policy for lint has to be provided in the same\n request object.",
 	}
 
-	schema.Properties["condition"] = common_google_type_Expr_JsonSchema_WithDefs(defs)
-	schema.Properties["condition"].Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
-
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"condition"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"condition"}},
-		}}},
+	schema.Properties["LintObject"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Condition": func() *jsonschema.Schema {
+								s := common_google_type_Expr_JsonSchema_WithDefs(defs)
+								s.Title = ""
+								s.Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
+								return s
+							}(),
+						},
+						Required: []string{"Condition"},
+					},
+				},
+			},
+		},
 	}
+
 	return schema
 }
 

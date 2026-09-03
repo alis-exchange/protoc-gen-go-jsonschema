@@ -93,14 +93,15 @@ interface hides a lot of behaviour):
   `schemaContext` (file prefix + cycle set) is threaded through the builders.
 - **Message identity** (`messageIdentity` in `plugin/model.go`) — answers every
   naming and strategy question about a message exactly once: its `$defs` key,
-  generated function base name, method-vs-standalone-function,
-  flat-vs-wrapped oneof strategy, and inline-vs-`$defs` mode (`cyclic`). The
+  generated function base name, method-vs-standalone-function, and
+  inline-vs-`$defs` mode (`cyclic`). The
   `isGoogleType` and `freeFormJSONType` predicates are consulted only here and
   in the field builders.
 - **Value shape** (`buildElement` in `plugin/model.go`) — the single answer to
   "what is the JSON shape of one proto value", shared by array elements and map
-  values (message → `$ref`, enum → integer + values, bytes → base64 string,
-  scalar → mapped type).
+  values (message → reference to the target's schema, inline or `$ref` as
+  the target decides; free-form WKT → untyped node; enum → integer + values;
+  bytes → base64 string; scalar → mapped type).
 - **Printer** (`plugin/printer.go`) — a thin adapter from model to Go source.
   It owns literal layout, string escaping, and import qualification
   (`QualifiedGoIdent`), and knows both Go syntactic contexts (statement and
@@ -108,7 +109,7 @@ interface hides a lot of behaviour):
 - **Collection** (`plugin/collect.go`) — `getMessagesWithForce` walks messages,
   applying generate options and the force logic (below).
 - **Orchestration** (`plugin/generate.go`) — `Generator.generateFile` runs
-  collect → build → print per proto file.
+  collect → analyze → build → print per proto file.
 - **Options extraction** (`plugin/options.go`) — reads the alis proto
   extensions at file/message/field level.
 
@@ -128,7 +129,7 @@ protoc invokes plugin
          ├── per message:
          │      buildMessageSchema() ──► messageSchemaModel   (decide — model.go)
          │            │
-         │            ├── identityFor()        naming + oneof strategy
+         │            ├── identityFor()        naming + inline/$defs mode
          │            ├── buildFieldProperty() field → ref or inline node
          │            ├── buildElement()       value shape for arrays/maps
          │            └── buildOneofWrapper()  nested wrapper shape
@@ -187,7 +188,7 @@ An **unsupported field kind aborts generation with an error** naming the field
 | `message`    | `"object"`       | Inline object schema; `$ref` into `$defs` only for messages on a cycle |
 | `repeated T` | `"array"`        | `items` contains element schema                    |
 | `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
-| `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper (user types); flat (Google types) |
+| `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper (all messages, Google types included) |
 
 ### Message-Typed Fields: Decorated References
 
@@ -195,9 +196,12 @@ Message-typed fields (including oneof message variants) call the target's
 `_WithDefs` and **decorate the schema it returns** with the field's comment,
 options and constraints. What that call returns is the target's decision:
 
-- **Inline target** (acyclic): a fresh complete object schema. Field-level
-  `title`/`description` **override** the message's own on that copy (the field
-  is more specific); constraints such as `min_properties` are set on it.
+- **Inline target** (acyclic): a fresh complete object schema. A field
+  comment or `title`/`description` option **replaces the message's own title
+  and description as a pair** on that copy (the field is more specific, and a
+  field-only description must not sit next to the message's own title);
+  constraints such as `min_properties` are set on it. Decided by
+  `buildRefSiblings` (`replaceMetadata`).
 - **`$defs` target** (cyclic): a fresh `&Schema{Ref: ...}`; the same keywords
   become Draft 2020-12 **siblings of `$ref`**, which `google/jsonschema-go`
   (used by the MCP go-sdk) resolves correctly.
@@ -223,8 +227,10 @@ root.
 **Free-form well-known types.** `google.protobuf.Struct`, `Value` and
 `ListValue` are the only well-known types whose Go form implements
 `json.Marshaler` with plain-JSON semantics, so fields of those types emit
-free-form inline nodes — `{type: object}`, `{}` (any JSON value) and
-`{type: array}` — with the field's metadata/options, never a reference. They
+free-form inline nodes — `{type: object}`, `{type: array}`, and for Value
+an explicit `type` list of every JSON type (an empty schema would marshal as the
+boolean `true`, which strict clients such as OpenAI and Gemini reject) — with
+the field's metadata/options, never a reference. They
 generate no functions and are not nodes of the cycle analysis
 (`freeFormJSONType`, `plugin/model.go`).
 
@@ -279,10 +285,11 @@ The generated shape is an outer `oneOf` of a **null branch** (unset oneof — `e
 | Variant key inside wrapper | `field.GoName` | PascalCase (e.g., `Email`) |
 | Fields inside nested messages | `field.Desc.Name()` | snake_case |
 
-**Google types exception:** Google types keep flat oneof behavior (root-level
-`OneOf`/`AllOf` with a none-set branch) because they implement custom
-`json.Marshaler` methods with proto JSON semantics. The strategy is decided by
-`messageIdentity`; the printer knows nothing about oneofs' meaning.
+**Google types included:** Google types get the same wrappers. The only
+Google types with a custom `json.Marshaler` (Struct/Value/ListValue) are
+free-form and never reach the oneof machinery; every other Google type is
+plain protoc-gen-go output, so `encoding/json` emits the PascalCase wrapper
+for it too (pinned by `google.iam.admin.v1.LintPolicyRequest` in common.proto).
 
 ### Metadata Emission
 
@@ -367,8 +374,7 @@ Semantics (decided in `buildDeclaredOneofGroups`, `plugin/model.go`):
 - Emitted at the message root: one group → `oneOf` of per-member presence
   branches; several groups → `allOf` of such `oneOf`s. `required: true` omits
   the "none present" branch (exactly-one); otherwise it is included
-  (at-most-one). Google-type proto oneofs share this machinery
-  (`oneofConstraintGroup` / `presenceNode`).
+  (at-most-one).
 - Presence branches: ordinary fields → `{required: ["field_name"]}`; members
   of a real proto `oneof` block → the PascalCase wrapper form
   `{required: ["Wrapper"], properties: {"Wrapper": {type: "object", required:
@@ -409,11 +415,13 @@ Application rules (all decided in `plugin/model.go`):
 - Arrays/maps: metadata + container constraints at the root; value constraints
   (incl. `enum_*` and `multiple_of`) on the element (`items` /
   `additionalProperties`).
-- Message-typed fields and oneof message variants: everything emits as `$ref`
-  **siblings** (see above).
+- Message-typed fields and oneof message variants: everything decorates the
+  schema the reference returns (see Decorated References): on an inline copy
+  a field comment/`title`/`description` replaces the target's own pair and
+  constraints are set on the copy; on a `$ref` everything is a sibling.
 - **Annotations** (`deprecated`/`read_only`/`write_only`): always on the
   field's schema root — on containers they mark the array/object itself, on
-  message fields they ride the `$ref` as siblings.
+  message fields they decorate the returned schema.
 - **Reads are presence-based** (the option fields are proto3 optional):
   `minimum: 0`, `min_items: 0` etc. are expressible. `exclusive_minimum: true`
   emits the `minimum` value as `ExclusiveMinimum` and skips `Minimum`;
@@ -446,7 +454,7 @@ plugin_test/testutil.go     Shared harness: protoc runner, proto discovery,
                             golden assertions, temp-module helpers, shared
                             schema-validation helper source
 plugin_test/plugin_test.go  Generate-level output tests
-plugin_test/functions_test.go  Generated-shape pins (oneofs, $ref siblings)
+plugin_test/functions_test.go  Generated-shape pins (oneofs, decorated references)
 plugin_test/integration_test.go Golden auto-discovery + compile-and-run tests
 plugin_test/recursive_mcp_test.go Recursive types + MCP AddTool smoke test
 ```
@@ -564,7 +572,18 @@ Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
   force `$defs` for large shared messages — add only with evidence.
 - **Struct/Value/ListValue are free-form** (2026-09): they are the only WKTs
   with custom `MarshalJSON`, so `encoding/json` emits plain JSON for them; the
-  structural schema was wrong and was the one WKT cycle.
+  structural schema was wrong and was the one WKT cycle. Value spells "any"
+  as the full `type` list, never as an empty schema (marshals as `true`).
+- **Google oneofs use wrappers too** (2026-09): the flat-oneof exception for
+  Google types was justified by custom marshalers; with those types free-form,
+  every remaining Google type marshals like a user message, so the exception
+  was removed (`google.protobuf.Value`'s flat shape was its only correct
+  instance).
+- **A singular non-`optional` self-reference is unsatisfiable** (noted
+  2026-09): proto3-style `required` makes such a schema reject every finite
+  document. That is the fixture `users.v1.AddressDetails` by design; real
+  protos should mark the closing field `optional`. No generation-time check
+  was added.
 - **Decoration over allOf** (2026-08, generalised 2026-09): metadata/constraints
   on message fields decorate the returned schema (overrides on inline copies,
   Draft 2020-12 siblings on `$ref`); allOf-wrapping was rejected (uglier, and

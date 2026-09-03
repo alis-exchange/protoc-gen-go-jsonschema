@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 14:07:49 UTC
+// Generated on: 2026-09-03 15:55:05 UTC
 
 package usersv1
 
@@ -72,6 +72,7 @@ func Address_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema
 	}
 
 	schema.Properties["address_details"] = Address_AddressDetails_JsonSchema_WithDefs(defs)
+	schema.Properties["address_details"].Title = ""
 	schema.Properties["address_details"].Description = "Additional address details stored as a nested message."
 
 	return schema
@@ -489,12 +490,15 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["address"].Title = ""
 	schema.Properties["address"].Description = "Primary address of the user."
 
 	schema.Properties["contact"] = ContactInfo_JsonSchema_WithDefs(defs)
+	schema.Properties["contact"].Title = ""
 	schema.Properties["contact"].Description = "Contact information for the user."
 
 	schema.Properties["metadata"] = Metadata_JsonSchema_WithDefs(defs)
+	schema.Properties["metadata"].Title = ""
 	schema.Properties["metadata"].Description = "Additional metadata associated with the user."
 
 	schema.Properties["tags"] = &jsonschema.Schema{
@@ -651,15 +655,19 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["created_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["created_at"].Title = ""
 	schema.Properties["created_at"].Description = "Timestamp when the user account was created."
 
 	schema.Properties["updated_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["updated_at"].Title = ""
 	schema.Properties["updated_at"].Description = "Timestamp when the user account was last updated."
 
 	schema.Properties["session_duration"] = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+	schema.Properties["session_duration"].Title = ""
 	schema.Properties["session_duration"].Description = "Duration of the current user session."
 
 	schema.Properties["extra_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	schema.Properties["extra_data"].Title = ""
 	schema.Properties["extra_data"].Description = "Additional data stored as Any type."
 
 	schema.Properties["dynamic_data"] = &jsonschema.Schema{
@@ -695,9 +703,11 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["optional_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["optional_address"].Title = ""
 	schema.Properties["optional_address"].Description = "Optional alternate address."
 
 	schema.Properties["common"] = Common_JsonSchema_WithDefs(defs)
+	schema.Properties["common"].Title = ""
 	schema.Properties["common"].Description = "Common fields section"
 
 	schema.Properties["Identifier"] = &jsonschema.Schema{
@@ -793,6 +803,7 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"ContactInfo": func() *jsonschema.Schema {
 								s := ContactInfo_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Preferred contact information"
 								return s
 							}(),
@@ -804,6 +815,7 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 						Properties: map[string]*jsonschema.Schema{
 							"MailingAddress": func() *jsonschema.Schema {
 								s := Address_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Preferred mailing address."
 								return s
 							}(),
@@ -876,6 +888,7 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 	}
 
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["address"].Title = ""
 	schema.Properties["address"].Description = "Primary address of the user."
 
 	return schema
@@ -919,6 +932,7 @@ func CreateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["address"].Title = ""
 	schema.Properties["address"].Description = "Optional address for the new user."
 
 	return schema
@@ -973,6 +987,7 @@ func UpdateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	}
 
 	schema.Properties["user"] = User_JsonSchema_WithDefs(defs)
+	schema.Properties["user"].Title = ""
 	schema.Properties["user"].Description = "The user object with updated fields.\n Only provided fields will be updated."
 
 	return schema
@@ -1055,6 +1070,7 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 	}
 
 	schema.Properties["user"] = ComprehensiveUser_JsonSchema_WithDefs(defs)
+	schema.Properties["user"].Title = ""
 	schema.Properties["user"].Description = "The comprehensive user object to create."
 
 	schema.Properties["metadata"] = &jsonschema.Schema{
@@ -1207,6 +1223,7 @@ func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schem
 	}
 
 	schema.Properties["query_timestamp"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["query_timestamp"].Title = ""
 	schema.Properties["query_timestamp"].Description = "Timestamp when the query was executed."
 
 	return schema
@@ -1234,6 +1251,7 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 	}
 
 	schema.Properties["user"] = ComprehensiveUser_JsonSchema_WithDefs(defs)
+	schema.Properties["user"].Title = ""
 	schema.Properties["user"].Description = "The comprehensive user information."
 
 	schema.Properties["shipping_addresses"] = &jsonschema.Schema{
@@ -1249,6 +1267,7 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 	}
 
 	schema.Properties["custom_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	schema.Properties["custom_data"].Title = ""
 	schema.Properties["custom_data"].Description = "Additional custom data stored as Any type."
 
 	schema.Properties["ProfileType"] = &jsonschema.Schema{
@@ -1262,6 +1281,7 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 						Properties: map[string]*jsonschema.Schema{
 							"Personal": func() *jsonschema.Schema {
 								s := PersonalProfile_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Personal profile information."
 								return s
 							}(),
@@ -1273,6 +1293,7 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 						Properties: map[string]*jsonschema.Schema{
 							"Business": func() *jsonschema.Schema {
 								s := BusinessProfile_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Business profile information."
 								return s
 							}(),
@@ -1320,6 +1341,7 @@ func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 	}
 
 	schema.Properties["date_of_birth"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["date_of_birth"].Title = ""
 	schema.Properties["date_of_birth"].Description = "Date of birth of the user."
 
 	schema.Properties["interests"] = &jsonschema.Schema{
@@ -1366,6 +1388,7 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 	}
 
 	schema.Properties["business_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["business_address"].Title = ""
 	schema.Properties["business_address"].Description = "Business address."
 
 	schema.Properties["departments"] = &jsonschema.Schema{
@@ -1775,6 +1798,7 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 	}
 
 	schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["shipping_address"].Title = ""
 	schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
 
 	return schema
@@ -1849,6 +1873,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Address": func() *jsonschema.Schema {
 								s := Address_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Address message option."
 								return s
 							}(),
@@ -1860,6 +1885,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Contact": func() *jsonschema.Schema {
 								s := ContactInfo_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "ContactInfo message option."
 								return s
 							}(),
@@ -1871,6 +1897,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Metadata": func() *jsonschema.Schema {
 								s := Metadata_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Metadata message option."
 								return s
 							}(),
@@ -1954,6 +1981,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Timestamp": func() *jsonschema.Schema {
 								s := user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Timestamp value option."
 								return s
 							}(),
@@ -1965,6 +1993,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"Duration": func() *jsonschema.Schema {
 								s := user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Duration value option."
 								return s
 							}(),
@@ -1976,6 +2005,7 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 						Properties: map[string]*jsonschema.Schema{
 							"AnyData": func() *jsonschema.Schema {
 								s := user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+								s.Title = ""
 								s.Description = "Any type value option."
 								return s
 							}(),
@@ -2016,15 +2046,19 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 	}
 
 	schema.Properties["created_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["created_at"].Title = ""
 	schema.Properties["created_at"].Description = "Timestamp representing creation time."
 
 	schema.Properties["updated_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["updated_at"].Title = ""
 	schema.Properties["updated_at"].Description = "Timestamp representing last update time."
 
 	schema.Properties["time_duration"] = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+	schema.Properties["time_duration"].Title = ""
 	schema.Properties["time_duration"].Description = "Duration representing a time span."
 
 	schema.Properties["any_field"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	schema.Properties["any_field"].Title = ""
 	schema.Properties["any_field"].Description = "Any type for storing arbitrary protobuf messages."
 
 	schema.Properties["struct_field"] = &jsonschema.Schema{
@@ -2033,6 +2067,7 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 	}
 
 	schema.Properties["value_field"] = &jsonschema.Schema{
+		Types:       []string{"array", "boolean", "integer", "null", "number", "object", "string"},
 		Description: "Value type for storing a single JSON value.",
 	}
 
@@ -2051,7 +2086,9 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 	schema.Properties["value_list"] = &jsonschema.Schema{
 		Type:        "array",
 		Description: "List of free-form JSON values (untyped items).",
-		Items:       &jsonschema.Schema{},
+		Items: &jsonschema.Schema{
+			Types: []string{"array", "boolean", "integer", "null", "number", "object", "string"},
+		},
 	}
 
 	schema.Properties["struct_map"] = &jsonschema.Schema{
@@ -2241,9 +2278,11 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 	}
 
 	schema.Properties["valid_after_time"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_after_time"].Title = ""
 	schema.Properties["valid_after_time"].Description = "The key can be used after this timestamp."
 
 	schema.Properties["valid_before_time"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	schema.Properties["valid_before_time"].Title = ""
 	schema.Properties["valid_before_time"].Description = "The key can be used before this timestamp.\n For system-managed key pairs, this timestamp is the end time for the\n private key signing operation. The public key could still be used\n for verification for a few hours after this time."
 
 	schema.Properties["key_origin"] = &jsonschema.Schema{
@@ -2300,15 +2339,29 @@ func user_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs map[str
 		Description: "The name follows the Google Cloud Platform (GCP) resource format.\n For example, a GCP project with ID `my-project` will be named\n `//cloudresourcemanager.googleapis.com/projects/my-project`.\n\n The resource name is not used to read the policy instance from the Cloud\n IAM database. The candidate policy for lint has to be provided in the same\n request object.",
 	}
 
-	schema.Properties["condition"] = user_google_type_Expr_JsonSchema_WithDefs(defs)
-	schema.Properties["condition"].Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
-
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"condition"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"condition"}},
-		}}},
+	schema.Properties["LintObject"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"Condition": func() *jsonschema.Schema {
+								s := user_google_type_Expr_JsonSchema_WithDefs(defs)
+								s.Title = ""
+								s.Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
+								return s
+							}(),
+						},
+						Required: []string{"Condition"},
+					},
+				},
+			},
+		},
 	}
+
 	return schema
 }
 
