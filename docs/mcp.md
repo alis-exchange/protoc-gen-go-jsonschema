@@ -37,9 +37,13 @@ mcp.AddTool(server, tool, func(ctx context.Context, req *mcp.CallToolRequest, in
 Two things happen with the schema:
 
 1. **Wire schema (`tools/list`)** — clients receive the schema exactly as
-   `JsonSchema()` built it: a `$ref` root plus `$defs`. The comments,
-   constraints, defaults, and exactly-one groups from your proto are what the
-   LLM sees when deciding how to call the tool.
+   `JsonSchema()` built it: a literal `type: "object"` root with every
+   message-typed field expanded in place. Many MCP clients and SDKs do not
+   resolve `$ref`/`$defs` (models end up stringifying nested arguments), so
+   the plugin emits none for non-recursive messages; only messages on a
+   reference cycle keep a `$defs` entry. The comments, constraints, defaults,
+   and exactly-one groups from your proto are what the LLM sees when deciding
+   how to call the tool.
 2. **Server-side validation (`tools/call`)** — the SDK resolves the schema at
    `AddTool` time and validates incoming arguments against it before your
    handler runs. Invalid inputs — a missing required field, a value outside an
@@ -47,7 +51,9 @@ Two things happen with the schema:
    a schema error, not passed to your code.
 
 **Set `OutputSchema` explicitly.** The SDK's reflection-based schema inference
-(`jsonschema.ForType`) cannot handle recursive proto types; `JsonSchema()` can.
+(`jsonschema.For`) cannot handle recursive proto types; `JsonSchema()` can —
+recursive messages are the one case where a `$ref` remains, and it always
+points into the root's `$defs`.
 
 ## Guiding the model
 
@@ -78,5 +84,6 @@ if err := resolved.Validate(doc); err != nil {
 }
 ```
 
-Validate the **root schema** returned by `JsonSchema()` — a bare definition
-plucked out of `$defs` has no resolution context for its `$ref`s.
+Validate the **root schema** returned by `JsonSchema()` — for recursive
+messages a bare definition plucked out of `$defs` has no resolution context
+for its `$ref`s.

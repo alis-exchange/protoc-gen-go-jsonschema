@@ -365,7 +365,7 @@ import (
 // ValidateSchema validates a *jsonschema.Schema and returns a resolved schema
 // that can be used for validation. It ensures:
 //   - The schema is not nil
-//   - The schema type is "object" or the root is a $ref (ref-as-root)
+//   - The root is a literal "object" schema, never a $ref
 //   - Every $ref points to an existing definition
 //   - The schema structure is valid (via Resolve)
 func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
@@ -379,14 +379,19 @@ func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema
 		return nil, fmt.Errorf("schema %q: cannot be nil", name)
 	}
 
-	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
-	if schema.Ref == "" && schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
+	// The root must be a real object schema. MCP requires a literal
+	// type: "object" root, so a $ref root is never acceptable.
+	if schema.Ref != "" {
+		return nil, fmt.Errorf("schema %q: root must not be a $ref (got %q)", name, schema.Ref)
+	}
+	if schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" (got type %q)", name, schema.Type)
 	}
 
 	// Verify all $ref pointers exist
 	refs := collectRefs(schema)
-	if schema.Defs != nil {
+	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
+	if len(refs) > 0 {
 		for ref := range refs {
 			key := extractRefKey(ref)
 			if key != "" {

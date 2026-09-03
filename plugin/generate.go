@@ -21,8 +21,9 @@ type Generator struct {
 // The generation process:
 //  1. Checks file-level options to determine the default generation behavior
 //  2. Collects all messages that should generate schemas (respecting options)
-//  3. Builds the schema model for each message (all schema decisions)
-//  4. Prints the models into the output file (all Go-syntax decisions)
+//  3. Analyzes reference cycles to decide each message's mode (inline vs $defs)
+//  4. Builds the schema model for each message (all schema decisions)
+//  5. Prints the models into the output file (all Go-syntax decisions)
 //
 // Returns nil if no messages in the file require schema generation.
 func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*protogen.GeneratedFile, error) {
@@ -86,11 +87,16 @@ func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*p
 	g.P(")")
 	g.P()
 
-	// --- Build and Print Message Schemas ---
-	prefix := fileNamePrefix(file)
+	// --- Analyze, Build and Print Message Schemas ---
+	// The cycle analysis decides each message's mode (inline vs $defs) before
+	// any model is built; see analyzeCycles.
+	ctx := &schemaContext{
+		filePrefix: fileNamePrefix(file),
+		cycles:     analyzeCycles(targetMessages),
+	}
 	printer := &schemaPrinter{g: g}
 	for _, msg := range append(localMessages, googleTypeMessages...) {
-		model, err := buildMessageSchema(msg, prefix)
+		model, err := buildMessageSchema(msg, ctx)
 		if err != nil {
 			return nil, err
 		}

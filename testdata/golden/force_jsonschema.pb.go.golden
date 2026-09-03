@@ -3,7 +3,7 @@
 // Source: users/v1/force.proto
 // Plugin version: test
 //
-// Generated on: 2026-08-14 12:28:03 UTC
+// Generated on: 2026-09-03 14:07:49 UTC
 
 package usersv1
 
@@ -14,17 +14,14 @@ import (
 // JsonSchema returns the JSON schema for the ParentWithNested message.
 func (x *ParentWithNested) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ParentWithNested_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithNested", Type: "object"}
-	root.Defs = defs
+	root := ParentWithNested_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ParentWithNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ParentWithNested"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithNested"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Parent message with generate=true",
@@ -34,10 +31,6 @@ func ParentWithNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *j
 			"nested",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ParentWithNested"] = schema
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -53,23 +46,20 @@ func ParentWithNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *j
 		Items:       ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs),
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithNested"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the NestedMessage message.
 func (x *ParentWithNested_NestedMessage) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithNested.NestedMessage", Type: "object"}
-	root.Defs = defs
+	root := ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ParentWithNested.NestedMessage"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithNested.NestedMessage"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Nested message with explicit generate=false\n This should still generate because parent has generate=true",
@@ -80,10 +70,6 @@ func ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs map[string]*jsonsch
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ParentWithNested.NestedMessage"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type: "string",
 	}
@@ -92,23 +78,20 @@ func ParentWithNested_NestedMessage_JsonSchema_WithDefs(defs map[string]*jsonsch
 		Type: "integer",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithNested.NestedMessage"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the ParentWithForcedNested message.
 func (x *ParentWithForcedNested) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ParentWithForcedNested_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedNested", Type: "object"}
-	root.Defs = defs
+	root := ParentWithForcedNested_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ParentWithForcedNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ParentWithForcedNested"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedNested"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Parent message with generate=true and nested with generate=false",
@@ -119,33 +102,26 @@ func ParentWithForcedNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Sche
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ParentWithForcedNested"] = schema
-
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type: "string",
 	}
 
 	schema.Properties["forced"] = ParentWithForcedNested_ForcedNested_JsonSchema_WithDefs(defs)
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedNested"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the ForcedNested message.
 func (x *ParentWithForcedNested_ForcedNested) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ParentWithForcedNested_ForcedNested_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedNested.ForcedNested", Type: "object"}
-	root.Defs = defs
+	root := ParentWithForcedNested_ForcedNested_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ParentWithForcedNested_ForcedNested_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ParentWithForcedNested.ForcedNested"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedNested.ForcedNested"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Nested message that should be forced to generate",
@@ -156,10 +132,6 @@ func ParentWithForcedNested_ForcedNested_JsonSchema_WithDefs(defs map[string]*js
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ParentWithForcedNested.ForcedNested"] = schema
-
 	schema.Properties["data"] = &jsonschema.Schema{
 		Type: "string",
 	}
@@ -168,23 +140,20 @@ func ParentWithForcedNested_ForcedNested_JsonSchema_WithDefs(defs map[string]*js
 		Type: "boolean",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedNested.ForcedNested"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the ParentWithForcedDependency message.
 func (x *ParentWithForcedDependency) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ParentWithForcedDependency_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedDependency", Type: "object"}
-	root.Defs = defs
+	root := ParentWithForcedDependency_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ParentWithForcedDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ParentWithForcedDependency"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedDependency"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Message with field dependency that has generate=false",
@@ -195,10 +164,6 @@ func ParentWithForcedDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ParentWithForcedDependency"] = schema
-
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type: "string",
 	}
@@ -206,23 +171,20 @@ func ParentWithForcedDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.
 	schema.Properties["dependency"] = DependencyMessage_JsonSchema_WithDefs(defs)
 	schema.Properties["dependency"].Description = "Field dependency with generate=false - should still generate"
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ParentWithForcedDependency"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the DependencyMessage message.
 func (x *DependencyMessage) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = DependencyMessage_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DependencyMessage", Type: "object"}
-	root.Defs = defs
+	root := DependencyMessage_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func DependencyMessage_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.DependencyMessage"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.DependencyMessage"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Dependency message with explicit generate=false\n Should still generate when referenced by parent",
@@ -233,10 +195,6 @@ func DependencyMessage_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.DependencyMessage"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type: "string",
 	}
@@ -245,5 +203,5 @@ func DependencyMessage_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		Type: "integer",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.DependencyMessage"}
+	return schema
 }

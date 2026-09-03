@@ -23,6 +23,8 @@ message Common {
   string zip = 8;
   string country = 9;
   google.iam.admin.v1.ServiceAccountKey service_account_key = 11;
+  // A Google type with a proto oneof (lint_object): keeps the flat shape.
+  optional google.iam.admin.v1.LintPolicyRequest lint_policy_request = 12;
 }
 
 // Request message for CompleteInterview.

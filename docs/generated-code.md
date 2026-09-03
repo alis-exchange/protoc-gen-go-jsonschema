@@ -19,7 +19,8 @@ Each message gets two functions:
 // Public entry point — a complete, self-contained schema.
 func (x *User) JsonSchema() *jsonschema.Schema
 
-// Composition helper — populates a shared definitions map, returns a $ref.
+// Composition helper — returns the message's schema: a complete inline object,
+// or (recursive messages only) a $ref after registering the definition in defs.
 func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema
 ```
 
@@ -27,15 +28,34 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 reference each other and so you can compose several messages into one
 definitions map yourself.
 
-## Ref-as-root
+## Inline by default, `$defs` for cycles
 
-`JsonSchema()` returns a `$ref` wrapper with everything bundled under `$defs`:
+The plugin analyses the message graph before generating. A message that is
+**not on a reference cycle** inlines: its `_WithDefs` builds and returns a
+fresh, complete object schema, and `JsonSchema()` hands that object back as
+the root. A proto without recursion therefore produces **no `$ref` and no
+`$defs` anywhere**:
 
 ```go
 func (x *User) JsonSchema() *jsonschema.Schema {
     defs := make(map[string]*jsonschema.Schema)
-    _ = User_JsonSchema_WithDefs(defs)
-    root := &jsonschema.Schema{Ref: "#/$defs/users.v1.User", Type: "object"}
+    root := User_JsonSchema_WithDefs(defs)
+    if len(defs) > 0 {
+        root.Defs = defs // only when a recursive descendant registered one
+    }
+    return root
+}
+```
+
+A message **on a cycle** — self-referencing, or mutually recursive through
+any field kind — is the one thing inlining cannot express. Such messages live
+under `$defs` and are reached through `$ref`; nothing else is:
+
+```go
+func (x *Node) JsonSchema() *jsonschema.Schema {
+    defs := make(map[string]*jsonschema.Schema)
+    _ = Node_JsonSchema_WithDefs(defs)          // registers Node (and its cycle) under defs
+    root := Node_JsonSchema_build(defs, false)  // an independent copy for the root
     root.Defs = defs
     return root
 }
@@ -43,21 +63,32 @@ func (x *User) JsonSchema() *jsonschema.Schema {
 
 Why this shape:
 
-- **No pointer cycles.** The root is a fresh wrapper, not the definition
-  itself, so `json.Marshal` of a recursive schema can't stack-overflow.
-- **Recursive types resolve.** A message whose fields reference itself points
-  at `#/$defs/...`, and that definition always exists — definitions are
-  registered *before* their fields are populated.
-- **Self-contained.** Every transitively referenced message (and Google type)
-  is present under `$defs`, keyed by its full proto name.
+- **MCP-clean roots.** The root is always a literal `type: "object"` with
+  `properties` — the shape the MCP spec mandates and the shape clients read
+  directly. `$ref` appears only where recursion actually happens.
+- **Recursive types resolve.** A definition is registered *before* its fields
+  are populated, so references back to it always find it.
+- **No shared nodes.** The root of a recursive message is built separately
+  from its `$defs` entry; `jsonschema-go`'s `Resolve` (which `mcp.AddTool`
+  calls) requires the schema to be a tree, and `json.Marshal` cannot cycle.
+- **Self-contained.** Every recursive message reachable from the root is
+  present under `$defs`, keyed by its full proto name.
 
-`_WithDefs` always returns a **fresh** `&Schema{Ref: ...}` value — never the
-stored definition — which is also what makes `$ref` sibling decoration safe:
+Proto forbids circular imports, so a cycle always lives inside one `.proto`
+file: the mode of a message is intrinsic and identical from every file that
+references it.
+
+`_WithDefs` always returns a **fresh** value — an inline object or a
+`&Schema{Ref: ...}` — never a stored definition, which is what makes field
+decoration safe:
 
 ```go
 schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
 schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
 ```
+
+On an inline copy the field's comment/options **override** the message's own
+`title`/`description`; on a `$ref` they are Draft 2020-12 sibling keywords.
 
 ## Multi-file packages
 
@@ -78,14 +109,18 @@ func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema
 func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema
 ```
 
-You rarely call these directly — they exist to serve `$ref`s from your own
-messages' schemas.
+You rarely call these directly — they exist to serve your own messages'
+schemas. `google.protobuf.Struct`, `Value` and `ListValue` generate nothing:
+their Go types marshal as plain JSON, so fields of those types emit free-form
+`{"type": "object"}`, `{}` and `{"type": "array"}` nodes.
 
 ## Stability guarantees
 
 - Generated function names and signatures are stable across plugin versions;
   regenerating with a newer plugin never breaks callers of `JsonSchema()` or
-  `_WithDefs`.
+  `_WithDefs`. Packages generated by different plugin versions link and
+  compose: a caller never needs to know whether a `_WithDefs` call returns an
+  inline object or a `$ref`.
 - Output is deterministic: properties follow field order, oneof constraint
   branches follow declaration order, Google-type oneof groups sort by name.
 - Nothing is emitted for a file whose messages are all untargeted — no empty

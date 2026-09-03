@@ -666,4 +666,8 @@ message WellKnownTypesDemo {
   repeated google.protobuf.Timestamp timestamps = 7;
   // Map of string keys to Timestamp values.
   map<string, google.protobuf.Timestamp> timestamp_map = 8;
+  // List of free-form JSON values (untyped items).
+  repeated google.protobuf.Value value_list = 9;
+  // Map of string keys to free-form JSON objects.
+  map<string, google.protobuf.Struct> struct_map = 10;
 }

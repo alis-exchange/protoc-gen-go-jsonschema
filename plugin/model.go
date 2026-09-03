@@ -58,21 +58,35 @@ type messageIdentity struct {
 	// functions (methods cannot be added to imported types) and keep flat
 	// oneof properties (their custom json.Marshalers use proto JSON semantics).
 	isGoogle bool
+
+	// cyclic is true for messages that sit on a reference cycle. Their schema
+	// lives under $defs and is reached through $ref, because inlining it would
+	// never terminate. Every other message inlines: its _WithDefs function
+	// returns a fresh, complete object schema and registers nothing.
+	cyclic bool
+}
+
+// schemaContext carries the per-file inputs every schema decision needs: the
+// file prefix that keeps Google-type function names unique across a package,
+// and the cycle analysis that decides each message's mode.
+type schemaContext struct {
+	filePrefix string
+	cycles     cycleSet
 }
 
 // identityFor computes the identity of a message in the context of the proto
-// file currently being generated (filePrefix keeps Google type function names
-// unique when multiple files in one package import the same types).
-func identityFor(msg *protogen.Message, filePrefix string) messageIdentity {
+// file currently being generated.
+func identityFor(msg *protogen.Message, ctx *schemaContext) messageIdentity {
 	id := messageIdentity{
 		defKey:     string(msg.Desc.FullName()),
 		goName:     msg.GoIdent.GoName,
 		protoName:  string(msg.Desc.Name()),
 		importPath: msg.GoIdent.GoImportPath,
 		isGoogle:   isGoogleType(msg),
+		cyclic:     ctx.cycles[msg.Desc.FullName()],
 	}
 	if id.isGoogle {
-		id.funcBase = googleTypeFunctionName(msg, filePrefix)
+		id.funcBase = googleTypeFunctionName(msg, ctx.filePrefix)
 	} else {
 		id.funcBase = msg.GoIdent.GoName
 	}
@@ -84,11 +98,51 @@ func (id messageIdentity) withDefsName() string {
 	return id.funcBase + "_JsonSchema_WithDefs"
 }
 
+// buildName returns the name of the private builder generated for cyclic
+// messages: it holds the schema body so the $defs entry and the root can be
+// constructed as two independent trees.
+func (id messageIdentity) buildName() string {
+	return id.funcBase + "_JsonSchema_build"
+}
+
 // isGoogleType checks if a message is from a Google package (google.*).
 // This includes well-known types (google.protobuf.*), common types (google.type.*),
 // API types (google.api.*), IAM types (google.iam.*), and any other google.* packages.
 func isGoogleType(msg *protogen.Message) bool {
 	return strings.HasPrefix(string(msg.Desc.FullName()), "google.")
+}
+
+// freeFormJSONType reports whether msg is one of the well-known types whose
+// Go form implements json.Marshaler with plain JSON semantics — Struct, Value
+// and ListValue — and, if so, the JSON Schema type that describes that output:
+// "object" for Struct, "array" for ListValue, and "" (any JSON value) for
+// Value. These never generate schemas of their own and never take part in the
+// reference graph; fields of these types inline as free-form nodes.
+func freeFormJSONType(msg *protogen.Message) (typeName string, ok bool) {
+	switch msg.Desc.FullName() {
+	case "google.protobuf.Struct":
+		return jsObject, true
+	case "google.protobuf.ListValue":
+		return jsArray, true
+	case "google.protobuf.Value":
+		return "", true
+	}
+	return "", false
+}
+
+// mapValueMessage returns the value message of a map field, or nil when the
+// map's values are not messages. The value lives on field 2 of the synthetic
+// map entry.
+func mapValueMessage(field *protogen.Field) *protogen.Message {
+	if !field.Desc.IsMap() {
+		return nil
+	}
+	for _, f := range field.Message.Fields {
+		if f.Desc.Number() == 2 {
+			return f.Message
+		}
+	}
+	return nil
 }
 
 // googleTypeFunctionName converts a Google type's full name to a valid Go function name with a file prefix.
@@ -120,7 +174,9 @@ func fileNamePrefix(file *protogen.File) string {
 // The model is the symbolic form of one message's generated schema code: every
 // keyword the generated Go will set, with all option overrides already applied.
 // Ref-valued positions carry the target message's identity instead of a
-// literal; the printer turns them into _WithDefs calls.
+// literal; the printer turns them into _WithDefs calls. Whether such a call
+// yields an inline object or a $ref is the target's own decision (its cyclic
+// flag), never the caller's.
 
 // valueConstraints are the keywords that constrain a single JSON value. They
 // apply at the root for scalar fields and to the element for arrays and maps.
@@ -149,8 +205,8 @@ type elementNode struct {
 	// ref, when set, prints as a _WithDefs call; all other fields are ignored.
 	ref *messageIdentity
 
-	// typeName is the JSON Schema type of the element. When empty (external
-	// types without explicit type info), "object" is emitted as a fallback.
+	// typeName is the JSON Schema type of the element; empty (a free-form
+	// google.protobuf.Value) omits the Type keyword, allowing any JSON value.
 	typeName string
 
 	value valueConstraints
@@ -301,8 +357,8 @@ type messageSchemaModel struct {
 // membership, oneof shape — happens here; the printer only transcribes.
 // An unsupported field kind aborts generation with an error rather than
 // silently emitting a broken schema.
-func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageSchemaModel, error) {
-	id := identityFor(message, filePrefix)
+func buildMessageSchema(message *protogen.Message, ctx *schemaContext) (*messageSchemaModel, error) {
+	id := identityFor(message, ctx)
 	title, description := getTitleAndDescription(message.Desc)
 
 	m := &messageSchemaModel{
@@ -358,7 +414,7 @@ func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageS
 			oneofGroups[groupName] = append(oneofGroups[groupName], getFieldName(field))
 		}
 
-		prop, err := buildFieldProperty(field, filePrefix)
+		prop, err := buildFieldProperty(field, ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -388,7 +444,7 @@ func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageS
 			if oneof.Desc.IsSynthetic() {
 				continue
 			}
-			wrapper, ok, err := buildOneofWrapper(oneof, filePrefix)
+			wrapper, ok, err := buildOneofWrapper(oneof, ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -402,8 +458,9 @@ func buildMessageSchema(message *protogen.Message, filePrefix string) (*messageS
 }
 
 // buildFieldProperty decides the schema for a single field: a reference for
-// message-typed fields, or an inline schema for everything else.
-func buildFieldProperty(field *protogen.Field, filePrefix string) (propertyNode, error) {
+// message-typed fields (free-form well-known types excepted), or an inline
+// schema for everything else.
+func buildFieldProperty(field *protogen.Field, ctx *schemaContext) (propertyNode, error) {
 	if err := validateFieldOptions(field); err != nil {
 		return propertyNode{}, err
 	}
@@ -411,21 +468,25 @@ func buildFieldProperty(field *protogen.Field, filePrefix string) (propertyNode,
 
 	switch {
 	case field.Desc.IsList():
-		node, err := buildArrayNode(field, title, description, filePrefix)
+		node, err := buildArrayNode(field, title, description, ctx)
 		if err != nil {
 			return propertyNode{}, err
 		}
 		return propertyNode{key: getFieldName(field), node: node}, nil
 	case field.Desc.IsMap():
-		node, err := buildMapNode(field, title, description, filePrefix)
+		node, err := buildMapNode(field, title, description, ctx)
 		if err != nil {
 			return propertyNode{}, err
 		}
 		return propertyNode{key: getFieldName(field), node: node}, nil
 	case field.Desc.Kind() == protoreflect.MessageKind:
-		// Message-type fields use a direct $ref for structure. Field comments
-		// and field-level options emit as $ref siblings.
-		id := identityFor(field.Message, filePrefix)
+		if typeName, ok := freeFormJSONType(field.Message); ok {
+			return propertyNode{key: getFieldName(field), node: buildFreeFormNode(field, title, description, typeName)}, nil
+		}
+		// Message-type fields reference the target's schema. Field comments
+		// and field-level options decorate the returned schema: overrides on
+		// an inline copy, siblings on a $ref.
+		id := identityFor(field.Message, ctx)
 		return propertyNode{key: getFieldName(field), ref: &id, node: buildRefSiblings(field, title, description)}, nil
 	default:
 		node, err := buildScalarNode(field, title, description)
@@ -463,14 +524,14 @@ func buildScalarNode(field *protogen.Field, title, description string) (*fieldNo
 // buildArrayNode decides the inline schema for a repeated field: an "array"
 // root with the element schema under Items. Value-level options apply to the
 // element; container options apply to the root.
-func buildArrayNode(field *protogen.Field, title, description string, filePrefix string) (*fieldNode, error) {
+func buildArrayNode(field *protogen.Field, title, description string, ctx *schemaContext) (*fieldNode, error) {
 	opts := getFieldJsonSchemaOptions(field)
 
 	node := &fieldNode{typeName: jsArray}
 	applyMetadata(node, title, description, opts)
 	applyContainerOptions(node, opts)
 	applyRootOptions(node, opts)
-	element, err := buildElement(field.Desc, field, field.Message, opts, filePrefix)
+	element, err := buildElement(field.Desc, field, field.Message, opts, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("field %s: %w", field.Desc.FullName(), err)
 	}
@@ -481,7 +542,7 @@ func buildArrayNode(field *protogen.Field, title, description string, filePrefix
 // buildMapNode decides the inline schema for a map field: an "object" root
 // with the value schema under AdditionalProperties and, for non-string keys, a
 // PropertyNames pattern (JSON serializes all map keys as strings).
-func buildMapNode(field *protogen.Field, title, description string, filePrefix string) (*fieldNode, error) {
+func buildMapNode(field *protogen.Field, title, description string, ctx *schemaContext) (*fieldNode, error) {
 	opts := getFieldJsonSchemaOptions(field)
 
 	node := &fieldNode{typeName: jsObject, elementIsAdditionalProperties: true}
@@ -499,15 +560,7 @@ func buildMapNode(field *protogen.Field, title, description string, filePrefix s
 		node.propertyNamesPattern = "^(true|false)$"
 	}
 
-	// The value message of a map lives on field 2 of the synthetic map entry.
-	var valMsg *protogen.Message
-	for _, f := range field.Message.Fields {
-		if f.Desc.Number() == 2 {
-			valMsg = f.Message
-			break
-		}
-	}
-	element, err := buildElement(field.Desc.MapValue(), nil, valMsg, opts, filePrefix)
+	element, err := buildElement(field.Desc.MapValue(), nil, mapValueMessage(field), opts, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("field %s: %w", field.Desc.FullName(), err)
 	}
@@ -524,7 +577,7 @@ func buildMapNode(field *protogen.Field, title, description string, filePrefix s
 // answer for array elements and map values. enumField carries the
 // protogen.Field when available (array elements); map values fall back to the
 // descriptor's enum. msg is the element's message when kind is MessageKind.
-func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, msg *protogen.Message, opts *optionsPb.FieldOptions_JsonSchema, filePrefix string) (*elementNode, error) {
+func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, msg *protogen.Message, opts *optionsPb.FieldOptions_JsonSchema, ctx *schemaContext) (*elementNode, error) {
 	kindTypeName, err := getKindTypeName(desc)
 	if err != nil {
 		return nil, err
@@ -535,7 +588,10 @@ func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, 
 		if msg == nil {
 			return nil, nil
 		}
-		id := identityFor(msg, filePrefix)
+		if typeName, ok := freeFormJSONType(msg); ok {
+			return &elementNode{typeName: typeName, value: applyValueOptions(valueConstraints{}, opts)}, nil
+		}
+		id := identityFor(msg, ctx)
 		return &elementNode{ref: &id}, nil
 
 	case protoreflect.EnumKind:
@@ -557,7 +613,7 @@ func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, 
 
 // buildOneofWrapper decides the nested wrapper schema for one user-message
 // oneof. Returns ok=false when every variant is ignored.
-func buildOneofWrapper(oneof *protogen.Oneof, filePrefix string) (oneofWrapperNode, bool, error) {
+func buildOneofWrapper(oneof *protogen.Oneof, ctx *schemaContext) (oneofWrapperNode, bool, error) {
 	wrapper := oneofWrapperNode{key: oneof.GoName}
 	for _, field := range oneof.Fields {
 		opts := getFieldJsonSchemaOptions(field)
@@ -570,11 +626,16 @@ func buildOneofWrapper(oneof *protogen.Oneof, filePrefix string) (oneofWrapperNo
 		variant := oneofVariantNode{key: field.GoName}
 		title, description := getTitleAndDescription(field.Desc)
 		if field.Desc.Kind() == protoreflect.MessageKind {
-			// Message variant: direct $ref with siblings, same rule as
-			// buildFieldProperty.
-			id := identityFor(field.Message, filePrefix)
-			variant.ref = &id
-			variant.node = buildRefSiblings(field, title, description)
+			// Message variant: same rules as buildFieldProperty — free-form
+			// well-known types inline, everything else is a decorated
+			// reference.
+			if typeName, ok := freeFormJSONType(field.Message); ok {
+				variant.node = buildFreeFormNode(field, title, description, typeName)
+			} else {
+				id := identityFor(field.Message, ctx)
+				variant.ref = &id
+				variant.node = buildRefSiblings(field, title, description)
+			}
 		} else {
 			node, err := buildScalarNode(field, title, description)
 			if err != nil {
@@ -590,9 +651,24 @@ func buildOneofWrapper(oneof *protogen.Oneof, filePrefix string) (oneofWrapperNo
 	return wrapper, true, nil
 }
 
-// buildRefSiblings decides the keywords that ride alongside a message-typed
-// field's $ref: comment/option metadata plus any option constraints. Returns
-// nil when the field contributes nothing beyond the $ref itself.
+// buildFreeFormNode decides the inline schema for a field whose message type
+// marshals as plain JSON (Struct, Value, ListValue): the free-form type plus
+// the field's own metadata and options. No structure is described.
+func buildFreeFormNode(field *protogen.Field, title, description, typeName string) *fieldNode {
+	opts := getFieldJsonSchemaOptions(field)
+	node := &fieldNode{typeName: typeName}
+	applyMetadata(node, title, description, opts)
+	applyContainerOptions(node, opts)
+	applyRootOptions(node, opts)
+	node.value = applyValueOptions(valueConstraints{}, opts)
+	return node
+}
+
+// buildRefSiblings decides the keywords that decorate the schema returned by a
+// message-typed field's _WithDefs call: comment/option metadata plus any
+// option constraints. They override the target's own metadata on an inline
+// copy and ride as siblings on a $ref. Returns nil when the field contributes
+// nothing beyond the reference itself.
 func buildRefSiblings(field *protogen.Field, title, description string) *fieldNode {
 	opts := getFieldJsonSchemaOptions(field)
 	node := &fieldNode{}

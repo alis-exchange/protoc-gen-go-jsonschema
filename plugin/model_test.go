@@ -77,9 +77,15 @@ func findField(t *testing.T, msg *protogen.Message, name string) *protogen.Field
 	return nil
 }
 
+// testCtx builds a schema context with the given file prefix and no cycle
+// information: every message is treated as acyclic.
+func testCtx(filePrefix string) *schemaContext {
+	return &schemaContext{filePrefix: filePrefix}
+}
+
 func mustBuildFieldProperty(t *testing.T, field *protogen.Field, filePrefix string) propertyNode {
 	t.Helper()
-	prop, err := buildFieldProperty(field, filePrefix)
+	prop, err := buildFieldProperty(field, testCtx(filePrefix))
 	if err != nil {
 		t.Fatalf("buildFieldProperty failed: %v", err)
 	}
@@ -88,7 +94,7 @@ func mustBuildFieldProperty(t *testing.T, field *protogen.Field, filePrefix stri
 
 func mustBuildMessageSchema(t *testing.T, msg *protogen.Message, filePrefix string) *messageSchemaModel {
 	t.Helper()
-	m, err := buildMessageSchema(msg, filePrefix)
+	m, err := buildMessageSchema(msg, testCtx(filePrefix))
 	if err != nil {
 		t.Fatalf("buildMessageSchema failed: %v", err)
 	}
@@ -234,7 +240,7 @@ func TestIdentityFor(t *testing.T) {
 	userFile := findFile(t, p, "user.proto")
 
 	t.Run("user message", func(t *testing.T) {
-		id := identityFor(findMessage(t, userFile, "Address"), "user")
+		id := identityFor(findMessage(t, userFile, "Address"), testCtx("user"))
 		if id.isGoogle {
 			t.Error("Address should not be a Google type")
 		}
@@ -249,7 +255,7 @@ func TestIdentityFor(t *testing.T) {
 	t.Run("google type gets file-prefixed standalone name", func(t *testing.T) {
 		wkt := findMessage(t, userFile, "WellKnownTypesDemo")
 		field := findField(t, wkt, "created_at")
-		id := identityFor(field.Message, "user")
+		id := identityFor(field.Message, testCtx("user"))
 		if !id.isGoogle {
 			t.Error("google.protobuf.Timestamp should be a Google type")
 		}
@@ -258,6 +264,81 @@ func TestIdentityFor(t *testing.T) {
 		}
 		if id.withDefsName() != "user_google_protobuf_Timestamp_JsonSchema_WithDefs" {
 			t.Errorf("withDefsName = %q", id.withDefsName())
+		}
+	})
+}
+
+func TestIdentityForCyclic(t *testing.T) {
+	p := loadTestPlugin(t)
+	userFile := findFile(t, p, "user.proto")
+	ctx := &schemaContext{filePrefix: "user", cycles: analyzeCycles(userFile.Messages)}
+
+	if !identityFor(findMessage(t, userFile, "AddressDetails"), ctx).cyclic {
+		t.Error("self-referencing AddressDetails must be cyclic ($defs mode)")
+	}
+	if identityFor(findMessage(t, userFile, "Address"), ctx).cyclic {
+		t.Error("Address must not be cyclic (inline mode)")
+	}
+}
+
+func TestBuildFreeFormWellKnownTypeFields(t *testing.T) {
+	structT := ".google.protobuf.Struct"
+	valueT := ".google.protobuf.Value"
+	listT := ".google.protobuf.ListValue"
+
+	t.Run("singular Struct inlines as an object", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(dynMsgField("s", 1, structT)))
+		prop := mustBuildFieldProperty(t, findField(t, msg, "s"), "dyn")
+		if prop.ref != nil {
+			t.Fatal("Struct must inline, not reference a generated schema")
+		}
+		if prop.node == nil || prop.node.typeName != jsObject || prop.node.element != nil {
+			t.Errorf("node = %+v, want free-form object", prop.node)
+		}
+	})
+
+	t.Run("singular Value inlines as any JSON value", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(dynMsgField("v", 1, valueT)))
+		prop := mustBuildFieldProperty(t, findField(t, msg, "v"), "dyn")
+		if prop.ref != nil || prop.node == nil || prop.node.typeName != "" {
+			t.Errorf("prop = %+v, want an untyped inline node", prop)
+		}
+	})
+
+	t.Run("repeated Value has untyped items", func(t *testing.T) {
+		msg := dynMessage(t, dynOneFieldMessage(dynRepeated(dynMsgField("vs", 1, valueT))))
+		prop := mustBuildFieldProperty(t, findField(t, msg, "vs"), "dyn")
+		if prop.node == nil || prop.node.typeName != jsArray || prop.node.element == nil {
+			t.Fatalf("prop = %+v, want an array node with an element", prop)
+		}
+		if prop.node.element.ref != nil || prop.node.element.typeName != "" {
+			t.Errorf("element = %+v, want untyped free-form", prop.node.element)
+		}
+	})
+
+	t.Run("map of Struct has object values", func(t *testing.T) {
+		msg := dynMessage(t, dynMapOfMsg("M", structT))
+		prop := mustBuildFieldProperty(t, findField(t, msg, "m"), "dyn")
+		if prop.node == nil || prop.node.element == nil || !prop.node.elementIsAdditionalProperties {
+			t.Fatalf("prop = %+v, want a map node", prop)
+		}
+		if prop.node.element.ref != nil || prop.node.element.typeName != jsObject {
+			t.Errorf("element = %+v, want free-form object", prop.node.element)
+		}
+	})
+
+	t.Run("oneof ListValue variant inlines as an array", func(t *testing.T) {
+		f := dynMsgField("l", 1, listT)
+		f.OneofIndex = proto.Int32(0)
+		desc := dynOneFieldMessage(f)
+		desc.OneofDecl = []*descriptorpb.OneofDescriptorProto{{Name: proto.String("choice")}}
+		m := mustBuildMessageSchema(t, dynMessage(t, desc), "dyn")
+		if len(m.oneofWrappers) != 1 || len(m.oneofWrappers[0].variants) != 1 {
+			t.Fatalf("oneofWrappers = %+v, want one wrapper with one variant", m.oneofWrappers)
+		}
+		v := m.oneofWrappers[0].variants[0]
+		if v.ref != nil || v.node == nil || v.node.typeName != jsArray {
+			t.Errorf("variant = %+v, want free-form array", v)
 		}
 	})
 }
@@ -628,32 +709,7 @@ func TestGetMessagesWithForce(t *testing.T) {
 // protogen form of that message.
 func dynMessage(t *testing.T, msg *descriptorpb.DescriptorProto) *protogen.Message {
 	t.Helper()
-
-	fdp := &descriptorpb.FileDescriptorProto{
-		Name:    proto.String("dyn/v1/dyn.proto"),
-		Package: proto.String("dyn.v1"),
-		Syntax:  proto.String("proto3"),
-		Options: &descriptorpb.FileOptions{
-			GoPackage: proto.String("example.com/dyn/v1;dynv1"),
-		},
-		MessageType: []*descriptorpb.DescriptorProto{msg},
-		EnumType: []*descriptorpb.EnumDescriptorProto{{
-			Name: proto.String("Color"),
-			Value: []*descriptorpb.EnumValueDescriptorProto{
-				{Name: proto.String("COLOR_UNSPECIFIED"), Number: proto.Int32(0)},
-				{Name: proto.String("COLOR_RED"), Number: proto.Int32(1)},
-			},
-		}},
-	}
-	req := &pluginpb.CodeGeneratorRequest{
-		FileToGenerate: []string{"dyn/v1/dyn.proto"},
-		ProtoFile:      []*descriptorpb.FileDescriptorProto{fdp},
-	}
-	p, err := protogen.Options{}.New(req)
-	if err != nil {
-		t.Fatalf("Failed to build dynamic plugin: %v", err)
-	}
-	return findMessage(t, p.Files[0], msg.GetName())
+	return findMessage(t, dynFileWithEnum(t, msg), msg.GetName())
 }
 
 // dynField builds a singular field descriptor with optional json_schema options.
@@ -686,6 +742,25 @@ func dynOneFieldMessage(field *descriptorpb.FieldDescriptorProto) *descriptorpb.
 	}
 }
 
+func TestGetMessagesWithForceSkipsFreeFormWellKnownTypes(t *testing.T) {
+	p := loadTestPlugin(t)
+	userFile := findFile(t, p, "user.proto")
+	wkt := findMessage(t, userFile, "WellKnownTypesDemo")
+
+	collected := make(map[string]bool)
+	for _, m := range getMessagesWithForce([]*protogen.Message{wkt}, true, false, make(map[string]bool)) {
+		collected[string(m.Desc.FullName())] = true
+	}
+	for _, name := range []string{"google.protobuf.Struct", "google.protobuf.Value", "google.protobuf.ListValue"} {
+		if collected[name] {
+			t.Errorf("%s must not be collected: it inlines as free-form JSON", name)
+		}
+	}
+	if !collected["google.protobuf.Timestamp"] {
+		t.Error("google.protobuf.Timestamp is structural and must still be collected")
+	}
+}
+
 func TestValidateFieldOptionsErrors(t *testing.T) {
 	str := descriptorpb.FieldDescriptorProto_TYPE_STRING
 	i64 := descriptorpb.FieldDescriptorProto_TYPE_INT64
@@ -698,9 +773,9 @@ func TestValidateFieldOptionsErrors(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		field       *descriptorpb.FieldDescriptorProto
-		wantErr     string
+		name    string
+		field   *descriptorpb.FieldDescriptorProto
+		wantErr string
 	}{
 		{
 			"two enum variants",
@@ -762,7 +837,7 @@ func TestValidateFieldOptionsErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			msg := dynMessage(t, dynOneFieldMessage(tt.field))
-			_, err := buildFieldProperty(msg.Fields[0], "dyn")
+			_, err := buildFieldProperty(msg.Fields[0], testCtx("dyn"))
 			if err == nil {
 				t.Fatalf("Expected error containing %q, got nil", tt.wantErr)
 			}
@@ -932,7 +1007,7 @@ func TestDeclaredOneofGroups(t *testing.T) {
 	for _, tt := range errorTests {
 		t.Run(tt.name, func(t *testing.T) {
 			msg := dynMessageWithOneofOption(t, tt.groups, tt.mutate)
-			_, err := buildMessageSchema(msg, "dyn")
+			_, err := buildMessageSchema(msg, testCtx("dyn"))
 			if err == nil {
 				t.Fatalf("Expected error containing %q, got nil", tt.wantErr)
 			}

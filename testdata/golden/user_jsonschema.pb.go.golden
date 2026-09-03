@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-08-14 12:28:03 UTC
+// Generated on: 2026-09-03 14:07:49 UTC
 
 package usersv1
 
@@ -14,17 +14,14 @@ import (
 // JsonSchema returns the JSON schema for the Address message.
 func (x *Address) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = Address_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Address", Type: "object"}
-	root.Defs = defs
+	root := Address_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func Address_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.Address"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.Address"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Address represents a physical mailing address.",
@@ -38,10 +35,6 @@ func Address_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema
 			"address_details",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.Address"] = schema
 
 	schema.Properties["street"] = &jsonschema.Schema{
 		Type:        "string",
@@ -81,23 +74,20 @@ func Address_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema
 	schema.Properties["address_details"] = Address_AddressDetails_JsonSchema_WithDefs(defs)
 	schema.Properties["address_details"].Description = "Additional address details stored as a nested message."
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Address"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the AddressDetails message.
 func (x *Address_AddressDetails) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = Address_AddressDetails_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Address.AddressDetails", Type: "object"}
-	root.Defs = defs
+	root := Address_AddressDetails_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func Address_AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.Address.AddressDetails"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.Address.AddressDetails"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "AddressDetails contains additional structured address information.",
@@ -110,10 +100,6 @@ func Address_AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Sche
 			"country",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.Address.AddressDetails"] = schema
 
 	schema.Properties["street"] = &jsonschema.Schema{
 		Type:        "string",
@@ -140,14 +126,14 @@ func Address_AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Sche
 		Description: "The country code.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Address.AddressDetails"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the AddressDetails message.
 func (x *AddressDetails) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = AddressDetails_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails", Type: "object"}
+	root := AddressDetails_JsonSchema_build(defs, false)
 	root.Defs = defs
 	return root
 }
@@ -156,7 +142,14 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 	if _, ok := defs["users.v1.AddressDetails"]; ok {
 		return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
 	}
+	AddressDetails_JsonSchema_build(defs, true)
+	return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
+}
 
+// AddressDetails_JsonSchema_build constructs the AddressDetails object schema. With register set, the
+// schema is stored under defs before its fields are populated, so that
+// references back to it resolve to the registered definition.
+func AddressDetails_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "AddressDetails represents detailed address information.",
@@ -173,7 +166,9 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 
 	// Register schema BEFORE processing fields to handle self-references.
 	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.AddressDetails"] = schema
+	if register {
+		defs["users.v1.AddressDetails"] = schema
+	}
 
 	schema.Properties["street"] = &jsonschema.Schema{
 		Type:        "string",
@@ -236,23 +231,20 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the ContactInfo message.
 func (x *ContactInfo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ContactInfo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ContactInfo", Type: "object"}
-	root.Defs = defs
+	root := ContactInfo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ContactInfo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ContactInfo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ContactInfo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "ContactInfo contains contact information for a user.",
@@ -263,10 +255,6 @@ func ContactInfo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 			"fax",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ContactInfo"] = schema
 
 	schema.Properties["phone"] = &jsonschema.Schema{
 		Type:        "string",
@@ -293,23 +281,20 @@ func ContactInfo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ContactInfo"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the Metadata message.
 func (x *Metadata) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = Metadata_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Metadata", Type: "object"}
-	root.Defs = defs
+	root := Metadata_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.Metadata"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.Metadata"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Metadata contains additional key-value metadata for resources.",
@@ -318,10 +303,6 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 			"extra_data",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.Metadata"] = schema
 
 	schema.Properties["tags"] = &jsonschema.Schema{
 		Type:        "object",
@@ -342,26 +323,25 @@ func Metadata_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 		},
 	}
 
-	schema.Properties["extra_data"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	schema.Properties["extra_data"].Description = "Additional unstructured data stored as a protobuf Struct."
+	schema.Properties["extra_data"] = &jsonschema.Schema{
+		Type:        "object",
+		Description: "Additional unstructured data stored as a protobuf Struct.",
+	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Metadata"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the ComprehensiveUser message.
 func (x *ComprehensiveUser) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ComprehensiveUser_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ComprehensiveUser", Type: "object"}
-	root.Defs = defs
+	root := ComprehensiveUser_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ComprehensiveUser"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ComprehensiveUser"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "ComprehensiveUser is a comprehensive user message demonstrating all proto3\n features.",
@@ -397,10 +377,6 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 			"common",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ComprehensiveUser"] = schema
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
@@ -686,8 +662,10 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	schema.Properties["extra_data"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
 	schema.Properties["extra_data"].Description = "Additional data stored as Any type."
 
-	schema.Properties["dynamic_data"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	schema.Properties["dynamic_data"].Description = "Dynamic data stored as Struct type."
+	schema.Properties["dynamic_data"] = &jsonschema.Schema{
+		Type:        "object",
+		Description: "Dynamic data stored as Struct type.",
+	}
 
 	schema.Properties["nickname"] = &jsonschema.Schema{
 		Type:        "string",
@@ -837,23 +815,20 @@ func ComprehensiveUser_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ComprehensiveUser"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the User message.
 func (x *User) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = User_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.User", Type: "object"}
-	root.Defs = defs
+	root := User_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.User"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.User"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "User represents a basic user account.\n This is kept for backward compatibility with existing clients.",
@@ -867,10 +842,6 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 			"address",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.User"] = schema
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
@@ -907,23 +878,20 @@ func User_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
 	schema.Properties["address"].Description = "Primary address of the user."
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.User"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the CreateUserRequest message.
 func (x *CreateUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = CreateUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateUserRequest", Type: "object"}
-	root.Defs = defs
+	root := CreateUserRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func CreateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.CreateUserRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateUserRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "CreateUserRequest contains information needed to create a new user.",
@@ -934,10 +902,6 @@ func CreateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 			"password",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.CreateUserRequest"] = schema
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -957,23 +921,20 @@ func CreateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 	schema.Properties["address"] = Address_JsonSchema_WithDefs(defs)
 	schema.Properties["address"].Description = "Optional address for the new user."
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateUserRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the GetUserRequest message.
 func (x *GetUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = GetUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.GetUserRequest", Type: "object"}
-	root.Defs = defs
+	root := GetUserRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func GetUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.GetUserRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.GetUserRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "GetUserRequest contains the user ID to retrieve.",
@@ -983,32 +944,25 @@ func GetUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.GetUserRequest"] = schema
-
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
 		Description: "The unique identifier of the user to retrieve.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.GetUserRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the UpdateUserRequest message.
 func (x *UpdateUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = UpdateUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.UpdateUserRequest", Type: "object"}
-	root.Defs = defs
+	root := UpdateUserRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func UpdateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.UpdateUserRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.UpdateUserRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "UpdateUserRequest contains the updated user information.",
@@ -1018,30 +972,23 @@ func UpdateUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.UpdateUserRequest"] = schema
-
 	schema.Properties["user"] = User_JsonSchema_WithDefs(defs)
 	schema.Properties["user"].Description = "The user object with updated fields.\n Only provided fields will be updated."
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.UpdateUserRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the DeleteUserRequest message.
 func (x *DeleteUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = DeleteUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserRequest", Type: "object"}
-	root.Defs = defs
+	root := DeleteUserRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func DeleteUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.DeleteUserRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "DeleteUserRequest contains the user ID to delete.",
@@ -1051,32 +998,25 @@ func DeleteUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.DeleteUserRequest"] = schema
-
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type:        "string",
 		Description: "The unique identifier of the user to delete.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the DeleteUserResponse message.
 func (x *DeleteUserResponse) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = DeleteUserResponse_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserResponse", Type: "object"}
-	root.Defs = defs
+	root := DeleteUserResponse_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func DeleteUserResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.DeleteUserResponse"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserResponse"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "DeleteUserResponse indicates whether the deletion was successful.",
@@ -1086,32 +1026,25 @@ func DeleteUserResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.DeleteUserResponse"] = schema
-
 	schema.Properties["success"] = &jsonschema.Schema{
 		Type:        "boolean",
 		Description: "True if the user was successfully deleted, false otherwise.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.DeleteUserResponse"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the CreateComprehensiveUserRequest message.
 func (x *CreateComprehensiveUserRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateComprehensiveUserRequest", Type: "object"}
-	root.Defs = defs
+	root := CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.CreateComprehensiveUserRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateComprehensiveUserRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "CreateComprehensiveUserRequest contains all information needed to create a\n comprehensive user.",
@@ -1120,10 +1053,6 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 			"user",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.CreateComprehensiveUserRequest"] = schema
 
 	schema.Properties["user"] = ComprehensiveUser_JsonSchema_WithDefs(defs)
 	schema.Properties["user"].Description = "The comprehensive user object to create."
@@ -1144,32 +1073,25 @@ func CreateComprehensiveUserRequest_JsonSchema_WithDefs(defs map[string]*jsonsch
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CreateComprehensiveUserRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the BatchGetUsersRequest message.
 func (x *BatchGetUsersRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = BatchGetUsersRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest", Type: "object"}
-	root.Defs = defs
+	root := BatchGetUsersRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.BatchGetUsersRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "BatchGetUsersRequest contains criteria for retrieving multiple users.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.BatchGetUsersRequest"] = schema
 
 	schema.Properties["ids"] = &jsonschema.Schema{
 		Type:        "array",
@@ -1243,23 +1165,20 @@ func BatchGetUsersRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the BatchGetUsersResponse message.
 func (x *BatchGetUsersResponse) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = BatchGetUsersResponse_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersResponse", Type: "object"}
-	root.Defs = defs
+	root := BatchGetUsersResponse_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.BatchGetUsersResponse"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersResponse"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "BatchGetUsersResponse contains the results of a batch user retrieval.",
@@ -1270,10 +1189,6 @@ func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schem
 			"query_timestamp",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.BatchGetUsersResponse"] = schema
 
 	schema.Properties["users"] = &jsonschema.Schema{
 		Type:        "array",
@@ -1294,23 +1209,20 @@ func BatchGetUsersResponse_JsonSchema_WithDefs(defs map[string]*jsonschema.Schem
 	schema.Properties["query_timestamp"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
 	schema.Properties["query_timestamp"].Description = "Timestamp when the query was executed."
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.BatchGetUsersResponse"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the UserProfile message.
 func (x *UserProfile) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = UserProfile_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile", Type: "object"}
-	root.Defs = defs
+	root := UserProfile_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.UserProfile"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "UserProfile contains a user profile with additional profile-specific\n information.",
@@ -1320,10 +1232,6 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 			"custom_data",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.UserProfile"] = schema
 
 	schema.Properties["user"] = ComprehensiveUser_JsonSchema_WithDefs(defs)
 	schema.Properties["user"].Description = "The comprehensive user information."
@@ -1376,23 +1284,20 @@ func UserProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.UserProfile"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the PersonalProfile message.
 func (x *PersonalProfile) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = PersonalProfile_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.PersonalProfile", Type: "object"}
-	root.Defs = defs
+	root := PersonalProfile_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.PersonalProfile"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.PersonalProfile"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "PersonalProfile contains information specific to personal user accounts.",
@@ -1403,10 +1308,6 @@ func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			"date_of_birth",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.PersonalProfile"] = schema
 
 	schema.Properties["first_name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -1429,23 +1330,20 @@ func PersonalProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.PersonalProfile"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the BusinessProfile message.
 func (x *BusinessProfile) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = BusinessProfile_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.BusinessProfile", Type: "object"}
-	root.Defs = defs
+	root := BusinessProfile_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.BusinessProfile"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.BusinessProfile"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "BusinessProfile contains information specific to business user accounts.",
@@ -1456,10 +1354,6 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			"business_address",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.BusinessProfile"] = schema
 
 	schema.Properties["company_name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -1490,32 +1384,25 @@ func BusinessProfile_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.BusinessProfile"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the RepeatedFieldsDemo message.
 func (x *RepeatedFieldsDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = RepeatedFieldsDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.RepeatedFieldsDemo", Type: "object"}
-	root.Defs = defs
+	root := RepeatedFieldsDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.RepeatedFieldsDemo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.RepeatedFieldsDemo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "RepeatedFieldsDemo demonstrates all repeated field types.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.RepeatedFieldsDemo"] = schema
 
 	schema.Properties["string_list"] = &jsonschema.Schema{
 		Type:        "array",
@@ -1659,32 +1546,25 @@ func RepeatedFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		Items:       Address_JsonSchema_WithDefs(defs),
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.RepeatedFieldsDemo"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the MapFieldsDemo message.
 func (x *MapFieldsDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = MapFieldsDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.MapFieldsDemo", Type: "object"}
-	root.Defs = defs
+	root := MapFieldsDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.MapFieldsDemo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.MapFieldsDemo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "MapFieldsDemo demonstrates all map field types.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.MapFieldsDemo"] = schema
 
 	schema.Properties["string_map"] = &jsonschema.Schema{
 		Type:        "object",
@@ -1825,23 +1705,20 @@ func MapFieldsDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 		AdditionalProperties: user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.MapFieldsDemo"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the ConstraintDemo message.
 func (x *ConstraintDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = ConstraintDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo", Type: "object"}
-	root.Defs = defs
+	root := ConstraintDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.ConstraintDemo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "ConstraintDemo exercises every jsonschema constraint option that maps\n to a pointer-typed field in github.com/google/jsonschema-go. Regression\n coverage for the pointer-type fix.",
@@ -1853,10 +1730,6 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 			"shipping_address",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.ConstraintDemo"] = schema
 
 	schema.Properties["short_name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -1904,32 +1777,25 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 	schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
 	schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.ConstraintDemo"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the OneOfDemo message.
 func (x *OneOfDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = OneOfDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.OneOfDemo", Type: "object"}
-	root.Defs = defs
+	root := OneOfDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.OneOfDemo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.OneOfDemo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "OneOfDemo demonstrates multiple oneof field groups.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.OneOfDemo"] = schema
 
 	schema.Properties["Field1"] = &jsonschema.Schema{
 		OneOf: []*jsonschema.Schema{
@@ -2121,23 +1987,20 @@ func OneOfDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsche
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.OneOfDemo"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the WellKnownTypesDemo message.
 func (x *WellKnownTypesDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = WellKnownTypesDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.WellKnownTypesDemo", Type: "object"}
-	root.Defs = defs
+	root := WellKnownTypesDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.WellKnownTypesDemo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.WellKnownTypesDemo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "WellKnownTypesDemo demonstrates usage of well-known protobuf types.",
@@ -2152,10 +2015,6 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.WellKnownTypesDemo"] = schema
-
 	schema.Properties["created_at"] = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
 	schema.Properties["created_at"].Description = "Timestamp representing creation time."
 
@@ -2168,11 +2027,14 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 	schema.Properties["any_field"] = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
 	schema.Properties["any_field"].Description = "Any type for storing arbitrary protobuf messages."
 
-	schema.Properties["struct_field"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	schema.Properties["struct_field"].Description = "Struct type for storing arbitrary JSON-like data."
+	schema.Properties["struct_field"] = &jsonschema.Schema{
+		Type:        "object",
+		Description: "Struct type for storing arbitrary JSON-like data.",
+	}
 
-	schema.Properties["value_field"] = user_google_protobuf_Value_JsonSchema_WithDefs(defs)
-	schema.Properties["value_field"].Description = "Value type for storing a single JSON value."
+	schema.Properties["value_field"] = &jsonschema.Schema{
+		Description: "Value type for storing a single JSON value.",
+	}
 
 	schema.Properties["timestamps"] = &jsonschema.Schema{
 		Type:        "array",
@@ -2186,163 +2048,34 @@ func WellKnownTypesDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) 
 		AdditionalProperties: user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs),
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.WellKnownTypesDemo"}
-}
-
-// user_google_protobuf_Struct_JsonSchema returns the JSON schema for the Struct message.
-func user_google_protobuf_Struct_JsonSchema() *jsonschema.Schema {
-	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct", Type: "object"}
-	root.Defs = defs
-	return root
-}
-
-func user_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Struct"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct"}
+	schema.Properties["value_list"] = &jsonschema.Schema{
+		Type:        "array",
+		Description: "List of free-form JSON values (untyped items).",
+		Items:       &jsonschema.Schema{},
 	}
 
-	schema := &jsonschema.Schema{
+	schema.Properties["struct_map"] = &jsonschema.Schema{
 		Type:        "object",
-		Title:       "Represents a JSON object.",
-		Description: "An unordered key-value map, intending to perfectly capture the semantics of a\n JSON object. This enables parsing any arbitrary JSON payload as a message\n field in ProtoJSON format.\n\n This follows RFC 8259 guidelines for interoperable JSON: notably this type\n cannot represent large Int64 values or `NaN`/`Infinity` numbers,\n since the JSON format generally does not support those values in its number\n type.\n\n If you do not intend to parse arbitrary JSON into your message, a custom\n typed message should be preferred instead of using this type.",
-		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Struct"] = schema
-
-	schema.Properties["fields"] = &jsonschema.Schema{
-		Type:                 "object",
-		Description:          "Unordered map of dynamically typed values.",
-		AdditionalProperties: user_google_protobuf_Value_JsonSchema_WithDefs(defs),
-	}
-
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct"}
-}
-
-// user_google_protobuf_Value_JsonSchema returns the JSON schema for the Value message.
-func user_google_protobuf_Value_JsonSchema() *jsonschema.Schema {
-	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_protobuf_Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value", Type: "object"}
-	root.Defs = defs
-	return root
-}
-
-func user_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Value"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
-	}
-
-	schema := &jsonschema.Schema{
-		Type:        "object",
-		Title:       "Represents a JSON value.",
-		Description: "`Value` represents a dynamically typed value which can be either\n null, a number, a string, a boolean, a recursive struct value, or a\n list of values. A producer of value is expected to set one of these\n variants. Absence of any variant is an invalid state.",
-		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Value"] = schema
-
-	schema.Properties["null_value"] = &jsonschema.Schema{
-		Type:        "integer",
-		Description: "Represents a JSON `null`.",
-		Enum: []any{
-			0,
+		Description: "Map of string keys to free-form JSON objects.",
+		AdditionalProperties: &jsonschema.Schema{
+			Type: "object",
 		},
 	}
 
-	schema.Properties["number_value"] = &jsonschema.Schema{
-		Type:        "number",
-		Description: "Represents a JSON number. Must not be `NaN`, `Infinity` or\n `-Infinity`, since those are not supported in JSON. This also cannot\n represent large Int64 values, since JSON format generally does not\n support them in its number type.",
-	}
-
-	schema.Properties["string_value"] = &jsonschema.Schema{
-		Type:        "string",
-		Description: "Represents a JSON string.",
-	}
-
-	schema.Properties["bool_value"] = &jsonschema.Schema{
-		Type:        "boolean",
-		Description: "Represents a JSON boolean (`true` or `false` literal in JSON).",
-	}
-
-	schema.Properties["struct_value"] = user_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	schema.Properties["struct_value"].Description = "Represents a JSON object."
-
-	schema.Properties["list_value"] = user_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
-	schema.Properties["list_value"].Description = "Represents a JSON array."
-
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"null_value"}},
-		{Required: []string{"number_value"}},
-		{Required: []string{"string_value"}},
-		{Required: []string{"bool_value"}},
-		{Required: []string{"struct_value"}},
-		{Required: []string{"list_value"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"null_value"}},
-			{Required: []string{"number_value"}},
-			{Required: []string{"string_value"}},
-			{Required: []string{"bool_value"}},
-			{Required: []string{"struct_value"}},
-			{Required: []string{"list_value"}},
-		}}},
-	}
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
-}
-
-// user_google_protobuf_ListValue_JsonSchema returns the JSON schema for the ListValue message.
-func user_google_protobuf_ListValue_JsonSchema() *jsonschema.Schema {
-	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue", Type: "object"}
-	root.Defs = defs
-	return root
-}
-
-func user_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.ListValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue"}
-	}
-
-	schema := &jsonschema.Schema{
-		Type:        "object",
-		Description: "Represents a JSON array.",
-		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.ListValue"] = schema
-
-	schema.Properties["values"] = &jsonschema.Schema{
-		Type:        "array",
-		Description: "Repeated field of dynamically typed values.",
-		Items:       user_google_protobuf_Value_JsonSchema_WithDefs(defs),
-	}
-
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue"}
+	return schema
 }
 
 // user_google_protobuf_Timestamp_JsonSchema returns the JSON schema for the Timestamp message.
 func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp", Type: "object"}
-	root.Defs = defs
+	root := user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Timestamp"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
@@ -2354,10 +2087,6 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Timestamp"] = schema
-
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must\n be between -62135596800 and 253402300799 inclusive (which corresponds to\n 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).",
@@ -2368,23 +2097,20 @@ func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsch
 		Description: "Non-negative fractions of a second at nanosecond resolution. This field is\n the nanosecond portion of the duration, not an alternative to seconds.\n Negative second values with fractions must still have non-negative nanos\n values that count forward in time. Must be between 0 and 999,999,999\n inclusive.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
+	return schema
 }
 
 // user_google_protobuf_Duration_JsonSchema returns the JSON schema for the Duration message.
 func user_google_protobuf_Duration_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration", Type: "object"}
-	root.Defs = defs
+	root := user_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func user_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Duration"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Duration represents a signed, fixed-length span of time represented\n as a count of seconds and fractions of seconds at nanosecond\n resolution. It is independent of any calendar and concepts like \"day\"\n or \"month\". It is related to Timestamp in that the difference between\n two Timestamp values is a Duration and it can be added or subtracted\n from a Timestamp. Range is approximately +-10,000 years.",
@@ -2396,10 +2122,6 @@ func user_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsche
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Duration"] = schema
-
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "Signed seconds of the span of time. Must be from -315,576,000,000\n to +315,576,000,000 inclusive. Note: these bounds are computed from:\n 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years",
@@ -2410,23 +2132,20 @@ func user_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsche
 		Description: "Signed fractions of a second at nanosecond resolution of the span\n of time. Durations less than one second are represented with a 0\n `seconds` field and a positive or negative `nanos` field. For durations\n of one second or more, a non-zero value for the `nanos` field must be\n of the same sign as the `seconds` field. Must be from -999,999,999\n to +999,999,999 inclusive.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration"}
+	return schema
 }
 
 // user_google_protobuf_Any_JsonSchema returns the JSON schema for the Any message.
 func user_google_protobuf_Any_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_protobuf_Any_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any", Type: "object"}
-	root.Defs = defs
+	root := user_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func user_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Any"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "`Any` contains an arbitrary serialized protocol buffer message along with a\n URL that describes the type of the serialized message.",
@@ -2437,10 +2156,6 @@ func user_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 			"value",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Any"] = schema
 
 	schema.Properties["type_url"] = &jsonschema.Schema{
 		Type:        "string",
@@ -2454,23 +2169,20 @@ func user_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 		ContentEncoding: "base64",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any"}
+	return schema
 }
 
 // user_google_iam_admin_v1_ServiceAccountKey_JsonSchema returns the JSON schema for the ServiceAccountKey message.
 func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey", Type: "object"}
-	root.Defs = defs
+	root := user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.iam.admin.v1.ServiceAccountKey"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Represents a service account key.",
@@ -2489,10 +2201,6 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 			"disabled",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.iam.admin.v1.ServiceAccountKey"] = schema
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -2563,5 +2271,90 @@ func user_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[str
 		Description: "The key status.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	return schema
+}
+
+// user_google_iam_admin_v1_LintPolicyRequest_JsonSchema returns the JSON schema for the LintPolicyRequest message.
+func user_google_iam_admin_v1_LintPolicyRequest_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := user_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func user_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "The request to lint a Cloud IAM policy object.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"full_resource_name",
+		},
+	}
+
+	schema.Properties["full_resource_name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "The full resource name of the policy this lint request is about.",
+		Description: "The name follows the Google Cloud Platform (GCP) resource format.\n For example, a GCP project with ID `my-project` will be named\n `//cloudresourcemanager.googleapis.com/projects/my-project`.\n\n The resource name is not used to read the policy instance from the Cloud\n IAM database. The candidate policy for lint has to be provided in the same\n request object.",
+	}
+
+	schema.Properties["condition"] = user_google_type_Expr_JsonSchema_WithDefs(defs)
+	schema.Properties["condition"].Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
+
+	schema.OneOf = []*jsonschema.Schema{
+		{Required: []string{"condition"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"condition"}},
+		}}},
+	}
+	return schema
+}
+
+// user_google_type_Expr_JsonSchema returns the JSON schema for the Expr message.
+func user_google_type_Expr_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := user_google_type_Expr_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func user_google_type_Expr_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Title:       "Represents a textual expression in the Common Expression Language (CEL)\n syntax. CEL is a C-like expression language. The syntax and semantics of CEL\n are documented at https://github.com/google/cel-spec.",
+		Description: "Example (Comparison):\n\n     title: \"Summary size limit\"\n     description: \"Determines if a summary is less than 100 chars\"\n     expression: \"document.summary.size() < 100\"\n\n Example (Equality):\n\n     title: \"Requestor is owner\"\n     description: \"Determines if requestor is the document owner\"\n     expression: \"document.owner == request.auth.claims.email\"\n\n Example (Logic):\n\n     title: \"Public documents\"\n     description: \"Determine whether the document should be publicly visible\"\n     expression: \"document.type != 'private' && document.type != 'internal'\"\n\n Example (Data Manipulation):\n\n     title: \"Notification string\"\n     description: \"Create a notification string with a timestamp.\"\n     expression: \"'New message received at ' + string(document.create_time)\"\n\n The exact variables and functions that may be referenced within an expression\n are determined by the service that evaluates it. See the service\n documentation for additional information.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"expression",
+			"title",
+			"description",
+			"location",
+		},
+	}
+
+	schema.Properties["expression"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Textual representation of an expression in Common Expression Language\n syntax.",
+	}
+
+	schema.Properties["title"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. Title for the expression, i.e. a short string describing\n its purpose. This can be used e.g. in UIs which allow to enter the\n expression.",
+	}
+
+	schema.Properties["description"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. Description of the expression. This is a longer text which\n describes the expression, e.g. when hovered over it in a UI.",
+	}
+
+	schema.Properties["location"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. String indicating the location of the expression for error\n reporting, e.g. a file name and a position in the file.",
+	}
+
+	return schema
 }

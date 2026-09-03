@@ -49,28 +49,43 @@ You can narrow the allowed subset with the `enum_int` field option — see the
 
 ## Messages
 
-A message-typed field emits a `$ref` to the referenced message's definition.
-All definitions are collected under the root schema's `$defs`, keyed by the
-message's full proto name:
+A message-typed field is **inlined**: the referenced message's complete object
+schema appears in place. Field comments and field options on the field
+override the message's own `title`/`description` on that copy:
 
 ```json
 {
   "properties": {
-    "address": { "$ref": "#/$defs/users.v1.Address" }
+    "address": {
+      "type": "object",
+      "description": "Shipping address.",
+      "properties": { "street": { "type": "string" }, "city": { "type": "string" } },
+      "required": ["city"]
+    }
   }
 }
 ```
 
-Field comments and field options on a message-typed field are emitted as
-**sibling keywords next to the `$ref`** (valid in Draft 2020-12):
+Only messages on a **reference cycle** (self-referencing, or mutually
+recursive through any field kind) are different: their definition lives under
+the root's `$defs`, keyed by full proto name, and every reference to them is a
+`$ref` with the field's metadata as sibling keywords:
 
 ```json
-{ "$ref": "#/$defs/users.v1.Address", "description": "Shipping address." }
+{
+  "type": "object",
+  "properties": {
+    "children": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/tree.v1.Node" }
+    }
+  },
+  "$defs": { "tree.v1.Node": { "type": "object", "properties": { "...": {} } } }
+}
 ```
 
-Recursive and mutually referencing messages work: definitions are registered
-before their fields are populated, and the root schema is itself a `$ref`
-(the "ref-as-root" pattern — see [Generated code](generated-code.md)).
+The root is always a literal `type: "object"` with `properties`, never a
+`$ref` (see [Generated code](generated-code.md)).
 
 ## Repeated fields
 
@@ -139,6 +154,12 @@ func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema
 ```
 
 Their oneofs keep **flat** properties with root-level `oneOf`/`allOf`
-constraints (e.g. `google.protobuf.Value`'s `null_value`, `number_value`, ...),
+constraints (e.g. `google.iam.admin.v1.LintPolicyRequest`'s `condition`),
 because those types implement custom `json.Marshaler` methods with proto JSON
 semantics.
+
+`google.protobuf.Struct`, `google.protobuf.Value` and
+`google.protobuf.ListValue` are the exception: their Go types marshal as plain
+JSON under `encoding/json`, so fields of those types map to free-form schemas
+— `{"type": "object"}`, `{}` (any JSON value) and `{"type": "array"}` — with
+the field's own comment and options. No functions are generated for them.

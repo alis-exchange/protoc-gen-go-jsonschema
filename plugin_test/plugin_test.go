@@ -137,11 +137,9 @@ func (s *PluginGeneratorTestSuite) TestGoogleTypesHandling() {
 
 	hasGoogleTypeFunctions := strings.Contains(content, "google_protobuf_") &&
 		strings.Contains(content, "_JsonSchema()")
-	hasRefs := strings.Contains(content, "Ref: \"#/$defs/")
 
 	if strings.Contains(content, "Timestamp") || strings.Contains(content, "Duration") {
-		s.True(hasGoogleTypeFunctions || hasRefs,
-			"Google types should generate standalone functions or use $ref, found neither")
+		s.True(hasGoogleTypeFunctions, "Google types should generate standalone functions")
 	}
 }
 

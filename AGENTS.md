@@ -31,18 +31,45 @@ Significant changes include:
 For each targeted proto message, the plugin generates:
 
 1. **`JsonSchema()` method** - Public API that returns a complete `*jsonschema.Schema`
-2. **`<Message>_JsonSchema_WithDefs()` function** - Internal helper for recursive schema building with shared definitions
+   whose root is always a literal `type: "object"` with `properties`.
+2. **`<Message>_JsonSchema_WithDefs(defs)` function** - Composition helper.
+   Its behaviour follows the message's **mode** (decided by cycle analysis):
+   - **inline** (the common case): returns a fresh, complete object schema and
+     registers nothing.
+   - **`$defs`** (messages on a reference cycle): registers the definition
+     under `defs` and returns a `$ref` to it.
+3. **`<Message>_JsonSchema_build(defs, register)`** - only for `$defs`-mode
+   messages: the schema body, run once to register the definition and once to
+   build an independent root (jsonschema-go resolution requires a tree).
 
 ```go
-// Generated code example (ref-as-root pattern)
+// Inline mode (acyclic message): no $ref, no $defs unless a cyclic descendant exists.
 func (x *User) JsonSchema() *jsonschema.Schema {
     defs := make(map[string]*jsonschema.Schema)
-    _ = User_JsonSchema_WithDefs(defs)
-    root := &jsonschema.Schema{Ref: "#/$defs/package.User", Type: "object"}
+    root := User_JsonSchema_WithDefs(defs)
+    if len(defs) > 0 {
+        root.Defs = defs
+    }
+    return root
+}
+
+// $defs mode (message on a cycle): the definition lives under $defs, the root is a
+// separately built object whose self-references resolve into it.
+func (x *Node) JsonSchema() *jsonschema.Schema {
+    defs := make(map[string]*jsonschema.Schema)
+    _ = Node_JsonSchema_WithDefs(defs)
+    root := Node_JsonSchema_build(defs, false)
     root.Defs = defs
     return root
 }
 ```
+
+**Why hybrid (2026-09):** MCP clients and SDKs do not reliably resolve
+`$ref`/`$defs` (python-sdk #2384, typescript-sdk #1175, spec issue #3238); the
+ecosystem inlines. Recursion is the only thing inlining cannot express, so
+`$defs` is reserved for messages that actually sit on a cycle. Proto forbids
+circular imports, so a cycle always lives inside one `.proto` file and the
+mode of a message is the same from every file that references it.
 
 ---
 
@@ -53,16 +80,23 @@ vocabulary below is used consistently in code and docs (deep-module terms: a
 *module* is an interface plus an implementation; a module is *deep* when a small
 interface hides a lot of behaviour):
 
+- **Cycle analysis** (`analyzeCycles` in `plugin/analyze.go`) — Tarjan SCC
+  over the "message references message" graph (singular, repeated, map-value
+  and oneof-variant fields; nesting is not an edge; free-form well-known types
+  are not nodes). Produces the `cycleSet` that decides each message's mode:
+  inline (acyclic) or `$defs` (on a cycle).
 - **Schema model** (`plugin/model.go`) — the deep module. `buildMessageSchema`
   turns one message plus its options into a complete symbolic model
   (`messageSchemaModel`): every keyword, required-field decision, oneof shape,
   and option override is decided here. The model is the plugin's internal seam:
-  tests assert on decided models, not on generated source text.
+  tests assert on decided models, not on generated source text. A
+  `schemaContext` (file prefix + cycle set) is threaded through the builders.
 - **Message identity** (`messageIdentity` in `plugin/model.go`) — answers every
   naming and strategy question about a message exactly once: its `$defs` key,
-  generated function base name, method-vs-standalone-function, and
-  flat-vs-wrapped oneof strategy. The `isGoogleType` predicate is consulted
-  only here.
+  generated function base name, method-vs-standalone-function,
+  flat-vs-wrapped oneof strategy, and inline-vs-`$defs` mode (`cyclic`). The
+  `isGoogleType` and `freeFormJSONType` predicates are consulted only here and
+  in the field builders.
 - **Value shape** (`buildElement` in `plugin/model.go`) — the single answer to
   "what is the JSON shape of one proto value", shared by array elements and map
   values (message → `$ref`, enum → integer + values, bytes → base64 string,
@@ -89,6 +123,8 @@ protoc invokes plugin
          │
          ├── getMessagesWithForce()  ──► collect target messages (+ forced deps)
          │
+         ├── analyzeCycles()         ──► cycleSet: which messages sit on a cycle
+         │
          ├── per message:
          │      buildMessageSchema() ──► messageSchemaModel   (decide — model.go)
          │            │
@@ -105,8 +141,9 @@ protoc invokes plugin
 
 ### Testing the seam
 
-- `plugin/model_test.go` (in-package) unit-tests the model against the
-  checked-in descriptor set — no protoc, no network, no generated-source
+- `plugin/model_test.go` and `plugin/analyze_test.go` (in-package) unit-test
+  the model and the cycle analysis against the checked-in descriptor set and
+  small dynamic descriptors — no protoc, no network, no generated-source
   string matching.
 - `plugin_test/` pins the generated output: golden files for **every** proto
   under `testdata/protos` (auto-discovered), string-shape tests for oneof/ref
@@ -147,25 +184,30 @@ An **unsupported field kind aborts generation with an error** naming the field
 
 | Proto Type   | JSON Schema Type | Structure                                          |
 | ------------ | ---------------- | -------------------------------------------------- |
-| `message`    | `"object"`       | `$ref` to the message's def, optionally with sibling keywords |
+| `message`    | `"object"`       | Inline object schema; `$ref` into `$defs` only for messages on a cycle |
 | `repeated T` | `"array"`        | `items` contains element schema                    |
 | `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
 | `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper (user types); flat (Google types) |
 
-### Message-Typed Fields: $ref with Sibling Keywords
+### Message-Typed Fields: Decorated References
 
-Message-typed fields (including oneof message variants) emit a `$ref` to the
-target's definition **plus any field-level metadata and option constraints as
-Draft 2020-12 sibling keywords**. Sibling keywords next to `$ref` are
-applicable in 2020-12 (the ref-as-root pattern already relies on this), and
-`google/jsonschema-go` — which the MCP go-sdk uses — resolves them correctly.
+Message-typed fields (including oneof message variants) call the target's
+`_WithDefs` and **decorate the schema it returns** with the field's comment,
+options and constraints. What that call returns is the target's decision:
+
+- **Inline target** (acyclic): a fresh complete object schema. Field-level
+  `title`/`description` **override** the message's own on that copy (the field
+  is more specific); constraints such as `min_properties` are set on it.
+- **`$defs` target** (cyclic): a fresh `&Schema{Ref: ...}`; the same keywords
+  become Draft 2020-12 **siblings of `$ref`**, which `google/jsonschema-go`
+  (used by the MCP go-sdk) resolves correctly.
 
 ```go
-// Field comment and/or options emit as siblings on the fresh $ref schema:
+// Field comment and/or options decorate the fresh schema the call returns:
 schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
 schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
 
-// In composite-literal contexts (oneof variants) a closure decorates the ref:
+// In composite-literal contexts (oneof variants) a closure decorates it:
 "ContactInfo": func() *jsonschema.Schema {
     s := ContactInfo_JsonSchema_WithDefs(defs)
     s.Description = "Primary contact information"
@@ -173,18 +215,18 @@ schema.Properties["shipping_address"].Description = "Shipping address for delive
 }(),
 ```
 
-This is safe because `_WithDefs` always returns a **fresh** `&Schema{Ref: ...}`
-wrapper, never the definition stored in `defs`.
+This is safe because `_WithDefs` always returns a **fresh** value, never a
+definition stored in `defs`. Array/map **elements** that are messages get the
+bare returned schema (no decoration); container options apply at the field
+root.
 
-⚠️ **Compatibility notes**:
-
-- Draft-07-era consumers ignore siblings of `$ref`; they see the same schema as
-  before (the metadata is simply dropped, as it always was for them).
-- Constraint options (`min_properties` etc.) on message-typed fields were
-  **silently dropped** before this feature; they now take effect. Documents
-  that validated before may be rejected if such dormant options exist.
-- Array/map **elements** that are messages still emit a bare `$ref` (no
-  sibling support there); container options apply at the field root as before.
+**Free-form well-known types.** `google.protobuf.Struct`, `Value` and
+`ListValue` are the only well-known types whose Go form implements
+`json.Marshaler` with plain-JSON semantics, so fields of those types emit
+free-form inline nodes — `{type: object}`, `{}` (any JSON value) and
+`{type: array}` — with the field's metadata/options, never a reference. They
+generate no functions and are not nodes of the cycle analysis
+(`freeFormJSONType`, `plugin/model.go`).
 
 ### Required Fields
 
@@ -253,7 +295,10 @@ schema JSON.
 
 ## Google Types
 
-All Google types (any message in a `google.*` package) generate schemas with `$ref` definitions. Since they're imported types (no methods can be added), the plugin generates **standalone functions**:
+All Google types (any message in a `google.*` package) generate schemas like
+user messages (structural, following the same inline/`$defs` rule) — except the
+free-form Struct/Value/ListValue above. Since they're imported types (no
+methods can be added), the plugin generates **standalone functions**:
 
 ```go
 // From user.proto — file prefix keeps names unique across files in a package
@@ -290,10 +335,11 @@ as `oneof` below) does **not** change whether the message generates.
 
 **Force Logic for Dependencies and Nested Messages**: when a message has
 `generate = true`, its **field dependencies** and **nested messages** are
-**forced to generate** even with explicit `generate = false`, so `$ref`
-pointers always resolve. Implemented in `getMessagesWithForce()`
-(`plugin/collect.go`); map fields force their value message (field 2 of the
-synthetic entry).
+**forced to generate** even with explicit `generate = false`, so every
+`_WithDefs` call resolves at Go compile time. Implemented in
+`getMessagesWithForce()` (`plugin/collect.go`); map fields force their value
+message (`mapValueMessage`, `plugin/model.go`); free-form well-known types are
+never collected.
 
 ### Message-Level Oneof Groups (`json_schema.oneof`)
 
@@ -392,6 +438,8 @@ Application rules (all decided in `plugin/model.go`):
 ```
 plugin/model_test.go        In-package model tests (no protoc needed; uses
                             testdata/descriptors/user.pb)
+plugin/analyze_test.go      In-package cycle-analysis tests (fixture + dynamic
+                            descriptors: self, mutual, map-value, diamond)
 plugin_test/suite.go        PluginTestSuite: descriptor regeneration (protoc)
                             with checked-in fallback
 plugin_test/testutil.go     Shared harness: protoc runner, proto discovery,
@@ -469,11 +517,15 @@ protoc --plugin=protoc-gen-go-jsonschema=./protoc-gen-go-jsonschema \
 
 ### Circular References and Recursive Types
 
-Handled by (1) registering the schema in `defs` **before** its fields are
-populated, (2) `_WithDefs` returning early with a `$ref` when the key exists,
-and (3) the **ref-as-root** pattern: `JsonSchema()` returns a `$ref` wrapper
-with `root.Defs = defs`, so `root != defs[key]` (no pointer cycle on marshal)
-and recursive `$refs` resolve. Pinned by `recursive/v1/recursive.proto` tests.
+Only messages on a reference cycle use `$defs` (decided by `analyzeCycles`).
+For those: (1) `_build(defs, true)` registers the schema in `defs` **before**
+its fields are populated, (2) `_WithDefs` returns early with a `$ref` when the
+key exists, and (3) `JsonSchema()` builds the root a second time with
+`_build(defs, false)`: an independent tree whose self-references resolve into
+`$defs`. Never share nodes between the root and a definition —
+`jsonschema-go`'s `Resolve` (called by `mcp.AddTool`) rejects schemas that do
+not form a tree. Pinned by `recursive/v1/recursive.proto` (self, mutual and
+map-value cycles) and users/v1 `AddressDetails`.
 
 ### Multi-File Packages
 
@@ -502,9 +554,21 @@ Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
   is documented under Required Fields. There is no `json_schema.required`
   option upstream (the options package doc comment advertising one is a doc
   bug).
-- **$ref siblings over allOf** (2026-08): metadata/constraints on message
-  fields emit as Draft 2020-12 siblings of `$ref`; allOf-wrapping was rejected
-  (uglier, and the target consumer — jsonschema-go / MCP — handles siblings).
+- **Hybrid inline/`$defs` model** (2026-09): acyclic messages inline
+  (zero `$ref`/`$defs`); only messages on a cycle live under `$defs`; roots are
+  always literal objects; cyclic roots are built as an independent tree.
+  Evidence: MCP python-sdk #2384, typescript-sdk #1175 (whose fix is this exact
+  shape), spec issue #3238, and jsonschema-go `For[T]` erroring on cycles.
+  Rejected: depth-limited unrolling (imprecise, size blow-up) and a runtime
+  dereference pass (bypasses the model, costs a walk per call). No option to
+  force `$defs` for large shared messages — add only with evidence.
+- **Struct/Value/ListValue are free-form** (2026-09): they are the only WKTs
+  with custom `MarshalJSON`, so `encoding/json` emits plain JSON for them; the
+  structural schema was wrong and was the one WKT cycle.
+- **Decoration over allOf** (2026-08, generalised 2026-09): metadata/constraints
+  on message fields decorate the returned schema (overrides on inline copies,
+  Draft 2020-12 siblings on `$ref`); allOf-wrapping was rejected (uglier, and
+  the target consumer — jsonschema-go / MCP — handles siblings).
 - **Schemas target `encoding/json` output**, not protojson: snake_case
   properties, PascalCase oneof wrappers, numeric enums.
 - **The model is the test surface**: unit tests assert decided models
@@ -533,10 +597,11 @@ Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
 | Plugin entry point            | `cmd/protoc-gen-go-jsonschema/main.go`                    |
 | Orchestration (generateFile)  | `plugin/generate.go`                                      |
 | Schema model + identity       | `plugin/model.go`                                         |
+| Cycle analysis (inline/$defs) | `plugin/analyze.go` → `analyzeCycles()`                   |
 | Printer                       | `plugin/printer.go`                                       |
 | Message collection / force    | `plugin/collect.go` → `getMessagesWithForce()`            |
 | Options extraction            | `plugin/options.go`                                       |
-| Model unit tests              | `plugin/model_test.go`                                    |
+| Model unit tests              | `plugin/model_test.go`, `plugin/analyze_test.go`          |
 | Test harness helpers          | `plugin_test/testutil.go`                                 |
 | Golden auto-discovery         | `plugin_test/integration_test.go` → `TestGoldenFile`      |
 | MCP smoke test                | `plugin_test/recursive_mcp_test.go`                       |
