@@ -29,3 +29,16 @@ message RecursiveConfig {
     repeated RecursiveItem children = 10;
   }
 }
+
+// TreeNode and Branch reference each other: a cycle that spans two messages.
+message TreeNode {
+  string label = 1;
+  Branch branch = 2;
+  // A cycle through a map value.
+  map<string, TreeNode> named_children = 3;
+}
+
+// Branch holds the nodes below a TreeNode.
+message Branch {
+  repeated TreeNode nodes = 1;
+}

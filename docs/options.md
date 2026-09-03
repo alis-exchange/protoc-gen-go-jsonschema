@@ -356,7 +356,7 @@ string legacy_id = 6 [(alis.open.options.v1.field).json_schema = {
 }
 ```
 
-They also work on message-typed fields, riding the `$ref` as siblings:
+They also work on message-typed fields, decorating the inlined message schema:
 
 ```protobuf
 Card legacy_card = 10 [(alis.open.options.v1.field).json_schema = {
@@ -367,9 +367,11 @@ Card legacy_card = 10 [(alis.open.options.v1.field).json_schema = {
 
 ```json
 "legacy_card": {
-  "$ref": "#/$defs/options_demo.v1.Card",
+  "type": "object",
   "description": "Use CheckoutRequest.card instead.",
-  "deprecated": true
+  "deprecated": true,
+  "properties": { "expiry_year": { "type": "integer", "description": "Card expiry year.", "minimum": 2000, "maximum": 2100 } },
+  "required": ["expiry_year"]
 }
 ```
 
@@ -471,8 +473,8 @@ information.)
 
 ### Message-typed fields
 
-Field comments and options on a message-typed field emit as sibling keywords
-next to the `$ref` (Draft 2020-12 semantics):
+The referenced message is inlined, and the field's comment and options
+override its own `title`/`description` on that copy:
 
 ```protobuf
 // Pay with a saved card.
@@ -481,13 +483,17 @@ Card card = 1;
 
 ```json
 "card": {
-  "$ref": "#/$defs/options_demo.v1.Card",
-  "description": "Pay with a saved card."
+  "type": "object",
+  "description": "Pay with a saved card.",
+  "properties": { "expiry_year": { "type": "integer", "description": "Card expiry year.", "minimum": 2000, "maximum": 2100 } },
+  "required": ["expiry_year"]
 }
 ```
 
-The referenced message's own schema carries the structure; `default_*`,
-`examples_*`, and `enum_*` are not applicable here (generation-time error).
+(For a message on a reference cycle the field is a `$ref` into `$defs` and the
+same keywords ride it as Draft 2020-12 siblings.) The referenced message's own
+schema carries the structure; `default_*`, `examples_*`, and `enum_*` are not
+applicable here (generation-time error).
 
 ---
 
@@ -545,9 +551,13 @@ message KeywordShowcase {
 ```json
 {
   "type": "object",
-  "$ref": "#/$defs/options_demo.v1.KeywordShowcase",
-  "$defs": {
-    "options_demo.v1.Card": {
+  "properties": {
+    "etag": {
+      "type": "string",
+      "description": "Server-assigned entity tag.",
+      "readOnly": true
+    },
+    "legacy_card": {
       "type": "object",
       "properties": {
         "expiry_year": {
@@ -557,80 +567,66 @@ message KeywordShowcase {
           "maximum": 2100
         }
       },
-      "description": "Card selects a saved card to charge.",
+      "description": "Use CheckoutRequest.card instead.",
+      "deprecated": true,
       "required": ["expiry_year"]
     },
-    "options_demo.v1.KeywordShowcase": {
-      "type": "object",
-      "properties": {
-        "etag": {
-          "type": "string",
-          "description": "Server-assigned entity tag.",
-          "readOnly": true
-        },
-        "legacy_card": {
-          "$ref": "#/$defs/options_demo.v1.Card",
-          "description": "Use CheckoutRequest.card instead.",
-          "deprecated": true
-        },
-        "legacy_id": {
-          "type": "string",
-          "description": "Legacy identifier, kept for backwards compatibility.",
-          "deprecated": true,
-          "writeOnly": true
-        },
-        "mode": {
-          "type": "string",
-          "description": "Output mode.",
-          "default": "compact",
-          "examples": ["compact"],
-          "enum": ["compact", "detailed"]
-        },
-        "rate": {
-          "type": "number",
-          "description": "Sampling rate.",
-          "default": 0.5,
-          "examples": [0.25, 1],
-          "enum": [0.25, 0.5, 1]
-        },
-        "status": {
-          "type": "integer",
-          "description": "Status narrowed to a subset of the enum's declared values.",
-          "default": 1,
-          "enum": [1, 2]
-        },
-        "step": {
-          "type": "integer",
-          "description": "Step size in items.",
-          "multipleOf": 5
-        },
-        "tags": {
-          "type": "array",
-          "items": { "type": "string", "enum": ["a", "b", "c"] },
-          "description": "Tags: enum_string constrains each element; deprecated marks the array\n itself; min_items 0 exercises presence-based zero bounds.",
-          "deprecated": true,
-          "minItems": 0
-        },
-        "verbose": {
-          "type": "boolean",
-          "description": "Verbose flag.",
-          "default": true
-        },
-        "weekday": {
-          "type": "integer",
-          "description": "Weekday index.",
-          "default": 1,
-          "examples": [1, 5],
-          "enum": [0, 1, 2, 3, 4, 5, 6]
-        }
+    "legacy_id": {
+      "type": "string",
+      "description": "Legacy identifier, kept for backwards compatibility.",
+      "deprecated": true,
+      "writeOnly": true
+    },
+    "mode": {
+      "type": "string",
+      "description": "Output mode.",
+      "default": "compact",
+      "examples": ["compact"],
+      "enum": ["compact", "detailed"]
+    },
+    "rate": {
+      "type": "number",
+      "description": "Sampling rate.",
+      "default": 0.5,
+      "examples": [0.25, 1],
+      "enum": [0.25, 0.5, 1]
+    },
+    "status": {
+      "type": "integer",
+      "description": "Status narrowed to a subset of the enum's declared values.",
+      "default": 1,
+      "enum": [1, 2]
+    },
+    "step": {
+      "type": "integer",
+      "description": "Step size in items.",
+      "multipleOf": 5
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["a", "b", "c"]
       },
-      "description": "KeywordShowcase exercises every new field option on happy paths.",
-      "required": [
-        "weekday", "rate", "mode", "verbose", "step",
-        "legacy_id", "etag", "status", "legacy_card"
-      ]
+      "description": "Tags: enum_string constrains each element; deprecated marks the array\n itself; min_items 0 exercises presence-based zero bounds.",
+      "deprecated": true,
+      "minItems": 0
+    },
+    "verbose": {
+      "type": "boolean",
+      "description": "Verbose flag.",
+      "default": true
+    },
+    "weekday": {
+      "type": "integer",
+      "description": "Weekday index.",
+      "default": 1,
+      "examples": [1, 5],
+      "enum": [0, 1, 2, 3, 4, 5, 6]
     }
-  }
+  },
+  "description": "KeywordShowcase exercises every new field option on happy paths.",
+  "required": ["weekday", "rate", "mode", "verbose", "step", "legacy_id", "etag", "status", "legacy_card"]
 }
 ```
 

@@ -27,17 +27,21 @@ func (p *schemaPrinter) refCall(id *messageIdentity) string {
 	return p.g.QualifiedGoIdent(ident) + "(defs)"
 }
 
-// printMessageSchema emits the two generated functions for one message: the
+// printMessageSchema emits the generated functions for one message: the
 // public JsonSchema() entry point (method for user types, standalone function
-// for Google types) and the _WithDefs helper that populates the shared
-// definitions map.
+// for Google types) and the _WithDefs composition helper. Messages in $defs
+// mode also get a private _build function holding the schema body, so the
+// definition and the root can be built as two independent trees.
 func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 	id := m.id
 
 	// --- Public Entry Point ---
-	// Ref-as-root pattern: return a $ref wrapper with full defs. This avoids
-	// circular references when marshaling (root != defs[key]) and enables
-	// recursive types.
+	// The root is always a real object schema (MCP requires a literal
+	// type: "object" root) and never shares a node with $defs — jsonschema-go
+	// resolution requires a tree. Inline mode: _WithDefs returns the object
+	// itself and $defs is attached only when a cyclic descendant registered
+	// one. $defs mode: _WithDefs registers the definition, then a second build
+	// produces an independent root whose references resolve into it.
 	if id.isGoogle {
 		p.g.P(fmt.Sprintf("// %s_JsonSchema returns the JSON schema for the %s message.", id.funcBase, id.protoName))
 		p.g.P(fmt.Sprintf("func %s_JsonSchema() *jsonschema.Schema {", id.funcBase))
@@ -46,21 +50,52 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 		p.g.P(fmt.Sprintf("func (x *%s) JsonSchema() *jsonschema.Schema {", id.goName))
 	}
 	p.g.P("defs := make(map[string]*jsonschema.Schema)")
-	p.g.P(fmt.Sprintf("_ = %s(defs)", id.withDefsName()))
-	p.g.P(fmt.Sprintf("root := &jsonschema.Schema{Ref: \"#/$defs/%s\", Type: \"object\"}", id.defKey))
-	p.g.P("root.Defs = defs")
-	p.g.P("return root")
+	if id.cyclic {
+		p.g.P(fmt.Sprintf("_ = %s(defs)", id.withDefsName()))
+		p.g.P(fmt.Sprintf("root := %s(defs, false)", id.buildName()))
+		p.g.P("root.Defs = defs")
+		p.g.P("return root")
+	} else {
+		p.g.P(fmt.Sprintf("root := %s(defs)", id.withDefsName()))
+		p.g.P("if len(defs) > 0 {")
+		p.g.P("root.Defs = defs")
+		p.g.P("}")
+		p.g.P("return root")
+	}
 	p.g.P("}")
 	p.g.P()
 
-	// --- Internal Helper ---
+	// --- Composition Helper ---
 	p.g.P(fmt.Sprintf("func %s(defs map[string]*jsonschema.Schema) *jsonschema.Schema {", id.withDefsName()))
+	if id.cyclic {
+		// Return early if already defined (handles circular references).
+		p.g.P(fmt.Sprintf("if _, ok := defs[\"%s\"]; ok {", id.defKey))
+		p.g.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", id.defKey))
+		p.g.P("}")
+		p.g.P(fmt.Sprintf("%s(defs, true)", id.buildName()))
+		p.g.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", id.defKey))
+		p.g.P("}")
+		p.g.P()
 
-	// Return early if already defined (handles circular references).
-	p.g.P(fmt.Sprintf("if _, ok := defs[\"%s\"]; ok {", id.defKey))
-	p.g.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", id.defKey))
+		// --- Builder ---
+		p.g.P(fmt.Sprintf("// %s constructs the %s object schema. With register set, the", id.buildName(), id.protoName))
+		p.g.P("// schema is stored under defs before its fields are populated, so that")
+		p.g.P("// references back to it resolve to the registered definition.")
+		p.g.P(fmt.Sprintf("func %s(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {", id.buildName()))
+	}
+
+	p.printSchemaBody(m)
+
+	p.g.P("    return schema")
 	p.g.P("}")
-	p.g.P()
+}
+
+// printSchemaBody emits the statements that build a message's object schema
+// into a local `schema` variable: the header literal, the $defs registration
+// for cyclic messages, the field properties, the root-level oneof
+// constraints, and the user-message oneof wrappers.
+func (p *schemaPrinter) printSchemaBody(m *messageSchemaModel) {
+	id := m.id
 
 	// --- Schema Object ---
 	p.g.P("schema := &jsonschema.Schema{")
@@ -82,17 +117,21 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 	p.g.P("}")
 	p.g.P()
 
-	p.g.P(`// Register schema BEFORE processing fields to handle self-references.`)
-	p.g.P(`// This prevents infinite recursion when a message contains itself.`)
-	p.g.P(fmt.Sprintf("defs[\"%s\"] = schema", id.defKey))
-	p.g.P()
+	if id.cyclic {
+		p.g.P(`// Register schema BEFORE processing fields to handle self-references.`)
+		p.g.P(`// This prevents infinite recursion when a message contains itself.`)
+		p.g.P("if register {")
+		p.g.P(fmt.Sprintf("defs[\"%s\"] = schema", id.defKey))
+		p.g.P("}")
+		p.g.P()
+	}
 
 	// --- Field Properties ---
 	for _, prop := range m.fields {
 		if prop.ref != nil {
 			p.g.P(fmt.Sprintf(`schema.Properties["%s"] = %s`, prop.key, p.refCall(prop.ref)))
 			if prop.node != nil {
-				p.printRefSiblings(fmt.Sprintf(`schema.Properties["%s"]`, prop.key), prop.node)
+				p.printOverrides(fmt.Sprintf(`schema.Properties["%s"]`, prop.key), prop.node)
 			}
 		} else {
 			p.printFieldNode(prop.node, fmt.Sprintf(`schema.Properties["%s"] = `, prop.key), "")
@@ -124,10 +163,6 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 		p.printOneofWrapper(wrapper)
 		p.g.P("")
 	}
-
-	// Return a $ref to this message's schema definition.
-	p.g.P(fmt.Sprintf("    return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", id.defKey))
-	p.g.P("}")
 }
 
 // printPresenceBranch emits one "member is set" branch of a root-level oneof
@@ -188,12 +223,12 @@ func (p *schemaPrinter) printOneofWrapper(wrapper oneofWrapperNode) {
 		p.g.P(`Properties: map[string]*jsonschema.Schema{`)
 		switch {
 		case variant.ref != nil && variant.node != nil:
-			// Ref with siblings inside a composite literal: a self-contained
-			// closure decorates the fresh $ref schema the _WithDefs call
-			// returns (never the definition itself).
+			// Reference with decoration inside a composite literal: a self-contained
+			// closure decorates the fresh schema the _WithDefs call
+			// returns (never a stored definition).
 			p.g.P(fmt.Sprintf(`"%s": func() *jsonschema.Schema {`, variant.key))
 			p.g.P(fmt.Sprintf(`s := %s`, p.refCall(variant.ref)))
-			p.printRefSiblings("s", variant.node)
+			p.printOverrides("s", variant.node)
 			p.g.P(`return s`)
 			p.g.P(`}(),`)
 		case variant.ref != nil:
@@ -271,9 +306,6 @@ func (p *schemaPrinter) printFieldNode(node *fieldNode, prefix, closing string) 
 			p.g.P(fmt.Sprintf(`%s: &jsonschema.Schema{`, targetField))
 			if node.element.typeName != "" {
 				p.g.P(fmt.Sprintf(`Type: "%s",`, node.element.typeName))
-			} else {
-				// Fallback for external types without explicit type info.
-				p.g.P(`Type: "object",`)
 			}
 			p.printValueConstraints(node.element.value)
 			p.g.P(`},`)
@@ -334,12 +366,14 @@ func anyLiteral(v any) string {
 	}
 }
 
-// printRefSiblings emits assignment statements that decorate a $ref schema
-// with sibling keywords (Draft 2020-12 keeps siblings of $ref applicable).
-// recv is the Go expression holding the fresh $ref schema — a Properties map
-// index or a local variable. The _WithDefs call always returns a fresh
-// &Schema{Ref: ...}, never the definition itself, so mutation is safe.
-func (p *schemaPrinter) printRefSiblings(recv string, node *fieldNode) {
+// printOverrides emits assignment statements that decorate the schema a
+// _WithDefs call returned. On an inline copy they override the target
+// message's own metadata (the field is more specific); on a $ref they are
+// sibling keywords (Draft 2020-12 keeps siblings of $ref applicable).
+// recv is the Go expression holding that schema — a Properties map index or
+// a local variable. _WithDefs always returns a fresh value, never a stored
+// definition, so mutation is safe.
+func (p *schemaPrinter) printOverrides(recv string, node *fieldNode) {
 	if node.title != "" {
 		p.g.P(fmt.Sprintf(`%s.Title = "%s"`, recv, escapeGoString(node.title)))
 	}

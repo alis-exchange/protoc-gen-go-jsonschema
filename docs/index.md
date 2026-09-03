@@ -55,8 +55,10 @@ matches what they see. See [Compatibility](compatibility.md) for the details.
 ## Highlights
 
 - **One method per message** — `JsonSchema()` returns a complete, self-contained
-  schema with all referenced messages bundled under `$defs`. Recursive and
-  mutually referencing messages just work.
+  schema with referenced messages expanded in place: no `$ref`, no `$defs`, so
+  MCP clients that cannot resolve references still get the full shape.
+  Recursive and mutually referencing messages just work — they are the one
+  case that keeps a `$defs` entry.
 - **Docs from comments** — leading proto comments become `title`/`description`.
 - **Rich constraint options** — formats, patterns, bounds, enum restrictions,
   defaults, examples, deprecation flags, and more, declared on the proto field.

@@ -53,14 +53,15 @@ func (s *FunctionsTestSuite) TestOneofGeneratedShape() {
 	s.Contains(cuSection, `"UserNumber": &jsonschema.Schema{`,
 		"Scalar variant key should use PascalCase 'UserNumber'")
 
-	// Message variants should use $ref calls (bare, or decorated with
-	// sibling keywords when the field carries metadata/options).
+	// Message variants call the target's _WithDefs (bare, or decorated when
+	// the field carries metadata/options); the call inlines or $refs as the
+	// target decides.
 	s.Contains(cuSection, `ContactInfo_JsonSchema_WithDefs(defs)`,
-		"Message variant should use $ref call")
+		"Message variant should call the target's _WithDefs")
 	s.NotContains(cuSection, `"ContactInfo": &jsonschema.Schema{`,
 		"Message variant should not emit an inline schema")
 	s.Contains(cuSection, `Address_JsonSchema_WithDefs(defs)`,
-		"Message variant should use $ref call")
+		"Message variant should call the target's _WithDefs")
 	s.NotContains(cuSection, `"MailingAddress": &jsonschema.Schema{`,
 		"Message variant should not emit an inline schema")
 
@@ -118,62 +119,61 @@ func (s *FunctionsTestSuite) TestOneofWrapperAllowsNull() {
 }
 
 // TestMessageFieldOptionsEmitAsRefSiblings verifies that a message-type field
-// with field-level json_schema options keeps its $ref and emits the options as
-// Draft 2020-12 sibling keywords.
+// with field-level json_schema options keeps its _WithDefs call and applies
+// the options to the returned schema (overrides on an inline copy, Draft
+// 2020-12 siblings on a $ref).
 func (s *FunctionsTestSuite) TestMessageFieldOptionsEmitAsRefSiblings() {
 	content := s.GetGeneratedContent()
 
-	// ConstraintDemo.shipping_address has a description override: the $ref
-	// call stays, and the description is set as a sibling on the fresh $ref
-	// schema the call returns.
+	// ConstraintDemo.shipping_address has a description override: the
+	// _WithDefs call stays, and the description is set on the fresh schema
+	// the call returns.
 	s.Contains(content, `schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)`,
-		"Message field with options should still use $ref call")
+		"Message field with options should still call _WithDefs")
 	s.Contains(content, `schema.Properties["shipping_address"].Description = `,
-		"Message field options should emit as $ref siblings")
+		"Message field options should decorate the returned schema")
 
 	// It should NOT emit an inline &jsonschema.Schema{ for shipping_address.
 	s.NotContains(content, `schema.Properties["shipping_address"] = &jsonschema.Schema{`,
-		"Message field with options should not emit inline schema (would lose $ref)")
+		"Message field with options should not emit a literal schema (would lose the target structure)")
 }
 
 // TestOneofMessageVariantOptionsEmitAsRefSiblings verifies that a message-type
-// oneof variant with field-level json_schema options keeps its $ref and gains
-// the options as sibling keywords via a decorating closure.
+// oneof variant with field-level json_schema options keeps its _WithDefs call
+// and gains the options via a decorating closure.
 func (s *FunctionsTestSuite) TestOneofMessageVariantOptionsEmitAsRefSiblings() {
 	content := s.GetGeneratedContent()
 	cuSection := extractGoFuncSection(content, "ComprehensiveUser_JsonSchema_WithDefs")
 	s.Require().NotEmpty(cuSection)
 
-	// contact_info has a description override: the variant decorates the $ref
-	// schema inside a closure.
+	// contact_info has a description override: the variant decorates the
+	// returned schema inside a closure.
 	s.Contains(cuSection, `s := ContactInfo_JsonSchema_WithDefs(defs)`,
-		"Oneof message variant with options should still use the $ref call")
+		"Oneof message variant with options should still call _WithDefs")
 	s.Contains(cuSection, `s.Description = `,
-		"Oneof message variant options should emit as $ref siblings")
+		"Oneof message variant options should decorate the returned schema")
 	s.NotContains(cuSection, `"ContactInfo": &jsonschema.Schema{`,
-		"Oneof message variant with options should not emit inline schema (would lose $ref)")
+		"Oneof message variant with options should not emit a literal schema (would lose the target structure)")
 }
 
-// TestGoogleTypeOneofUnchanged verifies that Google type oneofs keep the
-// flat behavior (not nested wrappers).
 func (s *FunctionsTestSuite) TestGoogleTypeOneofUnchanged() {
 	contents := s.RunGenerate()
 
-	// Find admin_jsonschema.pb.go which has google.protobuf.Value
-	var adminContent string
+	// common_jsonschema.pb.go references google.iam.admin.v1.LintPolicyRequest,
+	// whose proto oneof 'lint_object' must keep the flat Google shape.
+	var commonContent string
 	for name, content := range contents {
-		if strings.HasSuffix(name, "admin_jsonschema.pb.go") {
-			adminContent = content
+		if strings.HasSuffix(name, "common_jsonschema.pb.go") {
+			commonContent = content
 			break
 		}
 	}
-	s.Require().NotEmpty(adminContent, "Expected admin_jsonschema.pb.go to be generated")
+	s.Require().NotEmpty(commonContent, "Expected common_jsonschema.pb.go to be generated")
 
-	// google.protobuf.Value has a oneof 'kind' — it should keep flat structure.
-	s.Contains(adminContent, `schema.Properties["null_value"]`,
-		"Google type Value should keep flat 'null_value' property")
-	s.Contains(adminContent, `schema.Properties["number_value"]`,
-		"Google type Value should keep flat 'number_value' property")
-	s.Contains(adminContent, `schema.OneOf = []*jsonschema.Schema{`,
-		"Google type Value should keep root-level OneOf")
+	lint := extractGoFuncSection(commonContent, "common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs")
+	s.Require().NotEmpty(lint, "Expected a standalone LintPolicyRequest function")
+	s.Contains(lint, `schema.Properties["condition"]`,
+		"Google type oneof member should stay a flat property")
+	s.Contains(lint, `schema.OneOf = []*jsonschema.Schema{`,
+		"Google type should keep root-level OneOf")
 }

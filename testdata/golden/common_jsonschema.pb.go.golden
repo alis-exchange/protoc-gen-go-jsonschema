@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-08-14 12:28:03 UTC
+// Generated on: 2026-09-03 14:07:49 UTC
 
 package usersv1
 
@@ -14,17 +14,14 @@ import (
 // JsonSchema returns the JSON schema for the Common message.
 func (x *Common) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = Common_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Common", Type: "object"}
-	root.Defs = defs
+	root := Common_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.Common"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.Common"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:       "object",
 		Properties: make(map[string]*jsonschema.Schema),
@@ -41,10 +38,6 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 			"service_account_key",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.Common"] = schema
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type: "string",
@@ -84,23 +77,23 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 
 	schema.Properties["service_account_key"] = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Common"}
+	schema.Properties["lint_policy_request"] = common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs)
+	schema.Properties["lint_policy_request"].Description = "A Google type with a proto oneof (lint_object): keeps the flat shape."
+
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the CompleteInterviewRequest message.
 func (x *CompleteInterviewRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = CompleteInterviewRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest", Type: "object"}
-	root.Defs = defs
+	root := CompleteInterviewRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func CompleteInterviewRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.CompleteInterviewRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Request message for CompleteInterview.",
@@ -111,10 +104,6 @@ func CompleteInterviewRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.CompleteInterviewRequest"] = schema
-
 	schema.Properties["finish_reason"] = &jsonschema.Schema{
 		Type:        "string",
 		Description: "The reason the interview is complete: the research plan was fully covered, the participant said they were done, or the participant could not continue.",
@@ -123,23 +112,20 @@ func CompleteInterviewRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Sc
 	schema.Properties["summary"] = CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs)
 	schema.Properties["summary"].Description = "A short participant-facing recap of what the participant shared, shown to them on the completion screen. Fill it from the whole interview, in the participant's own framing."
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the InterviewSummary message.
 func (x *CompleteInterviewRequest_InterviewSummary) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest.InterviewSummary", Type: "object"}
-	root.Defs = defs
+	root := CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.CompleteInterviewRequest.InterviewSummary"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest.InterviewSummary"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "A participant-facing recap of an interview contribution.",
@@ -148,10 +134,6 @@ func CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs map[stri
 			"headline",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.CompleteInterviewRequest.InterviewSummary"] = schema
 
 	schema.Properties["headline"] = &jsonschema.Schema{
 		Type:        "string",
@@ -166,23 +148,20 @@ func CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs map[stri
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.CompleteInterviewRequest.InterviewSummary"}
+	return schema
 }
 
 // common_google_iam_admin_v1_ServiceAccountKey_JsonSchema returns the JSON schema for the ServiceAccountKey message.
 func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey", Type: "object"}
-	root.Defs = defs
+	root := common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.iam.admin.v1.ServiceAccountKey"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Represents a service account key.",
@@ -201,10 +180,6 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 			"disabled",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.iam.admin.v1.ServiceAccountKey"] = schema
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -275,23 +250,20 @@ func common_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[s
 		Description: "The key status.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	return schema
 }
 
 // common_google_protobuf_Timestamp_JsonSchema returns the JSON schema for the Timestamp message.
 func common_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp", Type: "object"}
-	root.Defs = defs
+	root := common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Timestamp"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
@@ -303,10 +275,6 @@ func common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsons
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Timestamp"] = schema
-
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must\n be between -62135596800 and 253402300799 inclusive (which corresponds to\n 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).",
@@ -317,5 +285,90 @@ func common_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsons
 		Description: "Non-negative fractions of a second at nanosecond resolution. This field is\n the nanosecond portion of the duration, not an alternative to seconds.\n Negative second values with fractions must still have non-negative nanos\n values that count forward in time. Must be between 0 and 999,999,999\n inclusive.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
+	return schema
+}
+
+// common_google_iam_admin_v1_LintPolicyRequest_JsonSchema returns the JSON schema for the LintPolicyRequest message.
+func common_google_iam_admin_v1_LintPolicyRequest_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "The request to lint a Cloud IAM policy object.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"full_resource_name",
+		},
+	}
+
+	schema.Properties["full_resource_name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "The full resource name of the policy this lint request is about.",
+		Description: "The name follows the Google Cloud Platform (GCP) resource format.\n For example, a GCP project with ID `my-project` will be named\n `//cloudresourcemanager.googleapis.com/projects/my-project`.\n\n The resource name is not used to read the policy instance from the Cloud\n IAM database. The candidate policy for lint has to be provided in the same\n request object.",
+	}
+
+	schema.Properties["condition"] = common_google_type_Expr_JsonSchema_WithDefs(defs)
+	schema.Properties["condition"].Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
+
+	schema.OneOf = []*jsonschema.Schema{
+		{Required: []string{"condition"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"condition"}},
+		}}},
+	}
+	return schema
+}
+
+// common_google_type_Expr_JsonSchema returns the JSON schema for the Expr message.
+func common_google_type_Expr_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := common_google_type_Expr_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func common_google_type_Expr_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Title:       "Represents a textual expression in the Common Expression Language (CEL)\n syntax. CEL is a C-like expression language. The syntax and semantics of CEL\n are documented at https://github.com/google/cel-spec.",
+		Description: "Example (Comparison):\n\n     title: \"Summary size limit\"\n     description: \"Determines if a summary is less than 100 chars\"\n     expression: \"document.summary.size() < 100\"\n\n Example (Equality):\n\n     title: \"Requestor is owner\"\n     description: \"Determines if requestor is the document owner\"\n     expression: \"document.owner == request.auth.claims.email\"\n\n Example (Logic):\n\n     title: \"Public documents\"\n     description: \"Determine whether the document should be publicly visible\"\n     expression: \"document.type != 'private' && document.type != 'internal'\"\n\n Example (Data Manipulation):\n\n     title: \"Notification string\"\n     description: \"Create a notification string with a timestamp.\"\n     expression: \"'New message received at ' + string(document.create_time)\"\n\n The exact variables and functions that may be referenced within an expression\n are determined by the service that evaluates it. See the service\n documentation for additional information.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"expression",
+			"title",
+			"description",
+			"location",
+		},
+	}
+
+	schema.Properties["expression"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Textual representation of an expression in Common Expression Language\n syntax.",
+	}
+
+	schema.Properties["title"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. Title for the expression, i.e. a short string describing\n its purpose. This can be used e.g. in UIs which allow to enter the\n expression.",
+	}
+
+	schema.Properties["description"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. Description of the expression. This is a longer text which\n describes the expression, e.g. when hovered over it in a UI.",
+	}
+
+	schema.Properties["location"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. String indicating the location of the expression for error\n reporting, e.g. a file name and a position in the file.",
+	}
+
+	return schema
 }

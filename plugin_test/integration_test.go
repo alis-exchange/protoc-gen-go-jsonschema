@@ -276,20 +276,28 @@ func (s *IntegrationTestSuite) TestMultipleFilesGeneration() {
 	}
 }
 
-// TestSchemaDefinitionsArePopulated verifies that $defs are properly populated.
-func (s *IntegrationTestSuite) TestSchemaDefinitionsArePopulated() {
+// TestHybridModeInGeneratedCode pins the two generated shapes: acyclic
+// messages build inline and never register in defs; messages on a cycle
+// register under $defs and expose a copied root.
+func (s *IntegrationTestSuite) TestHybridModeInGeneratedCode() {
 	content := s.GetGeneratedContent()
 
-	// Check for definitions population
-	s.Contains(content, "defs[", "Generated code should populate defs map")
+	// Cyclic: top-level AddressDetails references itself.
+	s.Contains(content, `defs["users.v1.AddressDetails"] = schema`,
+		"cyclic message must register its definition")
+	s.Contains(content, `root := AddressDetails_JsonSchema_build(defs, false)`,
+		"cyclic root must be built as an independent tree")
 
-	// Check for $ref usage
-	if !strings.Contains(content, `Ref: "#/$defs/`) {
-		s.T().Log("Note: No $ref found - may be inlining all schemas")
-	}
-
-	// Check for Defs assignment
-	s.Contains(content, "root.Defs = defs", "Generated code should assign Defs to root schema")
+	// Acyclic: Address never registers and returns the object itself.
+	s.NotContains(content, `defs["users.v1.Address"]`,
+		"acyclic message must not register in defs")
+	s.NotContains(content, `Ref: "#/$defs/users.v1.Address"`,
+		"acyclic message must never be referenced")
+	addr := extractGoFuncSection(content, "Address_JsonSchema_WithDefs")
+	s.Require().NotEmpty(addr)
+	s.Contains(addr, "return schema", "acyclic _WithDefs returns the inline object")
+	s.Contains(content, "if len(defs) > 0 {",
+		"acyclic root attaches $defs only when a cyclic descendant registered one")
 }
 
 // TestRequiredFieldsGeneration tests that required fields are properly marked.
@@ -370,9 +378,13 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 		return nil, fmt.Errorf("schema cannot be nil")
 	}
 
-	// Step 2: Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
-	if schema.Ref == "" && schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" or be a $ref (got type %q)", schema.Type)
+	// Step 2: The root must be a real object schema. MCP requires a literal
+	// type: "object" root, so a $ref root is never acceptable.
+	if schema.Ref != "" {
+		return nil, fmt.Errorf("schema root must not be a $ref (got %q)", schema.Ref)
+	}
+	if schema.Type != "object" {
+		return nil, fmt.Errorf("schema must have type \"object\" (got type %q)", schema.Type)
 	}
 
 	// Step 3: Verify all $ref pointers can be resolved
@@ -380,7 +392,8 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 	refs := collectRefs(schema)
 	
 	// Check that all referenced schemas exist in Definitions
-	if schema.Defs != nil {
+	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
+	if len(refs) > 0 {
 		for ref := range refs {
 			// Extract the key from the $ref (format: "#/$defs/key")
 			key := extractRefKey(ref)
@@ -411,14 +424,19 @@ func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema
 		return nil, fmt.Errorf("schema %q: cannot be nil", name)
 	}
 
-	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
-	if schema.Ref == "" && schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
+	// The root must be a real object schema. MCP requires a literal
+	// type: "object" root, so a $ref root is never acceptable.
+	if schema.Ref != "" {
+		return nil, fmt.Errorf("schema %q: root must not be a $ref (got %q)", name, schema.Ref)
+	}
+	if schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" (got type %q)", name, schema.Type)
 	}
 
 	// Verify all $ref pointers exist
 	refs := collectRefs(schema)
-	if schema.Defs != nil {
+	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
+	if len(refs) > 0 {
 		for ref := range refs {
 			key := extractRefKey(ref)
 			if key != "" {
@@ -493,7 +511,8 @@ func extractRefKey(ref string) string {
 
 // TestSchemaCanBeSerialized verifies that calling JsonSchema() and then
 // json.Marshal() does not cause a stack overflow from circular references.
-// Ref-as-root enables recursive types like AddressDetails to work correctly.
+// Recursive types like AddressDetails keep their definition under $defs and
+// get an independently built root, so no pointer cycle exists.
 func TestSchemaCanBeSerialized(t *testing.T) {
 	testCases := []struct {
 		name   string
@@ -548,113 +567,98 @@ func TestSchemaCanBeSerialized(t *testing.T) {
 	}
 }
 
-// TestSelfReferencingSchemaSerializable tests that self-referential messages
-// (like AddressDetails) work with ref-as-root: the schema stays in $defs so
-// self-reference $refs resolve correctly.
+// TestSelfReferencingSchemaSerializable tests that a self-referential message
+// (top-level AddressDetails) keeps its definition under $defs, exposes a real
+// object root that is a copy of that definition, and marshals without a
+// pointer cycle.
 func TestSelfReferencingSchemaSerializable(t *testing.T) {
-	// Test Address (contains AddressDetails) and AddressDetails directly (ref-as-root supports recursive types)
-	schema := (&Address{}).JsonSchema()
+	schema := (&AddressDetails{}).JsonSchema()
 	if schema == nil {
-		t.Fatal("Address.JsonSchema() returned nil")
+		t.Fatal("AddressDetails.JsonSchema() returned nil")
+	}
+	if _, err := ValidateSchemaWithName("AddressDetails", schema); err != nil {
+		t.Fatalf("AddressDetails schema validation failed: %v", err)
 	}
 
-	// Validate the schema structure - this should pass
-	resolved, err := ValidateSchemaWithName("Address", schema)
-	if err != nil {
-		t.Fatalf("Address schema validation failed: %v", err)
+	const key = "users.v1.AddressDetails"
+	if schema.Ref != "" || schema.Type != "object" || schema.Properties == nil {
+		t.Fatalf("root must be a real object schema, got ref=%q type=%q", schema.Ref, schema.Type)
 	}
-	t.Log("Address schema (containing AddressDetails) is valid and resolved successfully")
-	
-	// Check that Address.AddressDetails is in the definitions
-	if schema.Defs == nil {
-		t.Fatal("Address schema has no Defs")
+	if len(schema.Defs) != 1 {
+		t.Fatalf("expected exactly one $defs entry (the cycle), got %d", len(schema.Defs))
 	}
-	if _, ok := schema.Defs["users.v1.Address.AddressDetails"]; !ok {
-		t.Error("Expected nested AddressDetails in Address schema Defs")
+	def, ok := schema.Defs[key]
+	if !ok {
+		t.Fatalf("expected %q in $defs", key)
 	}
-	
-	data, err := json.Marshal(schema)
-	if err != nil {
-		t.Fatalf("Failed to marshal schema containing self-referencing message: %v", err)
+	if def == schema {
+		t.Fatal("root must be a copy of the definition, not the same pointer (marshal cycle)")
 	}
-	
-	t.Logf("Schema containing nested AddressDetails serialized successfully (%d bytes)", len(data))
-
-	if resolved != nil {
-		t.Log("Address resolved schema is ready for validation")
+	if got := schema.Properties["nested_address_details"].Ref; got != "#/$defs/"+key {
+		t.Errorf("self reference = %q, want $ref to %q", got, key)
+	}
+	// Decorating the root must not leak into the shared definition.
+	schema.Description = "root only"
+	if def.Description == "root only" {
+		t.Error("mutating the root changed the $defs entry")
+	}
+	if _, err := json.Marshal(schema); err != nil {
+		t.Fatalf("Failed to marshal self-referencing schema: %v", err)
 	}
 }
 
-// TestSchemaDefinitionsAreSerializable tests that when Definitions (defs) is
-// populated and assigned to the root schema, serialization still works.
-// With ref-as-root, root is a $ref wrapper so root != defs[key] (no pointer cycle).
-func TestSchemaDefinitionsAreSerializable(t *testing.T) {
-	schema := (&User{}).JsonSchema()
-	if schema == nil {
-		t.Fatal("User.JsonSchema() returned nil")
-	}
-
-	// Validate the schema structure - this must pass
-	resolved, err := ValidateSchemaWithName("User", schema)
-	if err != nil {
-		t.Fatalf("User schema validation failed: %v", err)
-	}
-	if resolved == nil {
-		t.Fatal("Resolved schema is nil")
-	}
-	t.Log("User schema is valid and resolved successfully")
-	
-	// Verify Defs is not nil
-	if schema.Defs == nil {
-		t.Fatal("Expected schema.Defs to be non-nil")
-	}
-	
-	// Check that definitions contains entries (ref-as-root keeps schema in defs)
-	if len(schema.Defs) == 0 {
-		t.Fatal("Expected schema.Defs to have entries")
-	}
-	
-	t.Logf("Schema has %d definitions", len(schema.Defs))
-	for key := range schema.Defs {
-		t.Logf("  - %s", key)
-	}
-	
-	// Ref-as-root: the actual schema IS in defs (root is a $ref to it). No pointer cycle.
-	if _, hasRoot := schema.Defs["users.v1.User"]; !hasRoot {
-		t.Error("Expected users.v1.User in Defs (ref-as-root pattern)")
-	} else {
-		t.Log("Good: Ref-as-root pattern - schema in Defs, root is $ref wrapper")
-	}
-	
-	// Serialize - must not cause stack overflow (ref-as-root avoids cycle)
-	data, err := json.Marshal(schema)
-	if err != nil {
-		t.Fatalf("Failed to marshal schema with definitions: %v", err)
-	}
-	
-	// Verify the serialized JSON contains $defs
-	jsonStr := string(data)
-	if !strings.Contains(jsonStr, "$defs") && !strings.Contains(jsonStr, "definitions") {
-		t.Log("WARNING: Serialized JSON does not contain $defs or definitions")
-		t.Log("This might mean the Definitions field is not being serialized")
-	}
-	
-	t.Logf("Schema with definitions serialized successfully (%d bytes)", len(data))
-}
-
-// TestCircularReferenceDetection explicitly tests for the circular reference bug.
-// This creates a scenario that mimics what the generated code does and checks
-// if it would cause infinite recursion.
-func TestCircularReferenceDetection(t *testing.T) {
-	// Get schemas that should have themselves in defs based on the generated pattern
+// TestAcyclicSchemaIsFullyInline tests that messages without reference cycles
+// produce self-contained schemas: no $defs, no $ref anywhere, and
+// message-typed fields expanded in place.
+func TestAcyclicSchemaIsFullyInline(t *testing.T) {
 	testCases := []struct {
-		name     string
-		schema   func() *jsonschema.Schema
-		fullName string
+		name   string
+		schema func() *jsonschema.Schema
 	}{
-		{"User", func() *jsonschema.Schema { return (&User{}).JsonSchema() }, "users.v1.User"},
-		{"Address", func() *jsonschema.Schema { return (&Address{}).JsonSchema() }, "users.v1.Address"},
-		{"ComprehensiveUser", func() *jsonschema.Schema { return (&ComprehensiveUser{}).JsonSchema() }, "users.v1.ComprehensiveUser"},
+		{"User", func() *jsonschema.Schema { return (&User{}).JsonSchema() }},
+		{"Address", func() *jsonschema.Schema { return (&Address{}).JsonSchema() }},
+		{"ComprehensiveUser", func() *jsonschema.Schema { return (&ComprehensiveUser{}).JsonSchema() }},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			schema := tc.schema()
+			if _, err := ValidateSchemaWithName(tc.name, schema); err != nil {
+				t.Fatalf("%s schema validation failed: %v", tc.name, err)
+			}
+			if schema.Defs != nil {
+				t.Errorf("acyclic schema must not carry $defs, got %d entries", len(schema.Defs))
+			}
+			data, err := json.Marshal(schema)
+			if err != nil {
+				t.Fatalf("Failed to marshal schema: %v", err)
+			}
+			for _, keyword := range []string{"\"$ref\"", "\"$defs\""} {
+				if strings.Contains(string(data), keyword) {
+					t.Errorf("acyclic schema JSON must not contain %s", keyword)
+				}
+			}
+		})
+	}
+
+	address := (&ComprehensiveUser{}).JsonSchema().Properties["address"]
+	if address == nil || address.Type != "object" || address.Properties["city"] == nil {
+		t.Errorf("address must be inlined with its own properties, got %+v", address)
+	}
+}
+
+// TestRootIsAlwaysAnObject checks the wire shape MCP clients depend on: every
+// JsonSchema() root is a literal type: "object" with properties — never a
+// $ref — whether the message is acyclic or sits on a cycle.
+func TestRootIsAlwaysAnObject(t *testing.T) {
+	testCases := []struct {
+		name   string
+		schema func() *jsonschema.Schema
+		cyclic bool
+	}{
+		{"User", func() *jsonschema.Schema { return (&User{}).JsonSchema() }, false},
+		{"Address", func() *jsonschema.Schema { return (&Address{}).JsonSchema() }, false},
+		{"ComprehensiveUser", func() *jsonschema.Schema { return (&ComprehensiveUser{}).JsonSchema() }, false},
+		{"AddressDetails", func() *jsonschema.Schema { return (&AddressDetails{}).JsonSchema() }, true},
 	}
 
 	for _, tc := range testCases {
@@ -663,40 +667,28 @@ func TestCircularReferenceDetection(t *testing.T) {
 			if schema == nil {
 				t.Fatalf("%s.JsonSchema() returned nil", tc.name)
 			}
-
-			// Validate the schema structure - this must pass
-			resolved, err := ValidateSchemaWithName(tc.name, schema)
-			if err != nil {
+			if _, err := ValidateSchemaWithName(tc.name, schema); err != nil {
 				t.Fatalf("%s schema validation failed: %v", tc.name, err)
 			}
-			t.Logf("%s schema is valid and resolved successfully", tc.name)
-			
-			// Use reflection to check the Definitions field
-			// (since we don't have direct access to *jsonschema.Schema type here)
 			data, err := json.Marshal(schema)
 			if err != nil {
 				t.Fatalf("Marshal failed (possible circular reference): %v", err)
 			}
-			
-			// Parse the JSON to check if root is in $defs
 			var parsed map[string]interface{}
 			if err := json.Unmarshal(data, &parsed); err != nil {
 				t.Fatalf("Unmarshal failed: %v", err)
 			}
-			
-			// Ref-as-root: the schema is in $defs (root is a $ref). No pointer cycle.
-			if defs, ok := parsed["$defs"].(map[string]interface{}); ok {
-				if _, hasSchema := defs[tc.fullName]; !hasSchema {
-					t.Errorf("Expected %s in $defs (ref-as-root pattern)", tc.fullName)
-				} else {
-					t.Logf("Good: %s in $defs (ref-as-root)", tc.fullName)
-				}
+			if parsed["type"] != "object" {
+				t.Errorf("root type = %v, want object", parsed["type"])
 			}
-			
-			t.Logf("%s schema serialized OK (%d bytes)", tc.name, len(data))
-
-			if resolved != nil {
-				t.Logf("%s resolved schema is ready for validation", tc.name)
+			if _, hasRef := parsed["$ref"]; hasRef {
+				t.Error("root must not be a $ref")
+			}
+			if _, hasProps := parsed["properties"]; !hasProps {
+				t.Error("root must expose its properties")
+			}
+			if _, hasDefs := parsed["$defs"]; hasDefs != tc.cyclic {
+				t.Errorf("$defs present = %v, want %v", hasDefs, tc.cyclic)
 			}
 		})
 	}
@@ -824,10 +816,7 @@ func TestOneofNestedJSONValidates(t *testing.T) {
 
 func TestOneofSchemaHasPascalCaseWrappers(t *testing.T) {
 	schema := (&OneOfDemo{}).JsonSchema()
-	def := schema.Defs["users.v1.OneOfDemo"]
-	if def == nil {
-		t.Fatal("OneOfDemo def missing")
-	}
+	def := schema // the root is the message's own object schema
 	for _, key := range []string{"Field1", "Field2", "Field3", "Field4"} {
 		if _, ok := def.Properties[key]; !ok {
 			t.Errorf("expected wrapper property %q", key)
@@ -844,10 +833,7 @@ func TestOneofSchemaHasPascalCaseWrappers(t *testing.T) {
 
 func TestComprehensiveUserOneofWrappers(t *testing.T) {
 	schema := (&ComprehensiveUser{}).JsonSchema()
-	def := schema.Defs["users.v1.ComprehensiveUser"]
-	if def == nil {
-		t.Fatal("ComprehensiveUser def missing")
-	}
+	def := schema // the root is the message's own object schema
 	for _, key := range []string{"Identifier", "PaymentMethod", "ContactPreference"} {
 		wrapper, ok := def.Properties[key]
 		if !ok {
@@ -933,22 +919,21 @@ func TestOneofRoundTrip(t *testing.T) {
 	s.Require().NoError(err, "oneof JSON validation tests failed: %s", string(output))
 }
 
-// TestNoCircularReferenceInGeneratedCode checks that the generated code
-// uses the ref-as-root pattern to avoid circular references.
-func (s *IntegrationTestSuite) TestNoCircularReferenceInGeneratedCode() {
+// TestCyclicRootIsIndependentTree checks that a cyclic message's root is
+// built separately from its $defs entry: never a $ref wrapper (MCP needs a
+// literal object root) and never an alias of the registered definition
+// (jsonschema-go resolution requires a tree; json.Marshal must not cycle).
+func (s *IntegrationTestSuite) TestCyclicRootIsIndependentTree() {
 	content := s.GetGeneratedContent()
 
-	// Ref-as-root pattern: root := &jsonschema.Schema{Ref: "#/$defs/..."}
-	// This avoids root.Defs containing root (no pointer cycle).
-	hasRefAsRoot := strings.Contains(content, `root := &jsonschema.Schema{Ref:`)
-	hasDefsAssignment := strings.Contains(content, "root.Defs = defs")
-
-	if hasDefsAssignment && hasRefAsRoot {
-		s.T().Log("Generated code uses ref-as-root pattern (circular reference fix present)")
-	} else if hasDefsAssignment && !hasRefAsRoot {
-		s.T().Log("WARNING: Generated code assigns defs but may not use ref-as-root pattern.")
-		s.T().Log("Ref-as-root avoids circular references for recursive types.")
-	}
+	s.Contains(content, `root := AddressDetails_JsonSchema_build(defs, false)`,
+		"cyclic root must be built by a second, non-registering build")
+	s.NotContains(content, `root := &jsonschema.Schema{Ref:`,
+		"no message may use a $ref wrapper as its root")
+	s.NotContains(content, `root := defs[`,
+		"the root must never alias the registered definition")
+	s.NotContains(content, `root := *defs[`,
+		"a shallow copy still shares child nodes with the definition")
 }
 
 // TestForceLogicForNestedMessages verifies that nested messages with generate=false
@@ -968,9 +953,10 @@ func (s *IntegrationTestSuite) TestForceLogicForNestedMessages() {
 	s.Contains(content, `schema.Properties["address_details"] = Address_AddressDetails_JsonSchema_WithDefs(defs)`,
 		"Expected parent message to call nested message's schema function")
 
-	// Verify the $defs key is present
-	s.Contains(content, `defs["users.v1.Address.AddressDetails"]`,
-		"Expected nested message to be added to defs")
+	// The nested message is acyclic, so it inlines: nothing is registered
+	// under $defs.
+	s.NotContains(content, `defs["users.v1.Address.AddressDetails"]`,
+		"acyclic nested message must not register in defs")
 }
 
 // TestForceLogicForFieldDependencies verifies that field dependencies with generate=false
@@ -1009,7 +995,7 @@ func (s *IntegrationTestSuite) TestForceLogicRuntime() {
 	err = os.WriteFile(filepath.Join(tmpDir, "stub_types.go"), []byte(userStubTypes()), 0o644)
 	s.Require().NoError(err)
 
-	// Write test file that verifies forced messages are in $defs
+	// Write test file that verifies forced messages are generated and inlined
 	testContent := `package usersv1
 
 import (
@@ -1033,9 +1019,13 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 		return nil, fmt.Errorf("schema cannot be nil")
 	}
 
-	// Step 2: Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
-	if schema.Ref == "" && schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" or be a $ref (got type %q)", schema.Type)
+	// Step 2: The root must be a real object schema. MCP requires a literal
+	// type: "object" root, so a $ref root is never acceptable.
+	if schema.Ref != "" {
+		return nil, fmt.Errorf("schema root must not be a $ref (got %q)", schema.Ref)
+	}
+	if schema.Type != "object" {
+		return nil, fmt.Errorf("schema must have type \"object\" (got type %q)", schema.Type)
 	}
 
 	// Step 3: Verify all $ref pointers can be resolved
@@ -1043,7 +1033,8 @@ func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
 	refs := collectRefs(schema)
 	
 	// Check that all referenced schemas exist in Definitions
-	if schema.Defs != nil {
+	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
+	if len(refs) > 0 {
 		for ref := range refs {
 			// Extract the key from the $ref (format: "#/$defs/key")
 			key := extractRefKey(ref)
@@ -1074,14 +1065,19 @@ func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema
 		return nil, fmt.Errorf("schema %q: cannot be nil", name)
 	}
 
-	// Ref-as-root is valid - root can be {$ref: "#/$defs/X"} with no Type
-	if schema.Ref == "" && schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" or be a $ref (got type %q)", name, schema.Type)
+	// The root must be a real object schema. MCP requires a literal
+	// type: "object" root, so a $ref root is never acceptable.
+	if schema.Ref != "" {
+		return nil, fmt.Errorf("schema %q: root must not be a $ref (got %q)", name, schema.Ref)
+	}
+	if schema.Type != "object" {
+		return nil, fmt.Errorf("schema %q: must have type \"object\" (got type %q)", name, schema.Type)
 	}
 
 	// Verify all $ref pointers exist
 	refs := collectRefs(schema)
-	if schema.Defs != nil {
+	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
+	if len(refs) > 0 {
 		for ref := range refs {
 			key := extractRefKey(ref)
 			if key != "" {
@@ -1162,67 +1158,49 @@ func getDefKeys(defs map[string]*jsonschema.Schema) []string {
 	return keys
 }
 
-func TestNestedMessageInDefs(t *testing.T) {
-	// Test that Address schema has AddressDetails in its definitions
-	// This verifies that nested messages are forced to generate
+func TestNestedMessageIsInlined(t *testing.T) {
+	// Address.address_details is a nested, acyclic message: forced generation
+	// still happens, and the schema is expanded in place — with the field
+	// comment overriding the message comment on that copy — and no $defs.
 	schema := (&Address{}).JsonSchema()
 	if schema == nil {
 		t.Fatal("Address.JsonSchema() returned nil")
 	}
-
-	// Validate the schema structure - this must pass
-	resolved, err := ValidateSchemaWithName("Address", schema)
-	if err != nil {
+	if _, err := ValidateSchemaWithName("Address", schema); err != nil {
 		t.Fatalf("Address schema validation failed: %v", err)
 	}
-	t.Log("Address schema is valid and resolved successfully")
-
-	if schema.Defs == nil {
-		t.Fatal("Address schema has no Defs")
+	if schema.Defs != nil {
+		t.Errorf("expected no $defs for an acyclic message, got %v", getDefKeys(schema.Defs))
 	}
-
-	// The nested message should be in $defs (forced generation)
-	nestedKey := "users.v1.Address.AddressDetails"
-	if _, ok := schema.Defs[nestedKey]; !ok {
-		t.Errorf("Expected nested message %q in Defs (forced generation), got keys: %v", nestedKey, getDefKeys(schema.Defs))
+	details := schema.Properties["address_details"]
+	if details == nil || details.Ref != "" || details.Type != "object" {
+		t.Fatalf("address_details must be an inline object, got %+v", details)
 	}
-
-	t.Logf("Address schema Defs keys: %v", getDefKeys(schema.Defs))
-
-	if resolved != nil {
-		t.Log("Address resolved schema is ready for validation")
+	if details.Properties["street"] == nil {
+		t.Error("inlined AddressDetails must carry its own properties")
+	}
+	if details.Description != "Additional address details stored as a nested message." {
+		t.Errorf("field comment must override the message comment on the inline copy, got %q", details.Description)
 	}
 }
 
-func TestFieldDependencyInDefs(t *testing.T) {
-	// Test that ComprehensiveUser schema has Address in its definitions
-	// This verifies that field dependencies are forced to generate
+func TestFieldDependencyIsInlined(t *testing.T) {
+	// ComprehensiveUser.address depends on Address, a separate top-level
+	// message: forced generation still happens, and the dependency is
+	// expanded in place rather than referenced.
 	schema := (&ComprehensiveUser{}).JsonSchema()
 	if schema == nil {
 		t.Fatal("ComprehensiveUser.JsonSchema() returned nil")
 	}
-
-	// Validate the schema structure - this must pass
-	resolved, err := ValidateSchemaWithName("ComprehensiveUser", schema)
-	if err != nil {
+	if _, err := ValidateSchemaWithName("ComprehensiveUser", schema); err != nil {
 		t.Fatalf("ComprehensiveUser schema validation failed: %v", err)
 	}
-	t.Log("ComprehensiveUser schema is valid and resolved successfully")
-
-	if schema.Defs == nil {
-		t.Fatal("ComprehensiveUser schema has no Defs")
+	if schema.Defs != nil {
+		t.Errorf("expected no $defs for an acyclic message, got %v", getDefKeys(schema.Defs))
 	}
-
-	// Field dependency should be in $defs (forced generation)
-	dependencyKey := "users.v1.Address"
-	if _, ok := schema.Defs[dependencyKey]; !ok {
-		t.Errorf("Expected field dependency %q in Defs (forced generation), got keys: %v", dependencyKey, getDefKeys(schema.Defs))
-	}
-
-	t.Logf("ComprehensiveUser schema Defs keys: %v", getDefKeys(schema.Defs))
-
-	if resolved != nil {
-		t.Log("ComprehensiveUser resolved schema is ready for validation")
+	address := schema.Properties["address"]
+	if address == nil || address.Ref != "" || address.Type != "object" || address.Properties["city"] == nil {
+		t.Fatalf("address must be an inline object with Address's properties, got %+v", address)
 	}
 }
 `

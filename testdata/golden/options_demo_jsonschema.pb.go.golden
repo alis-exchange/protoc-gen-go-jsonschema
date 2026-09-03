@@ -3,7 +3,7 @@
 // Source: options_demo/v1/options_demo.proto
 // Plugin version: test
 //
-// Generated on: 2026-08-14 12:28:03 UTC
+// Generated on: 2026-09-03 14:07:49 UTC
 
 package optionsdemov1
 
@@ -18,26 +18,19 @@ import (
 // JsonSchema returns the JSON schema for the CheckoutRequest message.
 func (x *CheckoutRequest) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = CheckoutRequest_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.CheckoutRequest", Type: "object"}
-	root.Defs = defs
+	root := CheckoutRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func CheckoutRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.CheckoutRequest"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.CheckoutRequest"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "CheckoutRequest mirrors an LLM-facing request with mutually exclusive\n payment shapes: exactly one of the three payment fields must be set, and at\n most one of promo_code/gift_card_code may be set.",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.CheckoutRequest"] = schema
 
 	schema.Properties["card"] = Card_JsonSchema_WithDefs(defs)
 	schema.Properties["card"].Description = "Pay with a saved card."
@@ -77,23 +70,20 @@ func CheckoutRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			},
 		},
 	}
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.CheckoutRequest"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the Card message.
 func (x *Card) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = Card_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.Card", Type: "object"}
-	root.Defs = defs
+	root := Card_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func Card_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.Card"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.Card"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Card selects a saved card to charge.",
@@ -103,10 +93,6 @@ func Card_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.Card"] = schema
-
 	schema.Properties["expiry_year"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "Card expiry year.",
@@ -114,23 +100,20 @@ func Card_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Sc
 		Maximum:     &[]float64{2100}[0],
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.Card"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the BankTransfer message.
 func (x *BankTransfer) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = BankTransfer_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.BankTransfer", Type: "object"}
-	root.Defs = defs
+	root := BankTransfer_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func BankTransfer_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.BankTransfer"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.BankTransfer"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "BankTransfer selects a bank transfer payment.",
@@ -139,10 +122,6 @@ func BankTransfer_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsons
 			"currency",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.BankTransfer"] = schema
 
 	schema.Properties["currency"] = &jsonschema.Schema{
 		Type:        "string",
@@ -154,23 +133,20 @@ func BankTransfer_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsons
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.BankTransfer"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the MobileMoney message.
 func (x *MobileMoney) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = MobileMoney_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.MobileMoney", Type: "object"}
-	root.Defs = defs
+	root := MobileMoney_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func MobileMoney_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.MobileMoney"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.MobileMoney"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "MobileMoney selects a mobile money payment.",
@@ -180,10 +156,6 @@ func MobileMoney_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.MobileMoney"] = schema
-
 	schema.Properties["amount_cents"] = &jsonschema.Schema{
 		Type:             "integer",
 		Description:      "Amount in cents; must be greater than 0.",
@@ -191,23 +163,20 @@ func MobileMoney_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonsc
 		Maximum:          &[]float64{500000}[0],
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.MobileMoney"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the KeywordShowcase message.
 func (x *KeywordShowcase) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = KeywordShowcase_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.KeywordShowcase", Type: "object"}
-	root.Defs = defs
+	root := KeywordShowcase_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func KeywordShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.KeywordShowcase"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.KeywordShowcase"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "KeywordShowcase exercises every new field option on happy paths.",
@@ -224,10 +193,6 @@ func KeywordShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 			"legacy_card",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.KeywordShowcase"] = schema
 
 	schema.Properties["weekday"] = &jsonschema.Schema{
 		Type:        "integer",
@@ -330,32 +295,25 @@ func KeywordShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 	schema.Properties["legacy_card"].Description = "Use CheckoutRequest.card instead."
 	schema.Properties["legacy_card"].Deprecated = true
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.KeywordShowcase"}
+	return schema
 }
 
 // JsonSchema returns the JSON schema for the RealOneofDemo message.
 func (x *RealOneofDemo) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = RealOneofDemo_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.RealOneofDemo", Type: "object"}
-	root.Defs = defs
+	root := RealOneofDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func RealOneofDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["options_demo.v1.RealOneofDemo"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.RealOneofDemo"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "RealOneofDemo declares a json_schema.oneof group whose members belong to a\n real proto oneof block (presence is expressed through the PascalCase\n wrapper property).",
 		Properties:  make(map[string]*jsonschema.Schema),
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["options_demo.v1.RealOneofDemo"] = schema
 
 	schema.OneOf = []*jsonschema.Schema{
 		{
@@ -408,5 +366,5 @@ func RealOneofDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 		},
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/options_demo.v1.RealOneofDemo"}
+	return schema
 }

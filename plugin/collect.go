@@ -66,27 +66,28 @@ func getMessagesWithForce(messages []*protogen.Message, defaultGenerate bool, fo
 			results = append(results, message)
 
 			// Recursively collect dependencies: any message-type field must also
-			// generate a schema, otherwise the $ref in the parent would be broken.
-			// Force 'true' because dependencies are required regardless of their
-			// own options.
+			// generate a schema, otherwise the parent's reference would not
+			// resolve. Force 'true' because dependencies are required
+			// regardless of their own options. Free-form well-known types
+			// (Struct, Value, ListValue) inline as untyped JSON and generate
+			// nothing.
 			for _, field := range message.Fields {
 				if field.Desc.Kind() != protoreflect.MessageKind {
 					continue
 				}
+				dep := field.Message
 				if field.Desc.IsMap() {
 					// For map fields, collect the value type, not the synthetic
-					// map entry. The value message lives on field 2.
-					if field.Desc.MapValue().Kind() == protoreflect.MessageKind {
-						for _, f := range field.Message.Fields {
-							if f.Desc.Number() == 2 && f.Message != nil {
-								results = append(results, getMessagesWithForce([]*protogen.Message{f.Message}, true, true, visited)...)
-								break
-							}
-						}
-					}
-				} else {
-					results = append(results, getMessagesWithForce([]*protogen.Message{field.Message}, true, true, visited)...)
+					// map entry.
+					dep = mapValueMessage(field)
 				}
+				if dep == nil {
+					continue
+				}
+				if _, freeForm := freeFormJSONType(dep); freeForm {
+					continue
+				}
+				results = append(results, getMessagesWithForce([]*protogen.Message{dep}, true, true, visited)...)
 			}
 		}
 

@@ -13,7 +13,7 @@ A Protocol Buffers compiler (protoc) plugin that generates Go code for creating 
 - **Runtime Schema Generation** - Each message gets a `JsonSchema()` method that returns a `*jsonschema.Schema`
 - **Full Proto3 Support** - Handles all proto3 types including maps, repeated fields, oneofs, and enums
 - **Google Types** - Proper handling of all Google types (google.protobuf._, google.type._, google.api._, google.iam._, etc.)
-- **Cross-References** - Messages reference each other using JSON Schema `$defs` and `$ref`
+- **Inline by default** - Message-typed fields are expanded in place; `$defs`/`$ref` appear only for recursive messages, so MCP clients that cannot resolve references get clean schemas
 - **Customizable** - Proto options allow fine-grained control over schema generation and validation constraints
 
 ## Installation
@@ -213,7 +213,7 @@ User-message oneofs use **nested PascalCase wrappers** to match `encoding/json` 
 Each wrapper accepts either `null` (the oneof is unset — `encoding/json` always emits the key, with value `null`) or an object holding exactly one variant. This differs from flat `protojson`-style oneofs where variant fields appear as snake_case root properties. **Google types** (`google.protobuf.Value`, etc.) keep flat oneof properties because they implement custom `json.Marshaler` with proto JSON semantics.
 
 > [!NOTE]
-> Field-level `title`/`description` options on message-type fields (including oneof message variants) are not applied — the plugin emits a direct `$ref` to preserve structural validation.
+> Field-level comments and options on message-type fields (including oneof message variants) decorate the referenced message's schema: they override its own `title`/`description` on the inline copy, or ride as `$ref` siblings for recursive messages.
 
 ### Type Conversions
 
@@ -226,13 +226,15 @@ Each wrapper accepts either `null` (the oneof is unset — `encoding/json` alway
 | `float`, `double`                                  | `number`         |                             |
 | `bytes`                                            | `string`         | contentEncoding: "base64"   |
 | `enum`                                             | `integer`        | With `enum` constraint      |
-| `message`                                          | `object`         | Or `$ref` to definition     |
+| `message`                                          | `object`         | Inlined; `$ref` only for recursive messages |
 | `repeated T`                                       | `array`          | With `items` schema         |
 | `map<K, V>`                                        | `object`         | With `additionalProperties` |
 
 ## Google Types
 
 All Google types (`google.*` packages including `google.protobuf.*`, `google.type.*`, `google.api.*`, `google.iam.*`, etc.) are handled like normal messages - they generate schemas based on their actual proto field structure, not the special JSON encoding used by `protojson`. This is designed for use with standard `json.Marshal`.
+
+The exceptions are `google.protobuf.Struct`, `Value` and `ListValue`: their Go types implement `json.Marshaler` with plain-JSON semantics, so they map to free-form `{"type": "object"}`, `{}` and `{"type": "array"}` schemas.
 
 Since Google types are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness:
 

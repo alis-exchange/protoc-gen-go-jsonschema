@@ -13,7 +13,7 @@ import (
 // TestRecursiveSchemaWithMCP verifies the plugin's primary consumer path with
 // real generated types: protoc-gen-go compiles the recursive proto (a
 // self-referential nested message), the plugin generates its schemas, and a
-// temp module then checks recursive $defs bundling, validates json.Marshal
+// temp module then checks the hybrid inline/$defs shape, validates json.Marshal
 // output against the schema, and registers the schemas with an MCP server via
 // mcp.AddTool — which panics if Resolve fails.
 func (s *IntegrationTestSuite) TestRecursiveSchemaWithMCP() {
@@ -116,27 +116,27 @@ func Test_RecursiveConfig(t *testing.T) {
 		t.Fatal("JsonSchema() returned nil")
 	}
 
-	// All nested message defs must be bundled at the root $defs level so $refs resolve.
-	if schema.Defs == nil {
-		t.Fatal("schema has no Defs")
+	// Only the cyclic message lives under $defs; the acyclic request and
+	// config are expanded in place.
+	const itemKey = "recursive.v1.RecursiveConfig.RecursiveItem"
+	if len(schema.Defs) != 1 {
+		t.Fatalf("expected exactly one $defs entry (%q); have: %v", itemKey, getDefKeys(schema.Defs))
 	}
-	requiredDefs := []string{
-		"recursive.v1.GetRecursiveConfigRequest",
-		"recursive.v1.RecursiveConfig",
-		"recursive.v1.RecursiveConfig.RecursiveItem",
+	itemDef := schema.Defs[itemKey]
+	if itemDef == nil {
+		t.Fatalf("expected $defs[%q]; have: %v", itemKey, getDefKeys(schema.Defs))
 	}
-	for _, key := range requiredDefs {
-		if _, ok := schema.Defs[key]; !ok {
-			t.Fatalf("expected $defs[%q]; have: %v", key, getDefKeys(schema.Defs))
-		}
+	if schema.Ref != "" || schema.Type != "object" {
+		t.Fatalf("root must be a real object schema, got ref=%q type=%q", schema.Ref, schema.Type)
 	}
-
-	rootDef := schema.Defs["recursive.v1.GetRecursiveConfigRequest"]
-	if prop := rootDef.Properties["recursive_config"]; prop == nil || prop.Ref == "" {
-		t.Fatal("recursive_config property should be a $ref to RecursiveConfig")
+	config := schema.Properties["recursive_config"]
+	if config == nil || config.Ref != "" || config.Type != "object" {
+		t.Fatalf("recursive_config must be inlined, got %+v", config)
 	}
-
-	itemDef := schema.Defs["recursive.v1.RecursiveConfig.RecursiveItem"]
+	items := config.Properties["recursive_items"]
+	if items == nil || items.Items == nil || items.Items.Ref != "#/$defs/"+itemKey {
+		t.Fatalf("recursive_items must reference the cyclic RecursiveItem, got %+v", items)
+	}
 	if itemDef.Properties["name"].Pattern == "" {
 		t.Error("RecursiveItem.name should have a pattern constraint")
 	}
@@ -151,10 +151,14 @@ func Test_RecursiveConfig(t *testing.T) {
 		t.Fatalf("Schema validation failed: %v", err)
 	}
 
-	// Standalone nested schema via JsonSchema() uses ref-as-root + bundled $defs.
+	// Standalone cyclic schema: a real object root (a copy of the definition)
+	// with the definition itself under $defs.
 	itemSchema := (&recursivePb.RecursiveConfig_RecursiveItem{}).JsonSchema()
 	if _, err := ValidateSchemaWithName("RecursiveItem", itemSchema); err != nil {
 		t.Fatalf("standalone RecursiveItem.JsonSchema() should resolve: %v", err)
+	}
+	if itemSchema.Ref != "" || itemSchema.Properties["children"] == nil || itemSchema.Defs[itemKey] == itemSchema {
+		t.Fatal("standalone cyclic root must be a copied object schema with its definition under $defs")
 	}
 
 	jsonBytes, err := json.Marshal(req)
@@ -185,6 +189,51 @@ func Test_RecursiveConfig(t *testing.T) {
 	}
 }
 
+// Test_MutualRecursion covers a cycle spanning two messages (TreeNode <->
+// Branch) and a cycle through a map value: both messages live under $defs,
+// every reference into the cycle is a $ref, and documents validate.
+func Test_MutualRecursion(t *testing.T) {
+	schema := (&recursivePb.TreeNode{}).JsonSchema()
+	if schema == nil {
+		t.Fatal("JsonSchema() returned nil")
+	}
+	resolved, err := ValidateSchemaWithName("TreeNode", schema)
+	if err != nil {
+		t.Fatalf("TreeNode schema validation failed: %v", err)
+	}
+	if len(schema.Defs) != 2 || schema.Defs["recursive.v1.TreeNode"] == nil || schema.Defs["recursive.v1.Branch"] == nil {
+		t.Fatalf("expected $defs for TreeNode and Branch only, got %v", getDefKeys(schema.Defs))
+	}
+	if got := schema.Properties["branch"].Ref; got != "#/$defs/recursive.v1.Branch" {
+		t.Errorf("branch ref = %q", got)
+	}
+	if got := schema.Properties["named_children"].AdditionalProperties.Ref; got != "#/$defs/recursive.v1.TreeNode" {
+		t.Errorf("named_children value ref = %q", got)
+	}
+	if got := schema.Defs["recursive.v1.Branch"].Properties["nodes"].Items.Ref; got != "#/$defs/recursive.v1.TreeNode" {
+		t.Errorf("Branch.nodes item ref = %q", got)
+	}
+
+	doc := map[string]any{
+		"label": "root",
+		"branch": map[string]any{
+			"nodes": []any{
+				map[string]any{"label": "child", "branch": map[string]any{"nodes": []any{}}},
+			},
+		},
+		"named_children": map[string]any{
+			"left": map[string]any{"label": "left", "branch": map[string]any{"nodes": []any{}}},
+		},
+	}
+	if err := resolved.Validate(doc); err != nil {
+		t.Fatalf("valid nested document rejected: %v", err)
+	}
+	bad := map[string]any{"label": "root", "branch": map[string]any{"nodes": []any{map[string]any{"label": 1}}}}
+	if err := resolved.Validate(bad); err == nil {
+		t.Error("expected validation to reject a bad node two levels deep")
+	}
+}
+
 // TestJsonSchemaResolveWithMCP exercises both schema shapes on the MCP path:
 // the wire schema (tools/list) and server-side resolution (AddTool/tools/call).
 func TestJsonSchemaResolveWithMCP(t *testing.T) {
@@ -205,12 +254,15 @@ func TestJsonSchemaResolveWithMCP(t *testing.T) {
 	if wireMap["type"] != "object" {
 		t.Errorf("wire schema type = %v, want object", wireMap["type"])
 	}
-	if wireMap["$ref"] == nil {
-		t.Error("wire schema should have top-level $ref (ref-as-root)")
+	if wireMap["$ref"] != nil {
+		t.Error("wire schema root must not be a $ref (MCP clients read root properties)")
+	}
+	if wireMap["properties"] == nil {
+		t.Error("wire schema root must expose properties")
 	}
 	defs, ok := wireMap["$defs"].(map[string]any)
-	if !ok || len(defs) != 3 {
-		t.Fatalf("wire schema $defs count = %d, want 3", len(defs))
+	if !ok || len(defs) != 1 {
+		t.Fatalf("wire schema $defs count = %d, want 1 (only the cyclic RecursiveItem)", len(defs))
 	}
 
 	// --- Server-side resolution: same call MCP setSchema makes at AddTool ---

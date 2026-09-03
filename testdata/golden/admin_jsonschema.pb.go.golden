@@ -3,7 +3,7 @@
 // Source: users/v1/admin.proto
 // Plugin version: test
 //
-// Generated on: 2026-08-14 12:28:03 UTC
+// Generated on: 2026-09-03 14:07:49 UTC
 
 package usersv1
 
@@ -14,17 +14,14 @@ import (
 // JsonSchema returns the JSON schema for the Admin message.
 func (x *Admin) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = Admin_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/users.v1.Admin", Type: "object"}
-	root.Defs = defs
+	root := Admin_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["users.v1.Admin"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/users.v1.Admin"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:       "object",
 		Properties: make(map[string]*jsonschema.Schema),
@@ -53,10 +50,6 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 			"common",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["users.v1.Admin"] = schema
 
 	schema.Properties["id"] = &jsonschema.Schema{
 		Type: "string",
@@ -102,7 +95,9 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 
 	schema.Properties["extra_data"] = admin_google_protobuf_Any_JsonSchema_WithDefs(defs)
 
-	schema.Properties["dynamic_data"] = admin_google_protobuf_Struct_JsonSchema_WithDefs(defs)
+	schema.Properties["dynamic_data"] = &jsonschema.Schema{
+		Type: "object",
+	}
 
 	schema.Properties["nickname"] = &jsonschema.Schema{
 		Type: "string",
@@ -132,23 +127,20 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 
 	schema.Properties["common"] = Common_JsonSchema_WithDefs(defs)
 
-	return &jsonschema.Schema{Ref: "#/$defs/users.v1.Admin"}
+	return schema
 }
 
 // admin_google_protobuf_Timestamp_JsonSchema returns the JSON schema for the Timestamp message.
 func admin_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Timestamp"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Timestamp represents a point in time independent of any time zone or local\n calendar, encoded as a count of seconds and fractions of seconds at\n nanosecond resolution. The count is relative to an epoch at UTC midnight on\n January 1, 1970, in the proleptic Gregorian calendar which extends the\n Gregorian calendar backwards to year one.",
@@ -160,10 +152,6 @@ func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsc
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Timestamp"] = schema
-
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "Represents seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z. Must\n be between -62135596800 and 253402300799 inclusive (which corresponds to\n 0001-01-01T00:00:00Z to 9999-12-31T23:59:59Z).",
@@ -174,23 +162,20 @@ func admin_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonsc
 		Description: "Non-negative fractions of a second at nanosecond resolution. This field is\n the nanosecond portion of the duration, not an alternative to seconds.\n Negative second values with fractions must still have non-negative nanos\n values that count forward in time. Must be between 0 and 999,999,999\n inclusive.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Timestamp"}
+	return schema
 }
 
 // admin_google_protobuf_Duration_JsonSchema returns the JSON schema for the Duration message.
 func admin_google_protobuf_Duration_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Duration_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_Duration_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Duration"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "A Duration represents a signed, fixed-length span of time represented\n as a count of seconds and fractions of seconds at nanosecond\n resolution. It is independent of any calendar and concepts like \"day\"\n or \"month\". It is related to Timestamp in that the difference between\n two Timestamp values is a Duration and it can be added or subtracted\n from a Timestamp. Range is approximately +-10,000 years.",
@@ -202,10 +187,6 @@ func admin_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsch
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Duration"] = schema
-
 	schema.Properties["seconds"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "Signed seconds of the span of time. Must be from -315,576,000,000\n to +315,576,000,000 inclusive. Note: these bounds are computed from:\n 60 sec/min * 60 min/hr * 24 hr/day * 365.25 days/year * 10000 years",
@@ -216,23 +197,20 @@ func admin_google_protobuf_Duration_JsonSchema_WithDefs(defs map[string]*jsonsch
 		Description: "Signed fractions of a second at nanosecond resolution of the span\n of time. Durations less than one second are represented with a 0\n `seconds` field and a positive or negative `nanos` field. For durations\n of one second or more, a non-zero value for the `nanos` field must be\n of the same sign as the `seconds` field. Must be from -999,999,999\n to +999,999,999 inclusive.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Duration"}
+	return schema
 }
 
 // admin_google_protobuf_Any_JsonSchema returns the JSON schema for the Any message.
 func admin_google_protobuf_Any_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Any_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_Any_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Any"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "`Any` contains an arbitrary serialized protocol buffer message along with a\n URL that describes the type of the serialized message.",
@@ -243,10 +221,6 @@ func admin_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.S
 			"value",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Any"] = schema
 
 	schema.Properties["type_url"] = &jsonschema.Schema{
 		Type:        "string",
@@ -260,163 +234,20 @@ func admin_google_protobuf_Any_JsonSchema_WithDefs(defs map[string]*jsonschema.S
 		ContentEncoding: "base64",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Any"}
-}
-
-// admin_google_protobuf_Struct_JsonSchema returns the JSON schema for the Struct message.
-func admin_google_protobuf_Struct_JsonSchema() *jsonschema.Schema {
-	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct", Type: "object"}
-	root.Defs = defs
-	return root
-}
-
-func admin_google_protobuf_Struct_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Struct"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct"}
-	}
-
-	schema := &jsonschema.Schema{
-		Type:        "object",
-		Title:       "Represents a JSON object.",
-		Description: "An unordered key-value map, intending to perfectly capture the semantics of a\n JSON object. This enables parsing any arbitrary JSON payload as a message\n field in ProtoJSON format.\n\n This follows RFC 8259 guidelines for interoperable JSON: notably this type\n cannot represent large Int64 values or `NaN`/`Infinity` numbers,\n since the JSON format generally does not support those values in its number\n type.\n\n If you do not intend to parse arbitrary JSON into your message, a custom\n typed message should be preferred instead of using this type.",
-		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Struct"] = schema
-
-	schema.Properties["fields"] = &jsonschema.Schema{
-		Type:                 "object",
-		Description:          "Unordered map of dynamically typed values.",
-		AdditionalProperties: admin_google_protobuf_Value_JsonSchema_WithDefs(defs),
-	}
-
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Struct"}
-}
-
-// admin_google_protobuf_Value_JsonSchema returns the JSON schema for the Value message.
-func admin_google_protobuf_Value_JsonSchema() *jsonschema.Schema {
-	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value", Type: "object"}
-	root.Defs = defs
-	return root
-}
-
-func admin_google_protobuf_Value_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Value"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
-	}
-
-	schema := &jsonschema.Schema{
-		Type:        "object",
-		Title:       "Represents a JSON value.",
-		Description: "`Value` represents a dynamically typed value which can be either\n null, a number, a string, a boolean, a recursive struct value, or a\n list of values. A producer of value is expected to set one of these\n variants. Absence of any variant is an invalid state.",
-		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Value"] = schema
-
-	schema.Properties["null_value"] = &jsonschema.Schema{
-		Type:        "integer",
-		Description: "Represents a JSON `null`.",
-		Enum: []any{
-			0,
-		},
-	}
-
-	schema.Properties["number_value"] = &jsonschema.Schema{
-		Type:        "number",
-		Description: "Represents a JSON number. Must not be `NaN`, `Infinity` or\n `-Infinity`, since those are not supported in JSON. This also cannot\n represent large Int64 values, since JSON format generally does not\n support them in its number type.",
-	}
-
-	schema.Properties["string_value"] = &jsonschema.Schema{
-		Type:        "string",
-		Description: "Represents a JSON string.",
-	}
-
-	schema.Properties["bool_value"] = &jsonschema.Schema{
-		Type:        "boolean",
-		Description: "Represents a JSON boolean (`true` or `false` literal in JSON).",
-	}
-
-	schema.Properties["struct_value"] = admin_google_protobuf_Struct_JsonSchema_WithDefs(defs)
-	schema.Properties["struct_value"].Description = "Represents a JSON object."
-
-	schema.Properties["list_value"] = admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
-	schema.Properties["list_value"].Description = "Represents a JSON array."
-
-	schema.OneOf = []*jsonschema.Schema{
-		{Required: []string{"null_value"}},
-		{Required: []string{"number_value"}},
-		{Required: []string{"string_value"}},
-		{Required: []string{"bool_value"}},
-		{Required: []string{"struct_value"}},
-		{Required: []string{"list_value"}},
-		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
-			{Required: []string{"null_value"}},
-			{Required: []string{"number_value"}},
-			{Required: []string{"string_value"}},
-			{Required: []string{"bool_value"}},
-			{Required: []string{"struct_value"}},
-			{Required: []string{"list_value"}},
-		}}},
-	}
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Value"}
-}
-
-// admin_google_protobuf_ListValue_JsonSchema returns the JSON schema for the ListValue message.
-func admin_google_protobuf_ListValue_JsonSchema() *jsonschema.Schema {
-	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue", Type: "object"}
-	root.Defs = defs
-	return root
-}
-
-func admin_google_protobuf_ListValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.ListValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue"}
-	}
-
-	schema := &jsonschema.Schema{
-		Type:        "object",
-		Description: "Represents a JSON array.",
-		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.ListValue"] = schema
-
-	schema.Properties["values"] = &jsonschema.Schema{
-		Type:        "array",
-		Description: "Repeated field of dynamically typed values.",
-		Items:       admin_google_protobuf_Value_JsonSchema_WithDefs(defs),
-	}
-
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.ListValue"}
+	return schema
 }
 
 // admin_google_protobuf_Int32Value_JsonSchema returns the JSON schema for the Int32Value message.
 func admin_google_protobuf_Int32Value_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int32Value", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Int32Value"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int32Value"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `int32`.",
@@ -427,32 +258,25 @@ func admin_google_protobuf_Int32Value_JsonSchema_WithDefs(defs map[string]*jsons
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Int32Value"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "The int32 value.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int32Value"}
+	return schema
 }
 
 // admin_google_protobuf_Int64Value_JsonSchema returns the JSON schema for the Int64Value message.
 func admin_google_protobuf_Int64Value_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int64Value", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.Int64Value"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int64Value"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `int64`.",
@@ -463,32 +287,25 @@ func admin_google_protobuf_Int64Value_JsonSchema_WithDefs(defs map[string]*jsons
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.Int64Value"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "integer",
 		Description: "The int64 value.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.Int64Value"}
+	return schema
 }
 
 // admin_google_protobuf_StringValue_JsonSchema returns the JSON schema for the StringValue message.
 func admin_google_protobuf_StringValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.StringValue", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.StringValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.StringValue"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `string`.",
@@ -499,32 +316,25 @@ func admin_google_protobuf_StringValue_JsonSchema_WithDefs(defs map[string]*json
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.StringValue"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "string",
 		Description: "The string value.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.StringValue"}
+	return schema
 }
 
 // admin_google_protobuf_BoolValue_JsonSchema returns the JSON schema for the BoolValue message.
 func admin_google_protobuf_BoolValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BoolValue", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.BoolValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BoolValue"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `bool`.",
@@ -535,32 +345,25 @@ func admin_google_protobuf_BoolValue_JsonSchema_WithDefs(defs map[string]*jsonsc
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.BoolValue"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "boolean",
 		Description: "The bool value.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BoolValue"}
+	return schema
 }
 
 // admin_google_protobuf_DoubleValue_JsonSchema returns the JSON schema for the DoubleValue message.
 func admin_google_protobuf_DoubleValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.DoubleValue", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.DoubleValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.DoubleValue"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `double`.",
@@ -571,32 +374,25 @@ func admin_google_protobuf_DoubleValue_JsonSchema_WithDefs(defs map[string]*json
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.DoubleValue"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "number",
 		Description: "The double value.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.DoubleValue"}
+	return schema
 }
 
 // admin_google_protobuf_FloatValue_JsonSchema returns the JSON schema for the FloatValue message.
 func admin_google_protobuf_FloatValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.FloatValue", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.FloatValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.FloatValue"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `float`.",
@@ -607,32 +403,25 @@ func admin_google_protobuf_FloatValue_JsonSchema_WithDefs(defs map[string]*jsons
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.FloatValue"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:        "number",
 		Description: "The float value.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.FloatValue"}
+	return schema
 }
 
 // admin_google_protobuf_BytesValue_JsonSchema returns the JSON schema for the BytesValue message.
 func admin_google_protobuf_BytesValue_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BytesValue", Type: "object"}
-	root.Defs = defs
+	root := admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.protobuf.BytesValue"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BytesValue"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Wrapper message for `bytes`.",
@@ -643,33 +432,26 @@ func admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs map[string]*jsons
 		},
 	}
 
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.protobuf.BytesValue"] = schema
-
 	schema.Properties["value"] = &jsonschema.Schema{
 		Type:            "string",
 		Description:     "The bytes value.",
 		ContentEncoding: "base64",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.protobuf.BytesValue"}
+	return schema
 }
 
 // admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema returns the JSON schema for the ServiceAccountKey message.
 func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
-	_ = admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
-	root := &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey", Type: "object"}
-	root.Defs = defs
+	root := admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
 	return root
 }
 
 func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
-	if _, ok := defs["google.iam.admin.v1.ServiceAccountKey"]; ok {
-		return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
-	}
-
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Title:       "Represents a service account key.",
@@ -688,10 +470,6 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 			"disabled",
 		},
 	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	defs["google.iam.admin.v1.ServiceAccountKey"] = schema
 
 	schema.Properties["name"] = &jsonschema.Schema{
 		Type:        "string",
@@ -762,5 +540,90 @@ func admin_google_iam_admin_v1_ServiceAccountKey_JsonSchema_WithDefs(defs map[st
 		Description: "The key status.",
 	}
 
-	return &jsonschema.Schema{Ref: "#/$defs/google.iam.admin.v1.ServiceAccountKey"}
+	return schema
+}
+
+// admin_google_iam_admin_v1_LintPolicyRequest_JsonSchema returns the JSON schema for the LintPolicyRequest message.
+func admin_google_iam_admin_v1_LintPolicyRequest_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := admin_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func admin_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "The request to lint a Cloud IAM policy object.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"full_resource_name",
+		},
+	}
+
+	schema.Properties["full_resource_name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "The full resource name of the policy this lint request is about.",
+		Description: "The name follows the Google Cloud Platform (GCP) resource format.\n For example, a GCP project with ID `my-project` will be named\n `//cloudresourcemanager.googleapis.com/projects/my-project`.\n\n The resource name is not used to read the policy instance from the Cloud\n IAM database. The candidate policy for lint has to be provided in the same\n request object.",
+	}
+
+	schema.Properties["condition"] = admin_google_type_Expr_JsonSchema_WithDefs(defs)
+	schema.Properties["condition"].Description = "[google.iam.v1.Binding.condition] [google.iam.v1.Binding.condition] object to be linted."
+
+	schema.OneOf = []*jsonschema.Schema{
+		{Required: []string{"condition"}},
+		{Not: &jsonschema.Schema{AnyOf: []*jsonschema.Schema{
+			{Required: []string{"condition"}},
+		}}},
+	}
+	return schema
+}
+
+// admin_google_type_Expr_JsonSchema returns the JSON schema for the Expr message.
+func admin_google_type_Expr_JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := admin_google_type_Expr_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func admin_google_type_Expr_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Title:       "Represents a textual expression in the Common Expression Language (CEL)\n syntax. CEL is a C-like expression language. The syntax and semantics of CEL\n are documented at https://github.com/google/cel-spec.",
+		Description: "Example (Comparison):\n\n     title: \"Summary size limit\"\n     description: \"Determines if a summary is less than 100 chars\"\n     expression: \"document.summary.size() < 100\"\n\n Example (Equality):\n\n     title: \"Requestor is owner\"\n     description: \"Determines if requestor is the document owner\"\n     expression: \"document.owner == request.auth.claims.email\"\n\n Example (Logic):\n\n     title: \"Public documents\"\n     description: \"Determine whether the document should be publicly visible\"\n     expression: \"document.type != 'private' && document.type != 'internal'\"\n\n Example (Data Manipulation):\n\n     title: \"Notification string\"\n     description: \"Create a notification string with a timestamp.\"\n     expression: \"'New message received at ' + string(document.create_time)\"\n\n The exact variables and functions that may be referenced within an expression\n are determined by the service that evaluates it. See the service\n documentation for additional information.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"expression",
+			"title",
+			"description",
+			"location",
+		},
+	}
+
+	schema.Properties["expression"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Textual representation of an expression in Common Expression Language\n syntax.",
+	}
+
+	schema.Properties["title"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. Title for the expression, i.e. a short string describing\n its purpose. This can be used e.g. in UIs which allow to enter the\n expression.",
+	}
+
+	schema.Properties["description"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. Description of the expression. This is a longer text which\n describes the expression, e.g. when hovered over it in a UI.",
+	}
+
+	schema.Properties["location"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Optional. String indicating the location of the expression for error\n reporting, e.g. a file name and a position in the file.",
+	}
+
+	return schema
 }
