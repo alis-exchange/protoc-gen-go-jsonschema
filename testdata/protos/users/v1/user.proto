@@ -603,6 +603,12 @@ message ConstraintDemo {
   // Message field with description override — exercises the $ref path
   // for message-type fields with field-level options.
   Address shipping_address = 6 [(alis.open.options.v1.field).json_schema = {description: "Shipping address for deliveries"}];
+
+  // Title-only option and no field comment (this one is detached): on the
+  // inline copy the pair rule sets the title and clears Address's own
+  // description.
+
+  Address billing_address = 7 [(alis.open.options.v1.field).json_schema = {title: "Billing address"}];
 }
 
 // OneOfDemo demonstrates multiple oneof field groups.

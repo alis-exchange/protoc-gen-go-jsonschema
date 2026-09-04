@@ -3,7 +3,7 @@
 // Source: users/v1/admin.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 15:55:05 UTC
+// Generated on: 2026-09-04 07:07:08 UTC
 
 package usersv1
 
@@ -48,6 +48,7 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 			"optional_float_value",
 			"optional_bytes_value",
 			"common",
+			"address_details",
 		},
 	}
 
@@ -126,6 +127,9 @@ func Admin_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.S
 	schema.Properties["optional_bytes_value"] = admin_google_protobuf_BytesValue_JsonSchema_WithDefs(defs)
 
 	schema.Properties["common"] = Common_JsonSchema_WithDefs(defs)
+
+	schema.Properties["address_details"] = AddressDetails_JsonSchema_WithDefs(defs)
+	schema.Properties["address_details"].Description = "A cyclic message defined in a sibling file: a $ref here as well."
 
 	return schema
 }

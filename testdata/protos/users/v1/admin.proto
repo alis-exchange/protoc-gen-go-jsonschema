@@ -9,6 +9,7 @@ import "google/protobuf/struct.proto";
 import "alis/open/options/v1/options.proto";
 import "google/protobuf/wrappers.proto";
 import "users/v1/common.proto";
+import "users/v1/user.proto";
 
 option go_package = "example.com/users/v1;usersv1";
 
@@ -40,4 +41,6 @@ message Admin {
   google.protobuf.FloatValue optional_float_value = 23;
   google.protobuf.BytesValue optional_bytes_value = 24;
   Common common = 25;
+  // A cyclic message defined in a sibling file: a $ref here as well.
+  AddressDetails address_details = 26;
 }

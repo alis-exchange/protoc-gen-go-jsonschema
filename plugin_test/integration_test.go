@@ -282,10 +282,14 @@ func (s *IntegrationTestSuite) TestMultipleFilesGeneration() {
 func (s *IntegrationTestSuite) TestHybridModeInGeneratedCode() {
 	content := s.GetGeneratedContent()
 
-	// Cyclic: top-level AddressDetails references itself.
-	s.Contains(content, `defs["users.v1.AddressDetails"] = schema`,
-		"cyclic message must register its definition")
-	s.Contains(content, `root := AddressDetails_JsonSchema_build(defs, false)`,
+	// Cyclic: top-level AddressDetails references itself. _WithDefs reserves
+	// the key, then stores the built body; JsonSchema() builds the root a
+	// second time so it never shares nodes with the definition.
+	s.Contains(content, `defs["users.v1.AddressDetails"] = nil`,
+		"cyclic message must reserve its key before building")
+	s.Contains(content, `defs["users.v1.AddressDetails"] = addressDetails_JsonSchema_build(defs)`,
+		"cyclic message must store its definition")
+	s.Contains(content, `root := addressDetails_JsonSchema_build(defs)`,
 		"cyclic root must be built as an independent tree")
 
 	// Acyclic: Address never registers and returns the object itself.
@@ -353,161 +357,20 @@ require (
 	err = os.WriteFile(stubPath, []byte(userStubTypes()), 0o644)
 	s.Require().NoError(err, "Failed to write stub file")
 
+	// ValidateSchema and friends come from the shared helper source, so every
+	// temp module enforces the same root-shape and $ref rules.
+	writeSchemaTestHelpers(s.T(), pkgDir, "usersv1")
+
 	// Create a test file that verifies JSON serialization works
 	testContent := `package usersv1
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/jsonschema-go/jsonschema"
 )
-
-// ValidateSchema validates a *jsonschema.Schema and returns a resolved schema
-// that can be used for validation. It ensures:
-//   - The schema is not nil
-//   - The schema type is "object" (required by MCP spec)
-//   - The schema structure is valid (via Resolve)
-//
-// Returns the resolved schema on success, or an error if validation fails.
-func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
-	// Step 1: Check for nil
-	if schema == nil {
-		return nil, fmt.Errorf("schema cannot be nil")
-	}
-
-	// Step 2: The root must be a real object schema. MCP requires a literal
-	// type: "object" root, so a $ref root is never acceptable.
-	if schema.Ref != "" {
-		return nil, fmt.Errorf("schema root must not be a $ref (got %q)", schema.Ref)
-	}
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" (got type %q)", schema.Type)
-	}
-
-	// Step 3: Verify all $ref pointers can be resolved
-	// First, collect all $ref values from the schema
-	refs := collectRefs(schema)
-	
-	// Check that all referenced schemas exist in Definitions
-	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
-	if len(refs) > 0 {
-		for ref := range refs {
-			// Extract the key from the $ref (format: "#/$defs/key")
-			key := extractRefKey(ref)
-			if key != "" {
-				if _, exists := schema.Defs[key]; !exists {
-					return nil, fmt.Errorf("$ref %q points to non-existent definition %q", ref, key)
-				}
-			}
-		}
-	}
-
-	// Step 4: Resolve the schema - this validates the schema structure itself
-	// ValidateDefaults: true enables validation of default values in the schema
-	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{
-		ValidateDefaults: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("invalid schema structure: %w", err)
-	}
-
-	return resolved, nil
-}
-
-// ValidateSchemaWithName is a convenience wrapper that includes the schema name
-// in error messages for better debugging.
-func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
-	if schema == nil {
-		return nil, fmt.Errorf("schema %q: cannot be nil", name)
-	}
-
-	// The root must be a real object schema. MCP requires a literal
-	// type: "object" root, so a $ref root is never acceptable.
-	if schema.Ref != "" {
-		return nil, fmt.Errorf("schema %q: root must not be a $ref (got %q)", name, schema.Ref)
-	}
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" (got type %q)", name, schema.Type)
-	}
-
-	// Verify all $ref pointers exist
-	refs := collectRefs(schema)
-	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
-	if len(refs) > 0 {
-		for ref := range refs {
-			key := extractRefKey(ref)
-			if key != "" {
-				if _, exists := schema.Defs[key]; !exists {
-					return nil, fmt.Errorf("schema %q: $ref %q points to non-existent definition %q", name, ref, key)
-				}
-			}
-		}
-	}
-
-	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{
-		ValidateDefaults: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("schema %q: invalid schema structure: %w", name, err)
-	}
-
-	return resolved, nil
-}
-
-// collectRefs recursively collects all $ref values from a schema
-func collectRefs(schema *jsonschema.Schema) map[string]bool {
-	refs := make(map[string]bool)
-	if schema == nil {
-		return refs
-	}
-	
-	if schema.Ref != "" {
-		refs[schema.Ref] = true
-	}
-	
-	if schema.Properties != nil {
-		for _, prop := range schema.Properties {
-			for ref := range collectRefs(prop) {
-				refs[ref] = true
-			}
-		}
-	}
-	
-	if schema.Items != nil {
-		for ref := range collectRefs(schema.Items) {
-			refs[ref] = true
-		}
-	}
-	
-	if schema.AdditionalProperties != nil {
-		for ref := range collectRefs(schema.AdditionalProperties) {
-			refs[ref] = true
-		}
-	}
-	
-	if schema.Defs != nil {
-		for _, def := range schema.Defs {
-			for ref := range collectRefs(def) {
-				refs[ref] = true
-			}
-		}
-	}
-	
-	return refs
-}
-
-// extractRefKey extracts the definition key from a $ref value
-// Format: "#/$defs/key" -> "key"
-func extractRefKey(ref string) string {
-	prefix := "#/$defs/"
-	if strings.HasPrefix(ref, prefix) {
-		return ref[len(prefix):]
-	}
-	return ""
-}
 
 // TestSchemaCanBeSerialized verifies that calling JsonSchema() and then
 // json.Marshal() does not cause a stack overflow from circular references.
@@ -693,6 +556,61 @@ func TestRootIsAlwaysAnObject(t *testing.T) {
 		})
 	}
 }
+
+// TestCrossFileCyclicReference checks that a cyclic message referenced from a
+// sibling file (Admin.address_details -> AddressDetails, defined in
+// user.proto) is a $ref into $defs there too: the mode belongs to the
+// message, not to the file that references it.
+func TestCrossFileCyclicReference(t *testing.T) {
+	schema := (&Admin{}).JsonSchema()
+	if _, err := ValidateSchemaWithName("Admin", schema); err != nil {
+		t.Fatalf("Admin schema validation failed: %v", err)
+	}
+	const key = "users.v1.AddressDetails"
+	details := schema.Properties["address_details"]
+	if details == nil || details.Ref != "#/$defs/"+key {
+		t.Fatalf("address_details must be a $ref to %q, got %+v", key, details)
+	}
+	if details.Description == "" {
+		t.Error("the field comment must ride the $ref as a sibling")
+	}
+	if def := schema.Defs[key]; def == nil || def.Properties["street"] == nil {
+		t.Errorf("$defs must hold the AddressDetails definition, got %v", getDefKeys(schema.Defs))
+	}
+}
+
+// TestTitleOnlyOptionReplacesMetadataPair pins the pair rule on inline
+// copies: a field that provides only a title clears the target message's own
+// description as well, so a field title never sits above the message's text.
+func TestTitleOnlyOptionReplacesMetadataPair(t *testing.T) {
+	if (&Address{}).JsonSchema().Description == "" {
+		t.Fatal("fixture drift: Address must carry its own description")
+	}
+	billing := (&ConstraintDemo{}).JsonSchema().Properties["billing_address"]
+	if billing == nil || billing.Ref != "" || billing.Type != "object" {
+		t.Fatalf("billing_address must be an inline copy, got %+v", billing)
+	}
+	if billing.Title != "Billing address" || billing.Description != "" {
+		t.Errorf("title-only option must set the title and clear the description, got title=%q description=%q", billing.Title, billing.Description)
+	}
+}
+
+// TestCrossFileForcedDependencyIsInlined: ParentWithCrossFileDependency
+// (force.proto) references a generate=false message defined in common.proto.
+// The dependency generates in its own file and inlines here.
+func TestCrossFileForcedDependencyIsInlined(t *testing.T) {
+	schema := (&ParentWithCrossFileDependency{}).JsonSchema()
+	if _, err := ValidateSchemaWithName("ParentWithCrossFileDependency", schema); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+	dep := schema.Properties["dependency"]
+	if dep == nil || dep.Ref != "" || dep.Properties["value"] == nil {
+		t.Fatalf("dependency must be an inline copy of CrossFileDependency, got %+v", dep)
+	}
+	if _, err := ValidateSchemaWithName("CrossFileDependency", (&CrossFileDependency{}).JsonSchema()); err != nil {
+		t.Fatalf("the forced dependency must have a JsonSchema() of its own: %v", err)
+	}
+}
 `
 	testPath := filepath.Join(pkgDir, "serialization_test.go")
 	err = os.WriteFile(testPath, []byte(testContent), 0o644)
@@ -750,6 +668,7 @@ require github.com/google/jsonschema-go v0.4.2
 	stub := strings.Replace(userStubTypes(), "type OneOfDemo struct{}\n", "", 1)
 	s.Require().NoError(os.WriteFile(filepath.Join(pkgDir, "stub_types.go"), []byte(stub), 0o644))
 	s.Require().NoError(os.WriteFile(filepath.Join(pkgDir, "oneof_real.go"), []byte(oneofDemoRealTypes()), 0o644))
+	writeSchemaTestHelpers(s.T(), pkgDir, "usersv1")
 
 	testContent := `package usersv1
 
@@ -758,20 +677,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/google/jsonschema-go/jsonschema"
 )
-
-func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
-	if schema == nil {
-		return nil, fmt.Errorf("schema %q: cannot be nil", name)
-	}
-	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{ValidateDefaults: true})
-	if err != nil {
-		return nil, fmt.Errorf("schema %q: invalid structure: %w", name, err)
-	}
-	return resolved, nil
-}
 
 func TestOneofNestedJSONValidates(t *testing.T) {
 	schema := (&OneOfDemo{}).JsonSchema()
@@ -926,8 +832,10 @@ func TestOneofRoundTrip(t *testing.T) {
 func (s *IntegrationTestSuite) TestCyclicRootIsIndependentTree() {
 	content := s.GetGeneratedContent()
 
-	s.Contains(content, `root := AddressDetails_JsonSchema_build(defs, false)`,
-		"cyclic root must be built by a second, non-registering build")
+	s.Contains(content, `root := addressDetails_JsonSchema_build(defs)`,
+		"cyclic root must be built by a second, independent build")
+	s.NotContains(content, `_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool)`,
+		"the builder takes no mode flag")
 	s.NotContains(content, `root := &jsonschema.Schema{Ref:`,
 		"no message may use a $ref wrapper as its root")
 	s.NotContains(content, `root := defs[`,
@@ -974,7 +882,41 @@ func (s *IntegrationTestSuite) TestForceLogicForFieldDependencies() {
 		"Expected parent message to reference field dependency")
 }
 
-// TestForceLogicRuntime verifies that forced messages are present in $defs at runtime.
+// TestCrossFileForcedDependencyGeneratesInItsOwnFile verifies that a
+// generate=false message referenced from a sibling file generates in the file
+// that defines it (common.proto), never in the referencing file.
+func (s *IntegrationTestSuite) TestCrossFileForcedDependencyGeneratesInItsOwnFile() {
+	contents := s.RunGenerate()
+	var common, force string
+	for name, content := range contents {
+		switch {
+		case strings.HasSuffix(name, "common_jsonschema.pb.go"):
+			common = content
+		case strings.HasSuffix(name, "force_jsonschema.pb.go"):
+			force = content
+		}
+	}
+	s.Contains(common, "func (x *CrossFileDependency) JsonSchema()",
+		"the defining file must emit the forced dependency")
+	s.Contains(force, `schema.Properties["dependency"] = CrossFileDependency_JsonSchema_WithDefs(defs)`,
+		"the referencing file calls the dependency's _WithDefs")
+	s.NotContains(force, "func CrossFileDependency_JsonSchema_WithDefs",
+		"the referencing file must not duplicate the dependency's functions")
+}
+
+// TestIgnoredFieldForcesNothing verifies that an ignored message-typed field
+// is not a reference: the field is absent and its target does not generate.
+func (s *IntegrationTestSuite) TestIgnoredFieldForcesNothing() {
+	content := s.GetGeneratedContentForFile("force_jsonschema.pb.go")
+	s.Contains(content, "ParentWithIgnoredDependency_JsonSchema_WithDefs")
+	s.NotContains(content, `schema.Properties["hidden"]`, "an ignored field emits no property")
+	s.NotContains(content, "func (x *IgnoredDependency)",
+		"a message reachable only through an ignored field must not generate")
+	s.NotContains(content, "func IgnoredDependency_JsonSchema_WithDefs",
+		"a message reachable only through an ignored field must not generate")
+}
+
+// TestForceLogicRuntime verifies that forced messages are generated and inlined at runtime.
 func (s *IntegrationTestSuite) TestForceLogicRuntime() {
 	contents := s.RunGenerate()
 
@@ -994,169 +936,14 @@ func (s *IntegrationTestSuite) TestForceLogicRuntime() {
 	// Write stub types
 	err = os.WriteFile(filepath.Join(tmpDir, "stub_types.go"), []byte(userStubTypes()), 0o644)
 	s.Require().NoError(err)
+	writeSchemaTestHelpers(s.T(), tmpDir, "usersv1")
 
 	// Write test file that verifies forced messages are generated and inlined
 	testContent := `package usersv1
 
 import (
-	"fmt"
-	"strings"
 	"testing"
-
-	"github.com/google/jsonschema-go/jsonschema"
 )
-
-// ValidateSchema validates a *jsonschema.Schema and returns a resolved schema
-// that can be used for validation. It ensures:
-//   - The schema is not nil
-//   - The schema type is "object" (required by MCP spec)
-//   - The schema structure is valid (via Resolve)
-//
-// Returns the resolved schema on success, or an error if validation fails.
-func ValidateSchema(schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
-	// Step 1: Check for nil
-	if schema == nil {
-		return nil, fmt.Errorf("schema cannot be nil")
-	}
-
-	// Step 2: The root must be a real object schema. MCP requires a literal
-	// type: "object" root, so a $ref root is never acceptable.
-	if schema.Ref != "" {
-		return nil, fmt.Errorf("schema root must not be a $ref (got %q)", schema.Ref)
-	}
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema must have type \"object\" (got type %q)", schema.Type)
-	}
-
-	// Step 3: Verify all $ref pointers can be resolved
-	// First, collect all $ref values from the schema
-	refs := collectRefs(schema)
-	
-	// Check that all referenced schemas exist in Definitions
-	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
-	if len(refs) > 0 {
-		for ref := range refs {
-			// Extract the key from the $ref (format: "#/$defs/key")
-			key := extractRefKey(ref)
-			if key != "" {
-				if _, exists := schema.Defs[key]; !exists {
-					return nil, fmt.Errorf("$ref %q points to non-existent definition %q", ref, key)
-				}
-			}
-		}
-	}
-
-	// Step 4: Resolve the schema - this validates the schema structure itself
-	// ValidateDefaults: true enables validation of default values in the schema
-	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{
-		ValidateDefaults: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("invalid schema structure: %w", err)
-	}
-
-	return resolved, nil
-}
-
-// ValidateSchemaWithName is a convenience wrapper that includes the schema name
-// in error messages for better debugging.
-func ValidateSchemaWithName(name string, schema *jsonschema.Schema) (*jsonschema.Resolved, error) {
-	if schema == nil {
-		return nil, fmt.Errorf("schema %q: cannot be nil", name)
-	}
-
-	// The root must be a real object schema. MCP requires a literal
-	// type: "object" root, so a $ref root is never acceptable.
-	if schema.Ref != "" {
-		return nil, fmt.Errorf("schema %q: root must not be a $ref (got %q)", name, schema.Ref)
-	}
-	if schema.Type != "object" {
-		return nil, fmt.Errorf("schema %q: must have type \"object\" (got type %q)", name, schema.Type)
-	}
-
-	// Verify all $ref pointers exist
-	refs := collectRefs(schema)
-	// Every $ref must resolve into $defs — a nil Defs map resolves nothing.
-	if len(refs) > 0 {
-		for ref := range refs {
-			key := extractRefKey(ref)
-			if key != "" {
-				if _, exists := schema.Defs[key]; !exists {
-					return nil, fmt.Errorf("schema %q: $ref %q points to non-existent definition %q", name, ref, key)
-				}
-			}
-		}
-	}
-
-	resolved, err := schema.Resolve(&jsonschema.ResolveOptions{
-		ValidateDefaults: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("schema %q: invalid schema structure: %w", name, err)
-	}
-
-	return resolved, nil
-}
-
-// collectRefs recursively collects all $ref values from a schema
-func collectRefs(schema *jsonschema.Schema) map[string]bool {
-	refs := make(map[string]bool)
-	if schema == nil {
-		return refs
-	}
-	
-	if schema.Ref != "" {
-		refs[schema.Ref] = true
-	}
-	
-	if schema.Properties != nil {
-		for _, prop := range schema.Properties {
-			for ref := range collectRefs(prop) {
-				refs[ref] = true
-			}
-		}
-	}
-	
-	if schema.Items != nil {
-		for ref := range collectRefs(schema.Items) {
-			refs[ref] = true
-		}
-	}
-	
-	if schema.AdditionalProperties != nil {
-		for ref := range collectRefs(schema.AdditionalProperties) {
-			refs[ref] = true
-		}
-	}
-	
-	if schema.Defs != nil {
-		for _, def := range schema.Defs {
-			for ref := range collectRefs(def) {
-				refs[ref] = true
-			}
-		}
-	}
-	
-	return refs
-}
-
-// extractRefKey extracts the definition key from a $ref value
-// Format: "#/$defs/key" -> "key"
-func extractRefKey(ref string) string {
-	prefix := "#/$defs/"
-	if strings.HasPrefix(ref, prefix) {
-		return ref[len(prefix):]
-	}
-	return ""
-}
-
-func getDefKeys(defs map[string]*jsonschema.Schema) []string {
-	keys := make([]string, 0, len(defs))
-	for k := range defs {
-		keys = append(keys, k)
-	}
-	return keys
-}
 
 func TestNestedMessageIsInlined(t *testing.T) {
 	// Address.address_details is a nested, acyclic message: forced generation
@@ -1224,7 +1011,7 @@ require github.com/google/jsonschema-go v0.3.0
 	s.Require().NoError(err, "go mod tidy failed: %s", string(output))
 
 	// Run the test
-	cmd = exec.Command("go", "test", "-v", "-run", "TestNestedMessageInDefs|TestFieldDependencyInDefs")
+	cmd = exec.Command("go", "test", "-v", "-run", "TestNestedMessageIsInlined|TestFieldDependencyIsInlined")
 	cmd.Dir = tmpDir
 	output, err = cmd.CombinedOutput()
 

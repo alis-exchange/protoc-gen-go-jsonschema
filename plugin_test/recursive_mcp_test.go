@@ -12,10 +12,11 @@ import (
 
 // TestRecursiveSchemaWithMCP verifies the plugin's primary consumer path with
 // real generated types: protoc-gen-go compiles the recursive proto (a
-// self-referential nested message), the plugin generates its schemas, and a
-// temp module then checks the hybrid inline/$defs shape, validates json.Marshal
-// output against the schema, and registers the schemas with an MCP server via
-// mcp.AddTool — which panics if Resolve fails.
+// self-referential nested message) and the xref proto that references it from
+// another package, the plugin generates their schemas, and a temp module then
+// checks the hybrid inline/$defs shape, validates json.Marshal output against
+// the schema, and registers the schemas with an MCP server via mcp.AddTool —
+// which panics if Resolve fails.
 func (s *IntegrationTestSuite) TestRecursiveSchemaWithMCP() {
 	if testing.Short() {
 		s.T().Skip("Skipping recursive MCP test in short mode")
@@ -26,33 +27,39 @@ func (s *IntegrationTestSuite) TestRecursiveSchemaWithMCP() {
 	}
 
 	tmpDir := s.TempDir()
-	protoFile := "recursive/v1/recursive.proto"
+	protoFiles := []string{"recursive/v1/recursive.proto", "xref/v1/xref.proto"}
 
-	// Real message types via protoc-gen-go, at recursive/v1 (source_relative).
+	// The fixtures' go_package paths (example.com/...) are remapped into the
+	// temp module so the cross-package import in xref resolves. Both
+	// protoc-gen-go and this plugin read the same M parameters.
+	params := "paths=source_relative," +
+		"Mrecursive/v1/recursive.proto=testmcp/recursive/v1," +
+		"Mxref/v1/xref.proto=testmcp/xref/v1"
+
+	// Real message types via protoc-gen-go, at recursive/v1 and xref/v1.
 	args := []string{
 		"--go_out=" + tmpDir,
-		"--go_opt=paths=source_relative",
+		"--go_opt=" + params,
 	}
 	for _, path := range protoPaths(s.workspaceRoot) {
 		args = append(args, "--proto_path="+path)
 	}
-	args = append(args, protoFile)
+	args = append(args, protoFiles...)
 	cmd := exec.Command("protoc", args...)
 	output, err := cmd.CombinedOutput()
 	s.Require().NoError(err, "protoc --go_out failed: %s\nArgs: %v", string(output), args)
 
-	// Schema code from the plugin, into the same package directory.
+	// Schema code from the plugin, into the same package directories.
 	descPath := filepath.Join(tmpDir, "recursive.descriptor.pb")
-	fds := buildDescriptorSet(s.T(), s.workspaceRoot, []string{protoFile}, descPath)
-	p := createTestPlugin(s.T(), fds, []string{protoFile})
-	s.Require().NoError(plugin.Generate(p, "test"), "Generate failed for recursive proto")
+	fds := buildDescriptorSet(s.T(), s.workspaceRoot, protoFiles, descPath)
+	p := createTestPluginWithParams(s.T(), fds, protoFiles, params)
+	s.Require().NoError(plugin.Generate(p, "test"), "Generate failed for recursive/xref protos")
 
-	pkgDir := filepath.Join(tmpDir, "recursive", "v1")
 	for name, content := range getGeneratedContent(s.T(), p) {
 		if !strings.HasSuffix(name, "_jsonschema.pb.go") {
 			continue
 		}
-		outPath := filepath.Join(pkgDir, filepath.Base(name))
+		outPath := filepath.Join(tmpDir, filepath.FromSlash(name))
 		s.Require().NoError(os.WriteFile(outPath, []byte(content), 0o644))
 	}
 
@@ -82,6 +89,7 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	recursivePb "testmcp/recursive/v1"
+	xrefPb "testmcp/xref/v1"
 )
 
 // newRecursiveConfigRequest returns a GetRecursiveConfigRequest with nested
@@ -231,6 +239,47 @@ func Test_MutualRecursion(t *testing.T) {
 	bad := map[string]any{"label": "root", "branch": map[string]any{"nodes": []any{map[string]any{"label": 1}}}}
 	if err := resolved.Validate(bad); err == nil {
 		t.Error("expected validation to reject a bad node two levels deep")
+	}
+}
+
+// Test_CrossPackageCycleReference: xref.v1.Forest holds recursive.v1.TreeNode
+// from another package. The reference must be a $ref into $defs — the mode
+// recursive.v1 itself generates for TreeNode — with the field comment as a
+// sibling, and the whole schema must resolve and validate.
+func Test_CrossPackageCycleReference(t *testing.T) {
+	schema := (&xrefPb.Forest{}).JsonSchema()
+	resolved, err := ValidateSchemaWithName("Forest", schema)
+	if err != nil {
+		t.Fatalf("Forest schema validation failed: %v", err)
+	}
+	const nodeKey = "recursive.v1.TreeNode"
+	if len(schema.Defs) != 2 || schema.Defs[nodeKey] == nil || schema.Defs["recursive.v1.Branch"] == nil {
+		t.Fatalf("expected $defs for TreeNode and Branch only, got %v", getDefKeys(schema.Defs))
+	}
+	root := schema.Properties["root"]
+	if root == nil || root.Ref != "#/$defs/"+nodeKey {
+		t.Fatalf("root must be a $ref to %q, got %+v", nodeKey, root)
+	}
+	if root.Description != "The first tree of the forest." {
+		t.Errorf("field comment must ride the $ref as a sibling, got %q", root.Description)
+	}
+	if got := schema.Properties["extra_roots"].Items.Ref; got != "#/$defs/"+nodeKey {
+		t.Errorf("extra_roots item ref = %q", got)
+	}
+
+	doc := map[string]any{
+		"root": map[string]any{
+			"label":  "a",
+			"branch": map[string]any{"nodes": []any{map[string]any{"label": "b", "branch": map[string]any{"nodes": []any{}}}}},
+		},
+		"extra_roots": []any{},
+	}
+	if err := resolved.Validate(doc); err != nil {
+		t.Fatalf("valid cross-package document rejected: %v", err)
+	}
+	bad := map[string]any{"root": map[string]any{"label": 1, "branch": map[string]any{"nodes": []any{}}}}
+	if err := resolved.Validate(bad); err == nil {
+		t.Error("expected validation to reject a bad node inside the cross-package reference")
 	}
 }
 

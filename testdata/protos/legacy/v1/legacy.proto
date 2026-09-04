@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+package legacy.v1;
+
+import "alis/open/options/v1/options.proto";
+
+option go_package = "example.com/legacy/v1;legacyv1";
+option (alis.open.options.v1.file).json_schema.generate = true;
+
+// A proto2 message using groups. protoc-gen-go emits a group as a nested
+// message type plus a pointer field, so the schema treats a group field like
+// any message field: inlined here, a $ref only when it sits on a cycle.
+message Record {
+  optional string id = 1;
+
+  // A singular group: inlined like a nested message.
+  optional group Attributes = 2 {
+    optional string key = 1;
+    optional int64 value = 2;
+  }
+
+  // A repeated group: an array of inlined objects.
+  repeated group Tags = 3 {
+    optional string name = 1;
+  }
+}
+
+// A group that references its parent puts both on a cycle.
+message Node {
+  optional string label = 1;
+
+  optional group Children = 2 {
+    repeated Node node = 1;
+  }
+}

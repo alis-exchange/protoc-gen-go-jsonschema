@@ -3,7 +3,7 @@
 // Source: recursive/v1/recursive.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 15:55:05 UTC
+// Generated on: 2026-09-04 07:07:08 UTC
 
 package recursivev1
 
@@ -70,7 +70,7 @@ func RecursiveConfig_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *js
 func (x *RecursiveConfig_RecursiveItem) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = RecursiveConfig_RecursiveItem_JsonSchema_WithDefs(defs)
-	root := RecursiveConfig_RecursiveItem_JsonSchema_build(defs, false)
+	root := recursiveConfig_RecursiveItem_JsonSchema_build(defs)
 	root.Defs = defs
 	return root
 }
@@ -79,14 +79,17 @@ func RecursiveConfig_RecursiveItem_JsonSchema_WithDefs(defs map[string]*jsonsche
 	if _, ok := defs["recursive.v1.RecursiveConfig.RecursiveItem"]; ok {
 		return &jsonschema.Schema{Ref: "#/$defs/recursive.v1.RecursiveConfig.RecursiveItem"}
 	}
-	RecursiveConfig_RecursiveItem_JsonSchema_build(defs, true)
+	// Reserve the key before building: references back to this message
+	// (its own fields, or another message on the cycle) then resolve to the
+	// $ref above instead of recursing forever.
+	defs["recursive.v1.RecursiveConfig.RecursiveItem"] = nil
+	defs["recursive.v1.RecursiveConfig.RecursiveItem"] = recursiveConfig_RecursiveItem_JsonSchema_build(defs)
 	return &jsonschema.Schema{Ref: "#/$defs/recursive.v1.RecursiveConfig.RecursiveItem"}
 }
 
-// RecursiveConfig_RecursiveItem_JsonSchema_build constructs the RecursiveItem object schema. With register set, the
-// schema is stored under defs before its fields are populated, so that
-// references back to it resolve to the registered definition.
-func RecursiveConfig_RecursiveItem_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {
+// recursiveConfig_RecursiveItem_JsonSchema_build builds the RecursiveItem object schema: the body shared by the
+// $defs entry and the independent root that JsonSchema() returns.
+func recursiveConfig_RecursiveItem_JsonSchema_build(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Configuration for a single recursive item.",
@@ -94,12 +97,6 @@ func RecursiveConfig_RecursiveItem_JsonSchema_build(defs map[string]*jsonschema.
 		Required: []string{
 			"name",
 		},
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	if register {
-		defs["recursive.v1.RecursiveConfig.RecursiveItem"] = schema
 	}
 
 	schema.Properties["name"] = &jsonschema.Schema{
@@ -126,7 +123,7 @@ func RecursiveConfig_RecursiveItem_JsonSchema_build(defs map[string]*jsonschema.
 func (x *TreeNode) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = TreeNode_JsonSchema_WithDefs(defs)
-	root := TreeNode_JsonSchema_build(defs, false)
+	root := treeNode_JsonSchema_build(defs)
 	root.Defs = defs
 	return root
 }
@@ -135,14 +132,17 @@ func TreeNode_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschem
 	if _, ok := defs["recursive.v1.TreeNode"]; ok {
 		return &jsonschema.Schema{Ref: "#/$defs/recursive.v1.TreeNode"}
 	}
-	TreeNode_JsonSchema_build(defs, true)
+	// Reserve the key before building: references back to this message
+	// (its own fields, or another message on the cycle) then resolve to the
+	// $ref above instead of recursing forever.
+	defs["recursive.v1.TreeNode"] = nil
+	defs["recursive.v1.TreeNode"] = treeNode_JsonSchema_build(defs)
 	return &jsonschema.Schema{Ref: "#/$defs/recursive.v1.TreeNode"}
 }
 
-// TreeNode_JsonSchema_build constructs the TreeNode object schema. With register set, the
-// schema is stored under defs before its fields are populated, so that
-// references back to it resolve to the registered definition.
-func TreeNode_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {
+// treeNode_JsonSchema_build builds the TreeNode object schema: the body shared by the
+// $defs entry and the independent root that JsonSchema() returns.
+func treeNode_JsonSchema_build(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "TreeNode and Branch reference each other: a cycle that spans two messages.",
@@ -151,12 +151,6 @@ func TreeNode_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool
 			"label",
 			"branch",
 		},
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	if register {
-		defs["recursive.v1.TreeNode"] = schema
 	}
 
 	schema.Properties["label"] = &jsonschema.Schema{
@@ -178,7 +172,7 @@ func TreeNode_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool
 func (x *Branch) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = Branch_JsonSchema_WithDefs(defs)
-	root := Branch_JsonSchema_build(defs, false)
+	root := branch_JsonSchema_build(defs)
 	root.Defs = defs
 	return root
 }
@@ -187,24 +181,21 @@ func Branch_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 	if _, ok := defs["recursive.v1.Branch"]; ok {
 		return &jsonschema.Schema{Ref: "#/$defs/recursive.v1.Branch"}
 	}
-	Branch_JsonSchema_build(defs, true)
+	// Reserve the key before building: references back to this message
+	// (its own fields, or another message on the cycle) then resolve to the
+	// $ref above instead of recursing forever.
+	defs["recursive.v1.Branch"] = nil
+	defs["recursive.v1.Branch"] = branch_JsonSchema_build(defs)
 	return &jsonschema.Schema{Ref: "#/$defs/recursive.v1.Branch"}
 }
 
-// Branch_JsonSchema_build constructs the Branch object schema. With register set, the
-// schema is stored under defs before its fields are populated, so that
-// references back to it resolve to the registered definition.
-func Branch_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {
+// branch_JsonSchema_build builds the Branch object schema: the body shared by the
+// $defs entry and the independent root that JsonSchema() returns.
+func branch_JsonSchema_build(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "Branch holds the nodes below a TreeNode.",
 		Properties:  make(map[string]*jsonschema.Schema),
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	if register {
-		defs["recursive.v1.Branch"] = schema
 	}
 
 	schema.Properties["nodes"] = &jsonschema.Schema{

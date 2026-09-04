@@ -3,7 +3,7 @@
 // Source: users/v1/common.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 15:55:05 UTC
+// Generated on: 2026-09-04 07:07:08 UTC
 
 package usersv1
 
@@ -79,7 +79,7 @@ func Common_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.
 
 	schema.Properties["lint_policy_request"] = common_google_iam_admin_v1_LintPolicyRequest_JsonSchema_WithDefs(defs)
 	schema.Properties["lint_policy_request"].Title = ""
-	schema.Properties["lint_policy_request"].Description = "A Google type with a proto oneof (lint_object): keeps the flat shape."
+	schema.Properties["lint_policy_request"].Description = "A Google type with a proto oneof (lint_object): rendered with a PascalCase wrapper, like user messages."
 
 	return schema
 }
@@ -148,6 +148,33 @@ func CompleteInterviewRequest_InterviewSummary_JsonSchema_WithDefs(defs map[stri
 		Items: &jsonschema.Schema{
 			Type: "string",
 		},
+	}
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the CrossFileDependency message.
+func (x *CrossFileDependency) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := CrossFileDependency_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func CrossFileDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "Opted out of generation here; generated anyway because\n ParentWithCrossFileDependency in force.proto references it.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"value",
+		},
+	}
+
+	schema.Properties["value"] = &jsonschema.Schema{
+		Type: "string",
 	}
 
 	return schema

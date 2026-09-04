@@ -7,10 +7,13 @@ package plugin
 // and integration tests in plugin_test/.
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode"
+	"unicode/utf8"
 
 	optionsPb "go.alis.build/common/alis/open/options"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -830,6 +833,7 @@ func TestValidateFieldOptionsErrors(t *testing.T) {
 	i64 := descriptorpb.FieldDescriptorProto_TYPE_INT64
 	enum := descriptorpb.FieldDescriptorProto_TYPE_ENUM
 	msgT := descriptorpb.FieldDescriptorProto_TYPE_MESSAGE
+	dbl := descriptorpb.FieldDescriptorProto_TYPE_DOUBLE
 
 	repeated := func(f *descriptorpb.FieldDescriptorProto) *descriptorpb.FieldDescriptorProto {
 		f.Label = descriptorpb.FieldDescriptorProto_LABEL_REPEATED.Enum()
@@ -895,6 +899,38 @@ func TestValidateFieldOptionsErrors(t *testing.T) {
 			"examples on repeated field",
 			repeated(dynField("f", 1, str, &optionsPb.FieldOptions_JsonSchema{ExamplesString: []string{"x"}})),
 			"singular scalar",
+		},
+		// protoc accepts inf/-inf/nan for double options; none has a JSON
+		// form and the printer would emit them as Go identifiers.
+		{
+			"minimum must be finite",
+			dynField("f", 1, dbl, &optionsPb.FieldOptions_JsonSchema{Minimum: proto.Float64(math.Inf(1))}),
+			"minimum must be a finite number",
+		},
+		{
+			"maximum must be finite",
+			dynField("f", 1, dbl, &optionsPb.FieldOptions_JsonSchema{Maximum: proto.Float64(math.NaN())}),
+			"maximum must be a finite number",
+		},
+		{
+			"multiple_of NaN is rejected before the range check",
+			dynField("f", 1, dbl, &optionsPb.FieldOptions_JsonSchema{MultipleOf: proto.Float64(math.NaN())}),
+			"multiple_of must be a finite number",
+		},
+		{
+			"default_number must be finite",
+			dynField("f", 1, dbl, &optionsPb.FieldOptions_JsonSchema{DefaultNumber: proto.Float64(math.Inf(-1))}),
+			"default_number must be a finite number",
+		},
+		{
+			"enum_number must be finite",
+			dynField("f", 1, dbl, &optionsPb.FieldOptions_JsonSchema{EnumNumber: []float64{1, math.NaN()}}),
+			"enum_number must be a finite number",
+		},
+		{
+			"examples_number must be finite",
+			dynField("f", 1, dbl, &optionsPb.FieldOptions_JsonSchema{ExamplesNumber: []float64{math.Inf(1)}}),
+			"examples_number must be a finite number",
 		},
 	}
 
@@ -1080,4 +1116,171 @@ func TestDeclaredOneofGroups(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBuildNameIsUnexported(t *testing.T) {
+	p := loadTestPlugin(t)
+	userFile := findFile(t, p, "user.proto")
+	ctx := &schemaContext{filePrefix: "user", cycles: analyzeCycles(userFile.Messages)}
+
+	var nested *protogen.Message
+	for _, m := range findMessage(t, userFile, "Address").Messages {
+		if m.Desc.Name() == "AddressDetails" {
+			nested = m
+		}
+	}
+	if nested == nil {
+		t.Fatal("fixture drift: Address.AddressDetails not found")
+	}
+
+	tests := []struct {
+		msg  *protogen.Message
+		want string
+	}{
+		{findMessage(t, userFile, "AddressDetails"), "addressDetails_JsonSchema_build"},
+		{nested, "address_AddressDetails_JsonSchema_build"},
+	}
+	for _, tt := range tests {
+		got := identityFor(tt.msg, ctx).buildName()
+		if got != tt.want {
+			t.Errorf("buildName(%s) = %q, want %q", tt.msg.Desc.FullName(), got, tt.want)
+		}
+		if r, _ := utf8.DecodeRuneInString(got); !unicode.IsLower(r) {
+			t.Errorf("buildName(%s) = %q must be unexported: it is not generated API", tt.msg.Desc.FullName(), got)
+		}
+	}
+}
+
+func TestBuildGroupFieldsReferenceTheGroupMessage(t *testing.T) {
+	// proto2 groups: protoc-gen-go emits a nested message type and a pointer
+	// field, so the schema treats them exactly like message fields.
+	str := descriptorpb.FieldDescriptorProto_TYPE_STRING
+	record := dynMsg("Record",
+		dynGroupField("attributes", 1, "Record.Attributes"),
+		dynRepeated(dynGroupField("tags", 2, "Record.Tags")),
+	)
+	record.NestedType = []*descriptorpb.DescriptorProto{
+		dynMsg("Attributes", dynField("key", 1, str, nil)),
+		dynMsg("Tags", dynField("name", 1, str, nil)),
+	}
+	file := dynFileCustom(t, "dyn/v1/dyn.proto", "proto2", record)
+	m := mustBuildMessageSchema(t, findMessage(t, file, "Record"), "dyn")
+	if len(m.fields) != 2 {
+		t.Fatalf("expected 2 fields, got %d", len(m.fields))
+	}
+
+	attrs := m.fields[0]
+	if attrs.key != "attributes" || attrs.ref == nil || attrs.ref.defKey != "dyn.v1.Record.Attributes" || attrs.ref.funcBase != "Record_Attributes" {
+		t.Errorf("singular group must reference the nested group message, got key=%q ref=%+v", attrs.key, attrs.ref)
+	}
+	tags := m.fields[1]
+	if tags.ref != nil || tags.node == nil || tags.node.typeName != jsArray ||
+		tags.node.element == nil || tags.node.element.ref == nil || tags.node.element.ref.defKey != "dyn.v1.Record.Tags" {
+		t.Errorf("repeated group must be an array whose items reference the group message, got %+v", tags)
+	}
+}
+
+func TestPrefixFromPathSanitizes(t *testing.T) {
+	tests := map[string]string{
+		"users/v1/admin.proto": "admin",
+		"snake_case.proto":     "snake_case",
+		"sd/v1/my-d.proto":     "my_d",
+		"auth/2fa.proto":       "_2fa",
+		"foo.bar.proto":        "foo_bar",
+	}
+	for path, want := range tests {
+		if got := prefixFromPath(path); got != want {
+			t.Errorf("prefixFromPath(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestGenerateAcceptsNonIdentifierFileNames(t *testing.T) {
+	// Google-type function names carry the file prefix. A base name that is
+	// not a Go identifier fragment used to make protogen reject the whole
+	// generated file as unparsable.
+	event := dynMsg("Event", dynMsgField("when", 1, ".google.protobuf.Timestamp"))
+	event.Options = &descriptorpb.MessageOptions{}
+	proto.SetExtension(event.Options, optionsPb.E_Message, &optionsPb.MessageOptions{
+		JsonSchema: &optionsPb.MessageOptions_JsonSchema{Generate: proto.Bool(true)},
+	})
+	p := dynPluginCustom(t, "sd/v1/my-d.proto", "proto3", event)
+	if err := Generate(p, "test"); err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+	resp := p.Response()
+	if resp.GetError() != "" {
+		t.Fatalf("generated source rejected: %s", resp.GetError())
+	}
+	var content string
+	for _, f := range resp.File {
+		if strings.HasSuffix(f.GetName(), "my-d_jsonschema.pb.go") {
+			content = f.GetContent()
+		}
+	}
+	if !strings.Contains(content, "func my_d_google_protobuf_Timestamp_JsonSchema()") {
+		t.Errorf("expected a sanitised Google-type function name in:\n%s", content)
+	}
+}
+
+func TestGetMessagesWithForceSkipsIgnoredFields(t *testing.T) {
+	// An ignored field is not a reference: neither its user message nor a
+	// Google type reached only through it is forced to generate.
+	file := dynFile(t,
+		dynMsg("Root",
+			dynIgnored(dynMsgField("hidden", 1, "Internal")),
+			dynIgnored(dynMsgField("when", 2, ".google.protobuf.Timestamp")),
+		),
+		dynMsg("Internal"),
+	)
+	got := getMessagesWithForce([]*protogen.Message{findMessage(t, file, "Root")}, true, false, make(map[string]bool))
+	var names []string
+	for _, m := range got {
+		names = append(names, string(m.Desc.FullName()))
+	}
+	if strings.Join(names, ",") != "dyn.v1.Root" {
+		t.Errorf("expected only Root to be collected, got %v", names)
+	}
+}
+
+func TestCollectTargetsForcesCrossFileDependencies(t *testing.T) {
+	p := loadTestPlugin(t)
+	targets := collectTargets(p)
+
+	// force.proto's ParentWithCrossFileDependency references a generate=false
+	// message defined in common.proto: the request-wide collection targets
+	// it, so common.proto generates it.
+	if !targets["users.v1.CrossFileDependency"] {
+		t.Error("CrossFileDependency must be targeted by the request-wide collection")
+	}
+	if targets["users.v1.IgnoredDependency"] {
+		t.Error("IgnoredDependency is reachable only through an ignored field and must not be targeted")
+	}
+
+	common := findFile(t, p, "common.proto")
+	gen := &Generator{Version: "test"}
+	if src := generatedSource(t, gen, p, common, targets); !strings.Contains(src, "func (x *CrossFileDependency) JsonSchema()") {
+		t.Error("common.proto must generate the dependency a sibling file forced")
+	}
+	if src := generatedSource(t, gen, p, common, targetSet{}); strings.Contains(src, "CrossFileDependency") {
+		t.Error("without a forcing sibling, an opted-out message must not generate")
+	}
+}
+
+// generatedSource runs generateFile and returns the formatted output, failing
+// the test if protogen cannot parse it.
+func generatedSource(t *testing.T, gen *Generator, p *protogen.Plugin, file *protogen.File, targets targetSet) string {
+	t.Helper()
+	g, err := gen.generateFile(p, file, targets)
+	if err != nil {
+		t.Fatalf("generateFile(%s) failed: %v", file.Desc.Path(), err)
+	}
+	if g == nil {
+		return ""
+	}
+	content, err := g.Content()
+	if err != nil {
+		t.Fatalf("generated source for %s does not parse: %v", file.Desc.Path(), err)
+	}
+	return string(content)
 }

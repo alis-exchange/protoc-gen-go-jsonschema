@@ -23,7 +23,7 @@ message Common {
   string zip = 8;
   string country = 9;
   google.iam.admin.v1.ServiceAccountKey service_account_key = 11;
-  // A Google type with a proto oneof (lint_object): keeps the flat shape.
+  // A Google type with a proto oneof (lint_object): rendered with a PascalCase wrapper, like user messages.
   optional google.iam.admin.v1.LintPolicyRequest lint_policy_request = 12;
 }
 
@@ -41,4 +41,12 @@ message CompleteInterviewRequest {
     string headline = 1 [(alis.open.options.v1.field).json_schema = {description: "One warm sentence naming what the participant helped with, in their own words (not the team's jargon)."}];
     repeated string points = 2 [(alis.open.options.v1.field).json_schema = {description: "3-5 short bullets, each a concrete thing the participant told you, in second person (e.g. 'You walked through the morning reconciliation across three stores')."}];
   }
+}
+
+// Opted out of generation here; generated anyway because
+// ParentWithCrossFileDependency in force.proto references it.
+message CrossFileDependency {
+  option (alis.open.options.v1.message).json_schema.generate = false;
+
+  string value = 1;
 }

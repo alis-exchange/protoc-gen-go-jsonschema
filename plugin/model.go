@@ -2,7 +2,10 @@ package plugin
 
 import (
 	"fmt"
+	"math"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	optionsPb "go.alis.build/common/alis/open/options"
 	"google.golang.org/protobuf/compiler/protogen"
@@ -100,11 +103,19 @@ func (id messageIdentity) withDefsName() string {
 	return id.funcBase + "_JsonSchema_WithDefs"
 }
 
-// buildName returns the name of the private builder generated for cyclic
-// messages: it holds the schema body so the $defs entry and the root can be
-// constructed as two independent trees.
+// buildName returns the name of the unexported builder generated for cyclic
+// messages. It holds the schema body so the $defs entry and the root can be
+// constructed as two independent trees, and stays unexported because only the
+// message's own JsonSchema() and _WithDefs call it: it is not part of the
+// generated API.
 func (id messageIdentity) buildName() string {
-	return id.funcBase + "_JsonSchema_build"
+	return unexport(id.funcBase) + "_JsonSchema_build"
+}
+
+// unexport lower-cases the first rune of a Go identifier.
+func unexport(name string) string {
+	r, size := utf8.DecodeRuneInString(name)
+	return string(unicode.ToLower(r)) + name[size:]
 }
 
 // isGoogleType checks if a message is from a Google package (google.*).
@@ -166,6 +177,51 @@ func mapValueMessage(field *protogen.Field) *protogen.Message {
 	return nil
 }
 
+// isMessageField reports whether a field's value is a message. Proto2 groups
+// count: protoc-gen-go emits a nested message type and a pointer field for a
+// group exactly as for a message field, and encoding/json marshals both the
+// same way.
+func isMessageField(desc protoreflect.FieldDescriptor) bool {
+	return desc.Kind() == protoreflect.MessageKind || desc.Kind() == protoreflect.GroupKind
+}
+
+// fieldMessage returns the message a field's value is — the value message for
+// maps — or nil when the value is a scalar.
+func fieldMessage(field *protogen.Field) *protogen.Message {
+	if field.Desc.IsMap() {
+		return mapValueMessage(field)
+	}
+	if isMessageField(field.Desc) {
+		return field.Message
+	}
+	return nil
+}
+
+// messageReferences lists the messages msg's schema refers to, in field order:
+// the value message of every non-ignored field (singular, repeated, map value,
+// oneof variant, proto2 group) except free-form well-known types, which inline
+// as untyped JSON and are not schemas of their own. It is the one definition
+// of "reference" shared by the cycle analysis and dependency collection, so a
+// message reachable only through an ignored field is neither a cycle member
+// nor forced to generate.
+func messageReferences(msg *protogen.Message) []*protogen.Message {
+	var targets []*protogen.Message
+	for _, field := range msg.Fields {
+		if getFieldJsonSchemaOptions(field).GetIgnore() {
+			continue
+		}
+		target := fieldMessage(field)
+		if target == nil {
+			continue
+		}
+		if _, freeForm := freeFormJSONType(target); freeForm {
+			continue
+		}
+		targets = append(targets, target)
+	}
+	return targets
+}
+
 // googleTypeFunctionName converts a Google type's full name to a valid Go function name with a file prefix.
 // Example: "google.protobuf.Timestamp" with prefix "admin" -> "admin_google_protobuf_Timestamp"
 func googleTypeFunctionName(msg *protogen.Message, filePrefix string) string {
@@ -177,13 +233,30 @@ func googleTypeFunctionName(msg *protogen.Message, filePrefix string) string {
 	return baseName
 }
 
-// fileNamePrefix extracts a prefix from the proto file path for use in Google type function names.
-// Example: "users/v1/admin.proto" -> "admin"
+// fileNamePrefix derives the prefix for Google-type function names from the
+// proto file path: the base name without ".proto", rewritten so it can start
+// a Go identifier.
 func fileNamePrefix(file *protogen.File) string {
-	path := file.Desc.Path()
+	return prefixFromPath(file.Desc.Path())
+}
+
+// prefixFromPath is fileNamePrefix on a raw path. Mirrors protoc-gen-go's own
+// sanitisation of file names: every rune outside the letter/digit set becomes
+// '_' and a leading digit gets one prepended, so "users/v1/admin.proto" ->
+// "admin", "sd/v1/my-d.proto" -> "my_d", "auth/2fa.proto" -> "_2fa".
+func prefixFromPath(path string) string {
 	base := strings.TrimSuffix(path, ".proto")
 	if idx := strings.LastIndex(base, "/"); idx >= 0 {
 		base = base[idx+1:]
+	}
+	base = strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return r
+		}
+		return '_'
+	}, base)
+	if r, _ := utf8.DecodeRuneInString(base); unicode.IsDigit(r) {
+		base = "_" + base
 	}
 	return base
 }
@@ -485,7 +558,7 @@ func buildFieldProperty(field *protogen.Field, ctx *schemaContext) (propertyNode
 			return propertyNode{}, err
 		}
 		return propertyNode{key: getFieldName(field), node: node}, nil
-	case field.Desc.Kind() == protoreflect.MessageKind:
+	case isMessageField(field.Desc):
 		if shape, ok := freeFormJSONType(field.Message); ok {
 			return propertyNode{key: getFieldName(field), node: buildFreeFormNode(field, title, description, shape)}, nil
 		}
@@ -571,18 +644,14 @@ func buildMapNode(field *protogen.Field, title, description string, ctx *schemaC
 		return nil, fmt.Errorf("field %s: %w", field.Desc.FullName(), err)
 	}
 	node.element = element
-	if node.element == nil {
-		// Message value with no resolvable message: constraints fall back to
-		// the root, matching the historical output.
-		node.value = applyValueOptions(valueConstraints{}, opts)
-	}
 	return node, nil
 }
 
 // buildElement decides the JSON shape of one proto value — the single shared
 // answer for array elements and map values. enumField carries the
 // protogen.Field when available (array elements); map values fall back to the
-// descriptor's enum. msg is the element's message when kind is MessageKind.
+// descriptor's enum. msg is the element's message for message and group
+// kinds (protogen resolves it for every such field, so it is never nil).
 func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, msg *protogen.Message, opts *optionsPb.FieldOptions_JsonSchema, ctx *schemaContext) (*elementNode, error) {
 	kindTypeName, err := getKindTypeName(desc)
 	if err != nil {
@@ -590,10 +659,7 @@ func buildElement(desc protoreflect.FieldDescriptor, enumField *protogen.Field, 
 	}
 
 	switch desc.Kind() {
-	case protoreflect.MessageKind:
-		if msg == nil {
-			return nil, nil
-		}
+	case protoreflect.MessageKind, protoreflect.GroupKind:
 		if shape, ok := freeFormJSONType(msg); ok {
 			return &elementNode{typeName: shape.typeName, types: shape.types, value: applyValueOptions(valueConstraints{}, opts)}, nil
 		}
@@ -630,7 +696,7 @@ func buildOneofWrapper(oneof *protogen.Oneof, ctx *schemaContext) (oneofWrapperN
 		}
 		variant := oneofVariantNode{key: field.GoName}
 		title, description := getTitleAndDescription(field.Desc)
-		if field.Desc.Kind() == protoreflect.MessageKind {
+		if isMessageField(field.Desc) {
 			// Message variant: same rules as buildFieldProperty — free-form
 			// well-known types inline, everything else is a decorated
 			// reference.
@@ -856,7 +922,7 @@ func toAnySlice[T any](values []T) []any {
 // validation. The empty family means "any JSON value" (a free-form
 // google.protobuf.Value): typed options are then accepted as written.
 func jsonTypeFamily(desc protoreflect.FieldDescriptor) string {
-	if desc.Kind() == protoreflect.MessageKind {
+	if isMessageField(desc) {
 		if shape, ok := freeFormShapeOf(desc.Message().FullName()); ok {
 			return shape.typeName
 		}
@@ -900,6 +966,35 @@ func validateFieldOptions(field *protogen.Field) error {
 	}
 	family := jsonTypeFamily(valueDesc)
 	anyValue := family == ""
+
+	// --- numeric options must be finite ---
+	// NaN and ±Inf have no JSON form, and the printer would render them as
+	// the Go identifiers NaN/+Inf, which do not compile. protoc accepts the
+	// literals `inf`, `-inf` and `nan` for double options, so reject them
+	// here before any other rule reads the value (NaN compares false with
+	// everything, so a range check alone would let it through).
+	if err := requireFinite(name, "minimum", opts.Minimum); err != nil {
+		return err
+	}
+	if err := requireFinite(name, "maximum", opts.Maximum); err != nil {
+		return err
+	}
+	if err := requireFinite(name, "multiple_of", opts.MultipleOf); err != nil {
+		return err
+	}
+	if err := requireFinite(name, "default_number", opts.DefaultNumber); err != nil {
+		return err
+	}
+	for _, v := range opts.GetEnumNumber() {
+		if err := requireFinite(name, "enum_number", &v); err != nil {
+			return err
+		}
+	}
+	for _, v := range opts.GetExamplesNumber() {
+		if err := requireFinite(name, "examples_number", &v); err != nil {
+			return err
+		}
+	}
 
 	// --- enum_*: one variant, matching the value's JSON type ---
 	enumFamilies := countSetVariants(
@@ -984,6 +1079,14 @@ func validateFieldOptions(field *protogen.Field) error {
 		}
 	}
 
+	return nil
+}
+
+// requireFinite rejects a set numeric option whose value is NaN or infinite.
+func requireFinite(field protoreflect.FullName, option string, v *float64) error {
+	if v != nil && (math.IsNaN(*v) || math.IsInf(*v, 0)) {
+		return fmt.Errorf("field %s: %s must be a finite number, got %v", field, option, *v)
+	}
 	return nil
 }
 

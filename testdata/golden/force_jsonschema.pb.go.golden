@@ -3,7 +3,7 @@
 // Source: users/v1/force.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 15:55:05 UTC
+// Generated on: 2026-09-04 07:07:08 UTC
 
 package usersv1
 
@@ -203,6 +203,58 @@ func DependencyMessage_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *
 
 	schema.Properties["number"] = &jsonschema.Schema{
 		Type: "integer",
+	}
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the ParentWithCrossFileDependency message.
+func (x *ParentWithCrossFileDependency) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := ParentWithCrossFileDependency_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func ParentWithCrossFileDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "References a generate=false message defined in another file of the same\n package: the dependency is forced in its own file so this call resolves.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"dependency",
+		},
+	}
+
+	schema.Properties["dependency"] = CrossFileDependency_JsonSchema_WithDefs(defs)
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the ParentWithIgnoredDependency message.
+func (x *ParentWithIgnoredDependency) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := ParentWithIgnoredDependency_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func ParentWithIgnoredDependency_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "Reaches IgnoredDependency only through an ignored field. An ignored field is\n not a reference, so nothing is forced.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"name",
+		},
+	}
+
+	schema.Properties["name"] = &jsonschema.Schema{
+		Type: "string",
 	}
 
 	return schema

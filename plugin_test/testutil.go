@@ -38,10 +38,21 @@ func loadDescriptorSet(t *testing.T, path string) *descriptorpb.FileDescriptorSe
 // createTestPlugin creates a protogen.Plugin for testing from a FileDescriptorSet.
 func createTestPlugin(t *testing.T, fds *descriptorpb.FileDescriptorSet, filesToGenerate []string) *protogen.Plugin {
 	t.Helper()
+	return createTestPluginWithParams(t, fds, filesToGenerate, "")
+}
+
+// createTestPluginWithParams is createTestPlugin with a protoc plugin
+// parameter string (e.g. "paths=source_relative,Mfoo.proto=example.com/foo"),
+// which protogen applies to import paths and output file names.
+func createTestPluginWithParams(t *testing.T, fds *descriptorpb.FileDescriptorSet, filesToGenerate []string, params string) *protogen.Plugin {
+	t.Helper()
 
 	req := &pluginpb.CodeGeneratorRequest{
 		FileToGenerate: filesToGenerate,
 		ProtoFile:      fds.File,
+	}
+	if params != "" {
+		req.Parameter = &params
 	}
 
 	opts := protogen.Options{}
@@ -312,6 +323,9 @@ type ParentWithForcedNested struct{}
 type ParentWithForcedNested_ForcedNested struct{}
 type ParentWithForcedDependency struct{}
 type DependencyMessage struct{}
+type ParentWithCrossFileDependency struct{}
+type CrossFileDependency struct{}
+type ParentWithIgnoredDependency struct{}
 `
 }
 

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package xref.v1;
+
+import "alis/open/options/v1/options.proto";
+import "recursive/v1/recursive.proto";
+
+option go_package = "example.com/xref/v1;xrefv1";
+option (alis.open.options.v1.file).json_schema.generate = true;
+
+// Holds a cyclic message from another package. The reference must agree with
+// recursive.v1's own mode for TreeNode: a $ref into $defs, never an inline
+// copy.
+message Forest {
+  // The first tree of the forest.
+  recursive.v1.TreeNode root = 1;
+  repeated recursive.v1.TreeNode extra_roots = 2;
+}

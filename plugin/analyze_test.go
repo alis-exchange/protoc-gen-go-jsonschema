@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
@@ -26,12 +27,28 @@ func dynFile(t *testing.T, msgs ...*descriptorpb.DescriptorProto) *protogen.File
 // enum-typed fields.
 func dynFileWithEnum(t *testing.T, msgs ...*descriptorpb.DescriptorProto) *protogen.File {
 	t.Helper()
+	return dynFileCustom(t, "dyn/v1/dyn.proto", "proto3", msgs...)
+}
+
+// dynFileCustom is dynFileWithEnum with a chosen file path and syntax
+// ("proto2" allows group fields).
+func dynFileCustom(t *testing.T, path, syntax string, msgs ...*descriptorpb.DescriptorProto) *protogen.File {
+	t.Helper()
+	return findFile(t, dynPluginCustom(t, path, syntax, msgs...), path)
+}
+
+// dynPluginCustom compiles the in-memory file (package dyn.v1, with the Color
+// enum) and returns the whole plugin, for tests that run Generate.
+// google/protobuf/struct.proto and timestamp.proto are importable.
+func dynPluginCustom(t *testing.T, path, syntax string, msgs ...*descriptorpb.DescriptorProto) *protogen.Plugin {
+	t.Helper()
 	structFile := protodesc.ToFileDescriptorProto(structpb.File_google_protobuf_struct_proto)
+	timestampFile := protodesc.ToFileDescriptorProto(timestamppb.File_google_protobuf_timestamp_proto)
 	fdp := &descriptorpb.FileDescriptorProto{
-		Name:        proto.String("dyn/v1/dyn.proto"),
+		Name:        proto.String(path),
 		Package:     proto.String("dyn.v1"),
-		Syntax:      proto.String("proto3"),
-		Dependency:  []string{structFile.GetName()},
+		Syntax:      proto.String(syntax),
+		Dependency:  []string{structFile.GetName(), timestampFile.GetName()},
 		Options:     &descriptorpb.FileOptions{GoPackage: proto.String("example.com/dyn/v1;dynv1")},
 		MessageType: msgs,
 		EnumType: []*descriptorpb.EnumDescriptorProto{{
@@ -43,14 +60,37 @@ func dynFileWithEnum(t *testing.T, msgs ...*descriptorpb.DescriptorProto) *proto
 		}},
 	}
 	req := &pluginpb.CodeGeneratorRequest{
-		FileToGenerate: []string{"dyn/v1/dyn.proto"},
-		ProtoFile:      []*descriptorpb.FileDescriptorProto{structFile, fdp},
+		FileToGenerate: []string{path},
+		ProtoFile:      []*descriptorpb.FileDescriptorProto{structFile, timestampFile, fdp},
 	}
 	p, err := protogen.Options{}.New(req)
 	if err != nil {
 		t.Fatalf("Failed to build dynamic plugin: %v", err)
 	}
-	return findFile(t, p, "dyn.proto")
+	return p
+}
+
+// dynGroupField builds a proto2 group field. The group's message is nested in
+// the parent under the capitalised field name, as protoc lays it out;
+// groupType is that nested name ("Parent.Grp").
+func dynGroupField(name string, number int32, groupType string) *descriptorpb.FieldDescriptorProto {
+	return &descriptorpb.FieldDescriptorProto{
+		Name:     proto.String(name),
+		Number:   proto.Int32(number),
+		Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+		Type:     descriptorpb.FieldDescriptorProto_TYPE_GROUP.Enum(),
+		TypeName: proto.String(".dyn.v1." + groupType),
+		JsonName: proto.String(name),
+	}
+}
+
+// dynIgnored marks a field ignore: true.
+func dynIgnored(f *descriptorpb.FieldDescriptorProto) *descriptorpb.FieldDescriptorProto {
+	f.Options = &descriptorpb.FieldOptions{}
+	proto.SetExtension(f.Options, optionsPb.E_Field, &optionsPb.FieldOptions{
+		JsonSchema: &optionsPb.FieldOptions_JsonSchema{Ignore: proto.Bool(true)},
+	})
+	return f
 }
 
 // dynMsgField builds a singular message-typed field referencing target: a
@@ -175,12 +215,7 @@ func TestAnalyzeCyclesDiamondIsAcyclic(t *testing.T) {
 }
 
 func TestAnalyzeCyclesIgnoredFieldIsNotAnEdge(t *testing.T) {
-	self := dynMsgField("self", 1, "Node")
-	self.Options = &descriptorpb.FieldOptions{}
-	proto.SetExtension(self.Options, optionsPb.E_Field, &optionsPb.FieldOptions{
-		JsonSchema: &optionsPb.FieldOptions_JsonSchema{Ignore: proto.Bool(true)},
-	})
-	file := dynFile(t, dynMsg("Node", self))
+	file := dynFile(t, dynMsg("Node", dynIgnored(dynMsgField("self", 1, "Node"))))
 	cycles := analyzeCycles(file.Messages)
 	assertCyclic(t, cycles, "dyn.v1.Node", false)
 }
@@ -196,4 +231,42 @@ func TestAnalyzeCyclesVisitsUnreferencedNestedMessages(t *testing.T) {
 	cycles := analyzeCycles(file.Messages)
 	assertCyclic(t, cycles, "dyn.v1.Outer.Inner", true)
 	assertCyclic(t, cycles, "dyn.v1.Outer", false)
+}
+
+func TestAnalyzeCyclesGroupFieldIsAnEdge(t *testing.T) {
+	// proto2 `optional group Children = 2 { repeated Node node = 1; }`: a
+	// group is a message reference, so Node and Node.Children form a cycle.
+	node := dynMsg("Node", dynGroupField("children", 2, "Node.Children"))
+	node.NestedType = []*descriptorpb.DescriptorProto{
+		dynMsg("Children", dynRepeated(dynMsgField("node", 1, "Node"))),
+	}
+	file := dynFileCustom(t, "dyn/v1/dyn.proto", "proto2", node)
+	cycles := analyzeCycles(file.Messages)
+	assertCyclic(t, cycles, "dyn.v1.Node", true)
+	assertCyclic(t, cycles, "dyn.v1.Node.Children", true)
+}
+
+func TestMessageReferences(t *testing.T) {
+	// One message with every reference kind in field order — map value,
+	// singular, repeated, proto2 group — plus an ignored field and a
+	// free-form Struct, which must not count.
+	root := dynMapOfMsg("Root", "A") // field 1: map<string, A>
+	root.Field = append(root.Field,
+		dynMsgField("b", 2, "B"),
+		dynRepeated(dynMsgField("as", 3, "A")),
+		dynIgnored(dynMsgField("hidden", 4, "C")),
+		dynMsgField("payload", 5, ".google.protobuf.Struct"),
+		dynGroupField("grp", 6, "Root.Grp"),
+	)
+	root.NestedType = append(root.NestedType, dynMsg("Grp"))
+	file := dynFileCustom(t, "dyn/v1/dyn.proto", "proto2", root, dynMsg("A"), dynMsg("B"), dynMsg("C"))
+
+	var got []string
+	for _, m := range messageReferences(findMessage(t, file, "Root")) {
+		got = append(got, string(m.Desc.FullName()))
+	}
+	want := []string{"dyn.v1.A", "dyn.v1.B", "dyn.v1.A", "dyn.v1.Root.Grp"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("messageReferences = %v, want %v", got, want)
+	}
 }

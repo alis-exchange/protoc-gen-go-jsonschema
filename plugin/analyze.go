@@ -15,10 +15,11 @@ type cycleSet map[protoreflect.FullName]bool
 
 // analyzeCycles runs Tarjan's strongly-connected-components algorithm over the
 // "message references message" graph reachable from roots (and from their
-// nested messages, which generate schemas of their own). An edge M -> T exists
-// for every non-ignored field of M whose value is message T: singular,
-// repeated, map value, or oneof variant. Nesting alone is not an edge, and
-// free-form well-known types are not nodes (they inline as untyped JSON).
+// nested messages, which generate schemas of their own). The edges of a
+// message are exactly its messageReferences: every non-ignored field whose
+// value is a message — singular, repeated, map value, oneof variant, proto2
+// group. Nesting alone is not an edge, and free-form well-known types are not
+// nodes (they inline as untyped JSON).
 //
 // A message is cyclic when its component has more than one member or it
 // references itself directly.
@@ -54,31 +55,6 @@ func (a *cycleAnalyzer) visitRoots(msgs []*protogen.Message) {
 	}
 }
 
-// edges lists the messages m references through its emitted fields.
-func (a *cycleAnalyzer) edges(m *protogen.Message) []*protogen.Message {
-	var targets []*protogen.Message
-	for _, field := range m.Fields {
-		if getFieldJsonSchemaOptions(field).GetIgnore() {
-			continue
-		}
-		var target *protogen.Message
-		switch {
-		case field.Desc.IsMap():
-			target = mapValueMessage(field)
-		case field.Desc.Kind() == protoreflect.MessageKind:
-			target = field.Message
-		}
-		if target == nil {
-			continue
-		}
-		if _, freeForm := freeFormJSONType(target); freeForm {
-			continue
-		}
-		targets = append(targets, target)
-	}
-	return targets
-}
-
 func (a *cycleAnalyzer) strongConnect(m *protogen.Message) {
 	a.index[m] = a.next
 	a.lowlink[m] = a.next
@@ -87,7 +63,7 @@ func (a *cycleAnalyzer) strongConnect(m *protogen.Message) {
 	a.onStack[m] = true
 
 	selfEdge := false
-	for _, t := range a.edges(m) {
+	for _, t := range messageReferences(m) {
 		if t == m {
 			selfEdge = true
 		}

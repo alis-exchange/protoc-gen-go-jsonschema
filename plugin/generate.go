@@ -20,25 +20,30 @@ type Generator struct {
 //
 // The generation process:
 //  1. Checks file-level options to determine the default generation behavior
-//  2. Collects all messages that should generate schemas (respecting options)
+//  2. Collects all messages that should generate schemas (respecting options),
+//     plus any message defined here that another file in the request forced
 //  3. Analyzes reference cycles to decide each message's mode (inline vs $defs)
 //  4. Builds the schema model for each message (all schema decisions)
 //  5. Prints the models into the output file (all Go-syntax decisions)
 //
+// targets is the request-wide collection result (collectTargets).
 // Returns nil if no messages in the file require schema generation.
-func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File) (*protogen.GeneratedFile, error) {
+func (gr *Generator) generateFile(gen *protogen.Plugin, file *protogen.File, targets targetSet) (*protogen.GeneratedFile, error) {
 	// --- Determine Generation Scope ---
-	// Check file-level options to see if all messages should generate schemas by default.
-	// Individual messages can override this with their own options.
-	generateAll := false
-	if opts := getFileJsonSchemaOptions(file); opts != nil {
-		generateAll = opts.GetGenerate()
-	}
+	// Collect messages that should generate schemas, including their
+	// dependencies (cross-package messages and Google types included, so the
+	// reference graph is complete). The visited map prevents processing the
+	// same message twice.
+	visited := make(map[string]bool)
+	targetMessages := getMessagesWithForce(file.Messages, fileGeneratesAll(file), false, visited)
 
-	// Collect messages that should generate schemas, including their dependencies.
-	// The visited map prevents processing the same message twice.
-	// This includes cross-package messages to ensure the defs map is complete.
-	targetMessages := getMessagesWithForce(file.Messages, generateAll, false, make(map[string]bool))
+	// A message defined here that a sibling file forced — typically a
+	// `generate = false` dependency referenced from that file — generates
+	// here too, with its own dependencies: the sibling's _WithDefs call must
+	// resolve, and only this file can emit the function.
+	for _, forced := range forcedLocalMessages(file.Messages, targets, visited) {
+		targetMessages = append(targetMessages, getMessagesWithForce([]*protogen.Message{forced}, true, true, visited)...)
+	}
 
 	// --- Filter to only messages DEFINED in THIS proto file ---
 	//

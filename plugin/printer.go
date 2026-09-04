@@ -31,8 +31,9 @@ func (p *schemaPrinter) refCall(id *messageIdentity) string {
 // printMessageSchema emits the generated functions for one message: the
 // public JsonSchema() entry point (method for user types, standalone function
 // for Google types) and the _WithDefs composition helper. Messages in $defs
-// mode also get a private _build function holding the schema body, so the
-// definition and the root can be built as two independent trees.
+// mode also get an unexported _build function holding the schema body, so the
+// definition and the root can be built as two independent trees. The body
+// itself is identical in both modes; only the wrappers differ.
 func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 	id := m.id
 
@@ -53,7 +54,7 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 	p.g.P("defs := make(map[string]*jsonschema.Schema)")
 	if id.cyclic {
 		p.g.P(fmt.Sprintf("_ = %s(defs)", id.withDefsName()))
-		p.g.P(fmt.Sprintf("root := %s(defs, false)", id.buildName()))
+		p.g.P(fmt.Sprintf("root := %s(defs)", id.buildName()))
 		p.g.P("root.Defs = defs")
 		p.g.P("return root")
 	} else {
@@ -73,16 +74,19 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 		p.g.P(fmt.Sprintf("if _, ok := defs[\"%s\"]; ok {", id.defKey))
 		p.g.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", id.defKey))
 		p.g.P("}")
-		p.g.P(fmt.Sprintf("%s(defs, true)", id.buildName()))
+		p.g.P("// Reserve the key before building: references back to this message")
+		p.g.P("// (its own fields, or another message on the cycle) then resolve to the")
+		p.g.P("// $ref above instead of recursing forever.")
+		p.g.P(fmt.Sprintf("defs[\"%s\"] = nil", id.defKey))
+		p.g.P(fmt.Sprintf("defs[\"%s\"] = %s(defs)", id.defKey, id.buildName()))
 		p.g.P(fmt.Sprintf("return &jsonschema.Schema{Ref: \"#/$defs/%s\"}", id.defKey))
 		p.g.P("}")
 		p.g.P()
 
 		// --- Builder ---
-		p.g.P(fmt.Sprintf("// %s constructs the %s object schema. With register set, the", id.buildName(), id.protoName))
-		p.g.P("// schema is stored under defs before its fields are populated, so that")
-		p.g.P("// references back to it resolve to the registered definition.")
-		p.g.P(fmt.Sprintf("func %s(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {", id.buildName()))
+		p.g.P(fmt.Sprintf("// %s builds the %s object schema: the body shared by the", id.buildName(), id.protoName))
+		p.g.P("// $defs entry and the independent root that JsonSchema() returns.")
+		p.g.P(fmt.Sprintf("func %s(defs map[string]*jsonschema.Schema) *jsonschema.Schema {", id.buildName()))
 	}
 
 	p.printSchemaBody(m)
@@ -92,12 +96,10 @@ func (p *schemaPrinter) printMessageSchema(m *messageSchemaModel) {
 }
 
 // printSchemaBody emits the statements that build a message's object schema
-// into a local `schema` variable: the header literal, the $defs registration
-// for cyclic messages, the field properties, the root-level oneof
-// constraints, and the user-message oneof wrappers.
+// into a local `schema` variable: the header literal, the field properties,
+// the root-level oneof constraints, and the oneof wrappers. The body does not
+// depend on the message's mode.
 func (p *schemaPrinter) printSchemaBody(m *messageSchemaModel) {
-	id := m.id
-
 	// --- Schema Object ---
 	p.g.P("schema := &jsonschema.Schema{")
 	p.g.P(`Type: "object",`)
@@ -117,15 +119,6 @@ func (p *schemaPrinter) printSchemaBody(m *messageSchemaModel) {
 	}
 	p.g.P("}")
 	p.g.P()
-
-	if id.cyclic {
-		p.g.P(`// Register schema BEFORE processing fields to handle self-references.`)
-		p.g.P(`// This prevents infinite recursion when a message contains itself.`)
-		p.g.P("if register {")
-		p.g.P(fmt.Sprintf("defs[\"%s\"] = schema", id.defKey))
-		p.g.P("}")
-		p.g.P()
-	}
 
 	// --- Field Properties ---
 	for _, prop := range m.fields {

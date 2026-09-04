@@ -3,6 +3,7 @@ syntax = "proto3";
 package users.v1;
 
 import "alis/open/options/v1/options.proto";
+import "users/v1/common.proto";
 
 option go_package = "example.com/users/v1;usersv1";
 
@@ -79,4 +80,30 @@ message DependencyMessage {
 
   string value = 1;
   int32 number = 2;
+}
+
+// References a generate=false message defined in another file of the same
+// package: the dependency is forced in its own file so this call resolves.
+message ParentWithCrossFileDependency {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  CrossFileDependency dependency = 1;
+}
+
+// Reaches IgnoredDependency only through an ignored field. An ignored field is
+// not a reference, so nothing is forced.
+message ParentWithIgnoredDependency {
+  option (alis.open.options.v1.message).json_schema.generate = true;
+
+  string name = 1;
+
+  // Left out of the schema entirely.
+  IgnoredDependency hidden = 2 [(alis.open.options.v1.field).json_schema = {ignore: true}];
+}
+
+// Reachable only through an ignored field: generates nothing.
+message IgnoredDependency {
+  option (alis.open.options.v1.message).json_schema.generate = false;
+
+  string value = 1;
 }

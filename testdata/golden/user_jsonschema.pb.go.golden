@@ -3,7 +3,7 @@
 // Source: users/v1/user.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-03 15:55:05 UTC
+// Generated on: 2026-09-04 07:07:08 UTC
 
 package usersv1
 
@@ -134,7 +134,7 @@ func Address_AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Sche
 func (x *AddressDetails) JsonSchema() *jsonschema.Schema {
 	defs := make(map[string]*jsonschema.Schema)
 	_ = AddressDetails_JsonSchema_WithDefs(defs)
-	root := AddressDetails_JsonSchema_build(defs, false)
+	root := addressDetails_JsonSchema_build(defs)
 	root.Defs = defs
 	return root
 }
@@ -143,14 +143,17 @@ func AddressDetails_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 	if _, ok := defs["users.v1.AddressDetails"]; ok {
 		return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
 	}
-	AddressDetails_JsonSchema_build(defs, true)
+	// Reserve the key before building: references back to this message
+	// (its own fields, or another message on the cycle) then resolve to the
+	// $ref above instead of recursing forever.
+	defs["users.v1.AddressDetails"] = nil
+	defs["users.v1.AddressDetails"] = addressDetails_JsonSchema_build(defs)
 	return &jsonschema.Schema{Ref: "#/$defs/users.v1.AddressDetails"}
 }
 
-// AddressDetails_JsonSchema_build constructs the AddressDetails object schema. With register set, the
-// schema is stored under defs before its fields are populated, so that
-// references back to it resolve to the registered definition.
-func AddressDetails_JsonSchema_build(defs map[string]*jsonschema.Schema, register bool) *jsonschema.Schema {
+// addressDetails_JsonSchema_build builds the AddressDetails object schema: the body shared by the
+// $defs entry and the independent root that JsonSchema() returns.
+func addressDetails_JsonSchema_build(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
 	schema := &jsonschema.Schema{
 		Type:        "object",
 		Description: "AddressDetails represents detailed address information.",
@@ -163,12 +166,6 @@ func AddressDetails_JsonSchema_build(defs map[string]*jsonschema.Schema, registe
 			"country",
 			"nested_address_details",
 		},
-	}
-
-	// Register schema BEFORE processing fields to handle self-references.
-	// This prevents infinite recursion when a message contains itself.
-	if register {
-		defs["users.v1.AddressDetails"] = schema
 	}
 
 	schema.Properties["street"] = &jsonschema.Schema{
@@ -1751,6 +1748,7 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 			"page_size",
 			"ratio",
 			"shipping_address",
+			"billing_address",
 		},
 	}
 
@@ -1800,6 +1798,10 @@ func ConstraintDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jso
 	schema.Properties["shipping_address"] = Address_JsonSchema_WithDefs(defs)
 	schema.Properties["shipping_address"].Title = ""
 	schema.Properties["shipping_address"].Description = "Shipping address for deliveries"
+
+	schema.Properties["billing_address"] = Address_JsonSchema_WithDefs(defs)
+	schema.Properties["billing_address"].Title = "Billing address"
+	schema.Properties["billing_address"].Description = ""
 
 	return schema
 }
