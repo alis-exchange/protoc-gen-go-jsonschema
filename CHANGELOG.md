@@ -1,4 +1,25 @@
-# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.2.0...v) (2026-08-14)
+# [](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.3.0...v) (2026-09-04)
+
+# [0.3.0](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.2.0...v0.3.0) (2026-09-04)
+
+
+* feat!: inline schemas by default, reserve $defs for reference cycles ([c2d2b77](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/c2d2b7731c11c77e1a60f700d22524c02cc7e647)), closes [#2384](https://github.com/alis-exchange/protoc-gen-go-jsonschema/issues/2384) [#1175](https://github.com/alis-exchange/protoc-gen-go-jsonschema/issues/1175) [#3238](https://github.com/alis-exchange/protoc-gen-go-jsonschema/issues/3238)
+
+
+### Bug Fixes
+
+* pre-release follow-ups for the hybrid schema model ([0946bcd](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/0946bcdc5daea894f4f067f3dcb79ba42815d863))
+* review follow-ups for the hybrid schema model ([3738cef](https://github.com/alis-exchange/protoc-gen-go-jsonschema/commit/3738cef24f49f55bc90ceed221bdcbb0edb53a7b))
+
+
+### BREAKING CHANGES
+
+* the schema shape changes for every message. Roots are
+objects instead of $ref wrappers, non-recursive messages carry no $defs,
+Struct fields are free-form, and code that read schema.Defs[...] must read
+the root. Fixtures: recursive.proto gains mutual and map-value cycles;
+users/v1 gains a Google flat-oneof field and Value/Struct container
+fields. Goldens and docs regenerated.
 
 # [0.2.0](https://github.com/alis-exchange/protoc-gen-go-jsonschema/compare/v0.1.10...v0.2.0) (2026-08-14)
 
