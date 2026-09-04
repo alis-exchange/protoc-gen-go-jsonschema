@@ -148,3 +148,152 @@ message RealOneofDemo {
     string by_name = 2;
   }
 }
+
+// AnnotationShowcase covers the annotation-style options on singular fields —
+// title/description overrides, format, content encoding and media type — plus
+// ignore and a lone exclusive upper bound. The comments here are deliberately
+// replaced by the options.
+message AnnotationShowcase {
+  // Comment that the title and description options replace.
+  string display_name = 1 [(alis.open.options.v1.field).json_schema = {
+    title: "Display name",
+    description: "Shown in the UI; overrides the comment."
+  }];
+
+  // Contact email address.
+  string email = 2 [(alis.open.options.v1.field).json_schema = {
+    format: "email",
+    min_length: 3,
+    max_length: 254
+  }];
+
+  // JSON document carried as a base64 string.
+  string payload = 3 [(alis.open.options.v1.field).json_schema = {
+    content_encoding: "base64",
+    content_media_type: "application/json"
+  }];
+
+  // Raw bytes whose default base64 encoding is overridden.
+  bytes digest = 4 [(alis.open.options.v1.field).json_schema = {
+    content_encoding: "base16",
+    content_media_type: "application/octet-stream"
+  }];
+
+  // Internal bookkeeping: excluded from the schema and from required.
+  string internal_note = 5 [(alis.open.options.v1.field).json_schema = {
+    ignore: true
+  }];
+
+  // Strictly below 1 (exclusive_minimum is covered by MobileMoney).
+  double ratio = 6 [(alis.open.options.v1.field).json_schema = {
+    maximum: 1,
+    exclusive_maximum: true
+  }];
+}
+
+// ElementShowcase covers options on repeated and map fields: value
+// constraints land on items / additionalProperties, container constraints and
+// annotations on the array or object itself.
+message ElementShowcase {
+  // One to three distinct lowercase slugs.
+  repeated string slugs = 1 [(alis.open.options.v1.field).json_schema = {
+    pattern: "^[a-z][a-z0-9-]*$",
+    min_length: 1,
+    max_length: 16,
+    min_items: 1,
+    max_items: 3,
+    unique_items: true
+  }];
+
+  // Per-key quotas: each value in [1, 100] and a multiple of 5; one to four
+  // keys.
+  map<string, int64> quotas = 2 [(alis.open.options.v1.field).json_schema = {
+    minimum: 1,
+    maximum: 100,
+    multiple_of: 5,
+    min_properties: 1,
+    max_properties: 4
+  }];
+
+  // Contact emails keyed by role: format applies to each value, title to the
+  // map.
+  map<string, string> contacts = 3 [(alis.open.options.v1.field).json_schema = {
+    format: "email",
+    title: "Contacts by role"
+  }];
+
+  // Per-region status narrowed to a subset of the enum; the map itself is
+  // read-only.
+  map<string, KeywordShowcase.Status> region_status = 4 [(alis.open.options.v1.field).json_schema = {
+    enum_int: [1, 2],
+    read_only: true
+  }];
+
+  // Attachments: each element's encoding overrides the base64 default; the
+  // array is write-only.
+  repeated bytes attachments = 5 [(alis.open.options.v1.field).json_schema = {
+    content_encoding: "base16",
+    content_media_type: "image/png",
+    write_only: true
+  }];
+
+  // Ratios in (0, 1]: the exclusive lower bound applies to each element.
+  repeated double ratios = 6 [(alis.open.options.v1.field).json_schema = {
+    minimum: 0,
+    exclusive_minimum: true,
+    maximum: 1
+  }];
+}
+
+// DecorationShowcase covers options on message-typed fields and on oneof
+// variants: a message field decorates the schema its reference returns, and
+// variant options land inside the PascalCase wrapper.
+message DecorationShowcase {
+  // Card decorated with a title (replacing Card's own title and description
+  // on the inline copy), a property bound and an annotation.
+  Card primary_card = 1 [(alis.open.options.v1.field).json_schema = {
+    title: "Primary card",
+    min_properties: 1,
+    read_only: true
+  }];
+
+  oneof lookup {
+    // Numeric id: bound, default and examples on a scalar variant.
+    int64 by_id = 2 [(alis.open.options.v1.field).json_schema = {
+      minimum: 1,
+      default_int: 1,
+      examples_int: [1, 42]
+    }];
+    // Slug: pattern and title on a scalar variant.
+    string by_slug = 3 [(alis.open.options.v1.field).json_schema = {
+      pattern: "^[a-z-]+$",
+      title: "Slug"
+    }];
+    // Bank details: description and deprecated decorate the inline copy.
+    BankTransfer by_bank = 4 [(alis.open.options.v1.field).json_schema = {
+      description: "Deprecated lookup by settlement details.",
+      deprecated: true
+    }];
+    // Excluded from the wrapper entirely.
+    string by_legacy_key = 5 [(alis.open.options.v1.field).json_schema = {
+      ignore: true
+    }];
+  }
+}
+
+// SubsetOneofDemo declares a required group over a subset of a proto oneof's
+// members: setting the uncovered variant is a legal proto value that fails
+// the schema.
+message SubsetOneofDemo {
+  option (alis.open.options.v1.message).json_schema.oneof = {
+    fields: ["by_email", "by_phone"],
+    required: true
+  };
+
+  oneof contact {
+    string by_email = 1;
+    string by_phone = 2;
+    // Not covered by the group.
+    string by_pager = 3;
+  }
+}

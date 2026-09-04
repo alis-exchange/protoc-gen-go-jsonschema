@@ -639,6 +639,16 @@ message KeywordShowcase {
 
 ---
 
+The same fixture holds four more showcase messages that between them use
+every remaining option in every position — `AnnotationShowcase` (title and
+description overrides, `format`, `content_encoding`, `content_media_type`,
+`ignore`, a lone `exclusive_maximum`), `ElementShowcase` (every value and
+container constraint on repeated and map fields), `DecorationShowcase`
+(options on a message-typed field and on scalar, message and ignored oneof
+variants) and `SubsetOneofDemo` (a required group over part of a proto
+oneof). Their accept/reject checks run against the generated code in
+`plugin_test/options_demo_test.go`.
+
 ## Generation-time errors
 
 Invalid option combinations **abort generation with an error naming the

@@ -3,7 +3,7 @@
 // Source: options_demo/v1/options_demo.proto
 // Plugin version: test
 //
-// Generated on: 2026-09-04 07:07:08 UTC
+// Generated on: 2026-09-04 07:36:33 UTC
 
 package optionsdemov1
 
@@ -364,6 +364,318 @@ func RealOneofDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *json
 							},
 						},
 						Required: []string{"ByName"},
+					},
+				},
+			},
+		},
+	}
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the AnnotationShowcase message.
+func (x *AnnotationShowcase) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := AnnotationShowcase_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func AnnotationShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "AnnotationShowcase covers the annotation-style options on singular fields —\n title/description overrides, format, content encoding and media type — plus\n ignore and a lone exclusive upper bound. The comments here are deliberately\n replaced by the options.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"display_name",
+			"email",
+			"payload",
+			"digest",
+			"ratio",
+		},
+	}
+
+	schema.Properties["display_name"] = &jsonschema.Schema{
+		Type:        "string",
+		Title:       "Display name",
+		Description: "Shown in the UI; overrides the comment.",
+	}
+
+	schema.Properties["email"] = &jsonschema.Schema{
+		Type:        "string",
+		Description: "Contact email address.",
+		Format:      "email",
+		MinLength:   &[]int{3}[0],
+		MaxLength:   &[]int{254}[0],
+	}
+
+	schema.Properties["payload"] = &jsonschema.Schema{
+		Type:             "string",
+		Description:      "JSON document carried as a base64 string.",
+		ContentEncoding:  "base64",
+		ContentMediaType: "application/json",
+	}
+
+	schema.Properties["digest"] = &jsonschema.Schema{
+		Type:             "string",
+		Description:      "Raw bytes whose default base64 encoding is overridden.",
+		ContentEncoding:  "base16",
+		ContentMediaType: "application/octet-stream",
+	}
+
+	schema.Properties["ratio"] = &jsonschema.Schema{
+		Type:             "number",
+		Description:      "Strictly below 1 (exclusive_minimum is covered by MobileMoney).",
+		ExclusiveMaximum: &[]float64{1}[0],
+	}
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the ElementShowcase message.
+func (x *ElementShowcase) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := ElementShowcase_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func ElementShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "ElementShowcase covers options on repeated and map fields: value\n constraints land on items / additionalProperties, container constraints and\n annotations on the array or object itself.",
+		Properties:  make(map[string]*jsonschema.Schema),
+	}
+
+	schema.Properties["slugs"] = &jsonschema.Schema{
+		Type:        "array",
+		Description: "One to three distinct lowercase slugs.",
+		MinItems:    &[]int{1}[0],
+		MaxItems:    &[]int{3}[0],
+		UniqueItems: true,
+		Items: &jsonschema.Schema{
+			Type:      "string",
+			Pattern:   "^[a-z][a-z0-9-]*$",
+			MinLength: &[]int{1}[0],
+			MaxLength: &[]int{16}[0],
+		},
+	}
+
+	schema.Properties["quotas"] = &jsonschema.Schema{
+		Type:          "object",
+		Description:   "Per-key quotas: each value in [1, 100] and a multiple of 5; one to four\n keys.",
+		MinProperties: &[]int{1}[0],
+		MaxProperties: &[]int{4}[0],
+		AdditionalProperties: &jsonschema.Schema{
+			Type:       "integer",
+			Minimum:    &[]float64{1}[0],
+			Maximum:    &[]float64{100}[0],
+			MultipleOf: &[]float64{5}[0],
+		},
+	}
+
+	schema.Properties["contacts"] = &jsonschema.Schema{
+		Type:        "object",
+		Title:       "Contacts by role",
+		Description: "Contact emails keyed by role: format applies to each value, title to the\n map.",
+		AdditionalProperties: &jsonschema.Schema{
+			Type:   "string",
+			Format: "email",
+		},
+	}
+
+	schema.Properties["region_status"] = &jsonschema.Schema{
+		Type:        "object",
+		Description: "Per-region status narrowed to a subset of the enum; the map itself is\n read-only.",
+		ReadOnly:    true,
+		AdditionalProperties: &jsonschema.Schema{
+			Type: "integer",
+			Enum: []any{
+				1,
+				2,
+			},
+		},
+	}
+
+	schema.Properties["attachments"] = &jsonschema.Schema{
+		Type:        "array",
+		Description: "Attachments: each element's encoding overrides the base64 default; the\n array is write-only.",
+		WriteOnly:   true,
+		Items: &jsonschema.Schema{
+			Type:             "string",
+			ContentEncoding:  "base16",
+			ContentMediaType: "image/png",
+		},
+	}
+
+	schema.Properties["ratios"] = &jsonschema.Schema{
+		Type:        "array",
+		Description: "Ratios in (0, 1]: the exclusive lower bound applies to each element.",
+		Items: &jsonschema.Schema{
+			Type:             "number",
+			ExclusiveMinimum: &[]float64{0}[0],
+			Maximum:          &[]float64{1}[0],
+		},
+	}
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the DecorationShowcase message.
+func (x *DecorationShowcase) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := DecorationShowcase_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func DecorationShowcase_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "DecorationShowcase covers options on message-typed fields and on oneof\n variants: a message field decorates the schema its reference returns, and\n variant options land inside the PascalCase wrapper.",
+		Properties:  make(map[string]*jsonschema.Schema),
+		Required: []string{
+			"primary_card",
+		},
+	}
+
+	schema.Properties["primary_card"] = Card_JsonSchema_WithDefs(defs)
+	schema.Properties["primary_card"].Title = "Primary card"
+	schema.Properties["primary_card"].Description = "Card decorated with a title (replacing Card's own title and description\n on the inline copy), a property bound and an annotation."
+	schema.Properties["primary_card"].MinProperties = &[]int{1}[0]
+	schema.Properties["primary_card"].ReadOnly = true
+
+	schema.Properties["Lookup"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"ById": &jsonschema.Schema{
+								Type:        "integer",
+								Description: "Numeric id: bound, default and examples on a scalar variant.",
+								Minimum:     &[]float64{1}[0],
+								Default:     json.RawMessage("1"),
+								Examples: []any{
+									1,
+									42,
+								},
+							},
+						},
+						Required: []string{"ById"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"BySlug": &jsonschema.Schema{
+								Type:        "string",
+								Title:       "Slug",
+								Description: "Slug: pattern and title on a scalar variant.",
+								Pattern:     "^[a-z-]+$",
+							},
+						},
+						Required: []string{"BySlug"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"ByBank": func() *jsonschema.Schema {
+								s := BankTransfer_JsonSchema_WithDefs(defs)
+								s.Title = ""
+								s.Description = "Deprecated lookup by settlement details."
+								s.Deprecated = true
+								return s
+							}(),
+						},
+						Required: []string{"ByBank"},
+					},
+				},
+			},
+		},
+	}
+
+	return schema
+}
+
+// JsonSchema returns the JSON schema for the SubsetOneofDemo message.
+func (x *SubsetOneofDemo) JsonSchema() *jsonschema.Schema {
+	defs := make(map[string]*jsonschema.Schema)
+	root := SubsetOneofDemo_JsonSchema_WithDefs(defs)
+	if len(defs) > 0 {
+		root.Defs = defs
+	}
+	return root
+}
+
+func SubsetOneofDemo_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema {
+	schema := &jsonschema.Schema{
+		Type:        "object",
+		Description: "SubsetOneofDemo declares a required group over a subset of a proto oneof's\n members: setting the uncovered variant is a legal proto value that fails\n the schema.",
+		Properties:  make(map[string]*jsonschema.Schema),
+	}
+
+	schema.OneOf = []*jsonschema.Schema{
+		{
+			Required: []string{"Contact"},
+			Properties: map[string]*jsonschema.Schema{
+				"Contact": {
+					Type:     "object",
+					Required: []string{"ByEmail"},
+				},
+			},
+		},
+		{
+			Required: []string{"Contact"},
+			Properties: map[string]*jsonschema.Schema{
+				"Contact": {
+					Type:     "object",
+					Required: []string{"ByPhone"},
+				},
+			},
+		},
+	}
+	schema.Properties["Contact"] = &jsonschema.Schema{
+		OneOf: []*jsonschema.Schema{
+			{Type: "null"},
+			{
+				Type: "object",
+				OneOf: []*jsonschema.Schema{
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"ByEmail": &jsonschema.Schema{
+								Type: "string",
+							},
+						},
+						Required: []string{"ByEmail"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"ByPhone": &jsonschema.Schema{
+								Type: "string",
+							},
+						},
+						Required: []string{"ByPhone"},
+					},
+					{
+						Type: "object",
+						Properties: map[string]*jsonschema.Schema{
+							"ByPager": &jsonschema.Schema{
+								Type:        "string",
+								Description: "Not covered by the group.",
+							},
+						},
+						Required: []string{"ByPager"},
 					},
 				},
 			},

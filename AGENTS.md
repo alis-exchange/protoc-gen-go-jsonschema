@@ -511,7 +511,12 @@ tools and runs the full suite on every PR and push to main.
   references the cyclic `AddressDetails` from a sibling file; ConstraintDemo
   pins the title-only pair rule), `recursive/v1` (self, mutual and map-value
   cycles), `xref/v1` (cross-package reference into a cyclic message),
-  `legacy/v1` (proto2 groups), `options_demo/v1`, `no_options/v1`.
+  `legacy/v1` (proto2 groups), `options_demo/v1` (every field option in every
+  position: KeywordShowcase for typed variants, AnnotationShowcase,
+  ElementShowcase, DecorationShowcase, SubsetOneofDemo, plus the declared
+  oneof groups; each has accept/reject runtime checks in
+  `plugin_test/options_demo_test.go`), `no_options/v1`. Adding an option
+  means adding it to a showcase message **and** a runtime check there.
 
 ```shell
 go test ./...                      # everything (self-skipping)

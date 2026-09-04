@@ -6,6 +6,9 @@ import "alis/open/options/v1/options.proto";
 import "users/v1/common.proto";
 
 option go_package = "example.com/users/v1;usersv1";
+// An explicit file-level false behaves like the unset default: only messages
+// that opt in (or are forced) generate.
+option (alis.open.options.v1.file).json_schema.generate = false;
 
 // Parent message with generate=true
 message ParentWithNested {
