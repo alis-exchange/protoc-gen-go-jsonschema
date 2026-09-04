@@ -54,7 +54,11 @@ message User {
 
 **Dependencies are always generated.** When a message generates, its
 message-typed field dependencies and nested messages generate too — even with
-an explicit `generate = false` — so every reference resolves.
+an explicit `generate = false`, and even when the dependency is defined in a
+sibling file of the same protoc run (it generates in its own file) — so every
+reference resolves. Fields marked `ignore: true` are not references and force
+nothing. A dependency in *another package* must be targeted in that package's
+own generation.
 
 ### `oneof` — v0.2.0+
 

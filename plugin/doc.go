@@ -25,16 +25,18 @@
 //
 // # Generated Code Structure
 //
-// For each message, two functions are generated (three for messages on a cycle):
+// For each message, two functions are generated:
 //   - JsonSchema() - Public method that returns a complete schema whose root is
 //     always a literal object (or standalone function for Google types:
 //     google_protobuf_Timestamp_JsonSchema())
 //   - <MessageName>_JsonSchema_WithDefs(defs) - Composition helper: returns a fresh
 //     inline object schema, or — for messages on a cycle — registers the definition
 //     under defs and returns a $ref to it
-//   - <MessageName>_JsonSchema_build(defs, register) - Cyclic messages only: the
-//     schema body, run once to register the definition and once to build an
-//     independent root (jsonschema-go resolution requires a tree)
+//
+// Messages on a cycle also get an unexported <messageName>_JsonSchema_build(defs)
+// helper holding the schema body, run once to fill the $defs entry and once to
+// build an independent root (jsonschema-go resolution requires a tree). It is
+// not part of the generated API.
 //
 // # Type Mapping
 //

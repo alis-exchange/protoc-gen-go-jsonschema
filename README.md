@@ -236,7 +236,7 @@ All Google types (`google.*` packages including `google.protobuf.*`, `google.typ
 
 The exceptions are `google.protobuf.Struct`, `Value` and `ListValue`: their Go types implement `json.Marshaler` with plain-JSON semantics, so they map to free-form schemas — `{"type": "object"}`, `{"type": "array"}`, and for `Value` an explicit `type` list of every JSON type.
 
-Since Google types are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness:
+Since Google types are imported types, the plugin generates **standalone functions** (not methods) with file-prefixed names to ensure uniqueness (the prefix is the proto file's base name, with characters that cannot appear in a Go identifier replaced by `_`):
 
 ```go
 // Generated for Google types (standalone functions, not methods)

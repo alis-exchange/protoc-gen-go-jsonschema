@@ -87,6 +87,10 @@ the root's `$defs`, keyed by full proto name, and every reference to them is a
 The root is always a literal `type: "object"` with `properties`, never a
 `$ref` (see [Generated code](generated-code.md)).
 
+proto2 `group` fields are message fields: protoc-gen-go emits a nested message
+type for the group and marshals it like any other message, and the schema
+treats the field the same way (inlined, or `$ref` when on a cycle).
+
 ## Repeated fields
 
 `repeated T` becomes an array whose `items` carry T's schema:
@@ -147,7 +151,9 @@ required unless marked `optional`.
 
 Google types (`google.protobuf.*`, `google.type.*`, `google.iam.*`, ...) are
 generated as standalone functions in the referencing file (methods can't be
-added to imported types), with a file-name prefix keeping names unique:
+added to imported types), with a file-name prefix keeping names unique
+(`my-d.proto` → `my_d_…`: characters that cannot appear in a Go identifier
+become `_`):
 
 ```go
 func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema

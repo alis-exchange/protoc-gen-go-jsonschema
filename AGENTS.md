@@ -38,9 +38,10 @@ For each targeted proto message, the plugin generates:
      registers nothing.
    - **`$defs`** (messages on a reference cycle): registers the definition
      under `defs` and returns a `$ref` to it.
-3. **`<Message>_JsonSchema_build(defs, register)`** - only for `$defs`-mode
-   messages: the schema body, run once to register the definition and once to
-   build an independent root (jsonschema-go resolution requires a tree).
+3. **`<message>_JsonSchema_build(defs)`** - only for `$defs`-mode messages,
+   and **unexported**: the schema body, run once to fill the `$defs` entry
+   and once to build an independent root (jsonschema-go resolution requires a
+   tree). Not part of the generated API.
 
 ```go
 // Inline mode (acyclic message): no $ref, no $defs unless a cyclic descendant exists.
@@ -80,11 +81,16 @@ vocabulary below is used consistently in code and docs (deep-module terms: a
 *module* is an interface plus an implementation; a module is *deep* when a small
 interface hides a lot of behaviour):
 
+- **Reference walker** (`messageReferences` in `plugin/model.go`) — the one
+  definition of "message M refers to message T": every non-ignored field whose
+  value is a message (singular, repeated, map value, oneof variant, proto2
+  group), free-form well-known types excluded. Both the cycle analysis and the
+  collector use it, so an ignored field is neither an edge nor a forced
+  dependency.
 - **Cycle analysis** (`analyzeCycles` in `plugin/analyze.go`) — Tarjan SCC
-  over the "message references message" graph (singular, repeated, map-value
-  and oneof-variant fields; nesting is not an edge; free-form well-known types
-  are not nodes). Produces the `cycleSet` that decides each message's mode:
-  inline (acyclic) or `$defs` (on a cycle).
+  over the graph `messageReferences` defines (nesting is not an edge;
+  free-form well-known types are not nodes). Produces the `cycleSet` that
+  decides each message's mode: inline (acyclic) or `$defs` (on a cycle).
 - **Schema model** (`plugin/model.go`) — the deep module. `buildMessageSchema`
   turns one message plus its options into a complete symbolic model
   (`messageSchemaModel`): every keyword, required-field decision, oneof shape,
@@ -93,10 +99,11 @@ interface hides a lot of behaviour):
   `schemaContext` (file prefix + cycle set) is threaded through the builders.
 - **Message identity** (`messageIdentity` in `plugin/model.go`) — answers every
   naming and strategy question about a message exactly once: its `$defs` key,
-  generated function base name, method-vs-standalone-function, and
-  inline-vs-`$defs` mode (`cyclic`). The
-  `isGoogleType` and `freeFormJSONType` predicates are consulted only here and
-  in the field builders.
+  generated function base name (and the unexported `_build` name),
+  method-vs-standalone-function, and inline-vs-`$defs` mode (`cyclic`).
+  `isGoogleType` is consulted here and in `generateFile`'s local/Google split;
+  `freeFormJSONType` in `messageReferences` (free-form types never enter the
+  graph) and in the field builders (their fields inline as untyped nodes).
 - **Value shape** (`buildElement` in `plugin/model.go`) — the single answer to
   "what is the JSON shape of one proto value", shared by array elements and map
   values (message → reference to the target's schema, inline or `$ref` as
@@ -107,9 +114,13 @@ interface hides a lot of behaviour):
   (`QualifiedGoIdent`), and knows both Go syntactic contexts (statement and
   composite literal). It makes no schema decisions.
 - **Collection** (`plugin/collect.go`) — `getMessagesWithForce` walks messages,
-  applying generate options and the force logic (below).
-- **Orchestration** (`plugin/generate.go`) — `Generator.generateFile` runs
-  collect → analyze → build → print per proto file.
+  applying generate options and the force logic (below). `collectTargets`
+  runs it over every file in the request first, so a file can generate a
+  message it defines that a sibling file forced (`forcedLocalMessages`).
+- **Orchestration** (`plugin/plugin.go`, `plugin/generate.go`) —
+  `plugin.Generate` collects request-wide targets, then
+  `Generator.generateFile` runs collect → analyze → build → print per proto
+  file.
 - **Options extraction** (`plugin/options.go`) — reads the alis proto
   extensions at file/message/field level.
 
@@ -119,10 +130,12 @@ protoc invokes plugin
          ▼
    plugin.Generate()                     plugin/plugin.go
          │
+         ├── collectTargets()         ──► request-wide target set (cross-file force)
          ▼
  Generator.generateFile()                plugin/generate.go
          │
-         ├── getMessagesWithForce()  ──► collect target messages (+ forced deps)
+         ├── getMessagesWithForce()  ──► collect target messages (+ forced deps,
+         │                               + forcedLocalMessages from siblings)
          │
          ├── analyzeCycles()         ──► cycleSet: which messages sit on a cycle
          │
@@ -186,6 +199,7 @@ An **unsupported field kind aborts generation with an error** naming the field
 | Proto Type   | JSON Schema Type | Structure                                          |
 | ------------ | ---------------- | -------------------------------------------------- |
 | `message`    | `"object"`       | Inline object schema; `$ref` into `$defs` only for messages on a cycle |
+| `group` (proto2) | `"object"`   | Same as `message` — protoc-gen-go emits a nested message type; `isMessageField` covers both kinds. Editions files are rejected by protoc (the plugin declares no editions support) |
 | `repeated T` | `"array"`        | `items` contains element schema                    |
 | `map<K, V>`  | `"object"`       | `additionalProperties` contains value schema       |
 | `oneof`      | `null` \| `"object"` | Nested PascalCase wrapper (all messages, Google types included) |
@@ -313,7 +327,7 @@ func user_google_protobuf_Timestamp_JsonSchema() *jsonschema.Schema { ... }
 func user_google_protobuf_Timestamp_JsonSchema_WithDefs(defs map[string]*jsonschema.Schema) *jsonschema.Schema { ... }
 ```
 
-The prefix is derived from the proto file name (`users/v1/admin.proto` → `admin`). All naming lives in `messageIdentity` / `googleTypeFunctionName` / `fileNamePrefix` (`plugin/model.go`).
+The prefix is derived from the proto file name (`users/v1/admin.proto` → `admin`), sanitised so it can start a Go identifier (`my-d.proto` → `my_d`, `2fa.proto` → `_2fa`; `prefixFromPath`). All naming lives in `messageIdentity` / `googleTypeFunctionName` / `fileNamePrefix` (`plugin/model.go`).
 
 ---
 
@@ -344,9 +358,13 @@ as `oneof` below) does **not** change whether the message generates.
 `generate = true`, its **field dependencies** and **nested messages** are
 **forced to generate** even with explicit `generate = false`, so every
 `_WithDefs` call resolves at Go compile time. Implemented in
-`getMessagesWithForce()` (`plugin/collect.go`); map fields force their value
-message (`mapValueMessage`, `plugin/model.go`); free-form well-known types are
-never collected.
+`getMessagesWithForce()` (`plugin/collect.go`) over `messageReferences`: map
+fields force their value message, ignored fields force nothing, free-form
+well-known types are never collected. The force crosses files: a dependency
+defined in a sibling file of the same protoc run generates in that file
+(`collectTargets` + `forcedLocalMessages`). It cannot cross packages — a
+`generate = false` message referenced from another package must be targeted
+in its own package (documented limitation).
 
 ### Message-Level Oneof Groups (`json_schema.oneof`)
 
@@ -433,7 +451,10 @@ Application rules (all decided in `plugin/model.go`):
   enums → `_int`; float/double → `_number`; bool → `default_bool`);
   `default_*`/`examples_*` only on singular scalar fields; `multiple_of` > 0
   and numeric-only; `enum_int` on a proto enum must be a subset of its
-  declared values and **replaces** the auto-emitted full value list.
+  declared values and **replaces** the auto-emitted full value list; every
+  numeric option must be **finite** (protoc accepts `inf`/`-inf`/`nan`
+  literals, which have no JSON form and would print as Go identifiers that
+  do not compile — checked first, since NaN passes every range comparison).
 - `Default` is emitted as `json.RawMessage` (the typed value marshaled at
   generation time); `Enum`/`Examples` as typed `[]any` literals.
 
@@ -447,7 +468,9 @@ Application rules (all decided in `plugin/model.go`):
 plugin/model_test.go        In-package model tests (no protoc needed; uses
                             testdata/descriptors/user.pb)
 plugin/analyze_test.go      In-package cycle-analysis tests (fixture + dynamic
-                            descriptors: self, mutual, map-value, diamond)
+                            descriptors: self, mutual, map-value, diamond,
+                            proto2 group) and the dynamic-descriptor helpers
+                            (dynFileCustom: chosen path and syntax)
 plugin_test/suite.go        PluginTestSuite: descriptor regeneration (protoc)
                             with checked-in fallback
 plugin_test/testutil.go     Shared harness: protoc runner, proto discovery,
@@ -456,7 +479,9 @@ plugin_test/testutil.go     Shared harness: protoc runner, proto discovery,
 plugin_test/plugin_test.go  Generate-level output tests
 plugin_test/functions_test.go  Generated-shape pins (oneofs, decorated references)
 plugin_test/integration_test.go Golden auto-discovery + compile-and-run tests
-plugin_test/recursive_mcp_test.go Recursive types + MCP AddTool smoke test
+plugin_test/recursive_mcp_test.go Recursive types, cross-package reference
+                            (xref/v1) + MCP AddTool smoke test
+plugin_test/legacy_test.go  proto2 groups compile-and-run test
 ```
 
 There is **no build tag**: `go test ./...` runs everything. Tests needing
@@ -479,7 +504,14 @@ tools and runs the full suite on every PR and push to main.
   wins, keeping output identical on every protoc version. No machine-specific
   paths.
 - `testdata/descriptors/user.pb` is checked in as the no-protoc fallback for
-  the main suite and the in-package model tests.
+  the main suite and the in-package model tests. Regenerate it after editing
+  any users/v1 proto (any suite run with protoc installed does).
+- Fixture roles: `users/v1` (main; force.proto pins force logic incl. the
+  cross-file `CrossFileDependency` and the ignored-field case; admin.proto
+  references the cyclic `AddressDetails` from a sibling file; ConstraintDemo
+  pins the title-only pair rule), `recursive/v1` (self, mutual and map-value
+  cycles), `xref/v1` (cross-package reference into a cyclic message),
+  `legacy/v1` (proto2 groups), `options_demo/v1`, `no_options/v1`.
 
 ```shell
 go test ./...                      # everything (self-skipping)
@@ -493,7 +525,9 @@ go test -short ./...               # skip compile-and-run integration tests
 Compile-and-run tests write generated code into a temp Go module, `go mod
 tidy`, and run embedded tests there. Shared validation helpers
 (`ValidateSchema`, `collectRefs`, ...) come from one source —
-`schemaTestHelpersSource()` in `plugin_test/testutil.go`. Temp modules that
+`schemaTestHelpersSource()` in `plugin_test/testutil.go`, written with
+`writeSchemaTestHelpers` — never an embedded copy, so every temp module
+enforces the same root-shape and `$ref` rules. Temp modules that
 build real `.pb.go` files need the alis Go registry; `alisModuleEnv()`
 provides it (proxy.golang.org first — the alis registry answers 401, not 404,
 for modules it does not host, and `go` only falls through on 404/410; the alis
@@ -526,21 +560,27 @@ protoc --plugin=protoc-gen-go-jsonschema=./protoc-gen-go-jsonschema \
 ### Circular References and Recursive Types
 
 Only messages on a reference cycle use `$defs` (decided by `analyzeCycles`).
-For those: (1) `_build(defs, true)` registers the schema in `defs` **before**
-its fields are populated, (2) `_WithDefs` returns early with a `$ref` when the
-key exists, and (3) `JsonSchema()` builds the root a second time with
-`_build(defs, false)`: an independent tree whose self-references resolve into
-`$defs`. Never share nodes between the root and a definition —
-`jsonschema-go`'s `Resolve` (called by `mcp.AddTool`) rejects schemas that do
-not form a tree. Pinned by `recursive/v1/recursive.proto` (self, mutual and
-map-value cycles) and users/v1 `AddressDetails`.
+For those: (1) `_WithDefs` returns early with a `$ref` when the key exists,
+(2) otherwise it **reserves the key** (`defs[key] = nil`) before calling the
+unexported `_build(defs)` and stores the result, and (3) `JsonSchema()`
+builds the root a second time with the same `_build(defs)`: an independent
+tree whose self-references resolve into `$defs`. The body is identical in
+both modes; only the wrappers differ. Never share nodes between the root and
+a definition — `jsonschema-go`'s `Resolve` (called by `mcp.AddTool`) rejects
+schemas that do not form a tree. Pinned by `recursive/v1/recursive.proto`
+(self, mutual and map-value cycles), `legacy/v1` (a cycle through a proto2
+group), users/v1 `AddressDetails` (also referenced from admin.proto), and
+`xref/v1` (referenced from another package).
 
 ### Multi-File Packages
 
 Each proto file generates schemas only for messages **defined in that file**
 (filtered by `msg.Desc.ParentFile().Path()`); messages from sibling files are
 referenced by `_WithDefs` name. All files sharing a Go package must be
-compiled together.
+compiled together. A message a sibling file forced (a `generate = false`
+dependency) is generated in its defining file via the request-wide
+`collectTargets` set. Across packages nothing is forced: the dependency must
+be targeted in its own package.
 
 ### Changing Generation Behavior
 
@@ -579,6 +619,33 @@ Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
   every remaining Google type marshals like a user message, so the exception
   was removed (`google.protobuf.Value`'s flat shape was its only correct
   instance).
+- **`_build` is unexported and flagless** (2026-09-04): the cyclic builder
+  was briefly an exported `_build(defs, register bool)`; before the v0.3.0
+  tag it became `<message>_JsonSchema_build(defs)` — unexported because only
+  the message's own two functions call it, and flagless because `_WithDefs`
+  can reserve the key itself. Freezing the exported form would have made the
+  simpler shape a breaking change.
+- **One definition of "reference"** (2026-09-04): the analyzer and the
+  collector had drifted (ignored fields were edges in neither, but the
+  collector still forced their targets). `messageReferences` is the single
+  rule; a message reachable only through an ignored field generates nothing.
+- **Force crosses files, not packages** (2026-09-04): a `generate = false`
+  message referenced from a sibling file left an undefined `_WithDefs` call
+  while the docs promised every reference resolves. The request-wide
+  `collectTargets` pass fixes the same-run case; cross-package stays a
+  documented limitation (the plugin cannot emit into another package).
+- **proto2 groups are message fields** (2026-09-04): `GroupKind` fell
+  through to a bare `{type: object}` while protoc-gen-go marshals the nested
+  struct. `isMessageField` covers both kinds everywhere. Editions files are
+  not supported (no `FEATURE_SUPPORTS_EDITIONS`), so editions' delimited
+  encoding never reaches the plugin.
+- **Non-finite numeric options are errors** (2026-09-04): protoc accepts
+  `inf`/`nan` for double options; `%g` printed them as `+Inf`/`NaN`, which
+  is not Go. Rejected in `validateFieldOptions` before any other rule.
+- **File prefixes are sanitised** (2026-09-04): `my-d.proto` produced
+  `my-d_google_protobuf_…`, which protogen rejected as unparsable.
+  `prefixFromPath` mirrors protoc-gen-go's own sanitisation (non-identifier
+  runes → `_`, leading digit prefixed).
 - **A singular non-`optional` self-reference is unsatisfiable** (noted
   2026-09): proto3-style `required` makes such a schema reject every finite
   document. That is the fixture `users.v1.AddressDetails` by design; real
@@ -618,12 +685,14 @@ Behavior-preserving refactors must leave goldens byte-identical (no `-update`).
 | Schema model + identity       | `plugin/model.go`                                         |
 | Cycle analysis (inline/$defs) | `plugin/analyze.go` → `analyzeCycles()`                   |
 | Printer                       | `plugin/printer.go`                                       |
-| Message collection / force    | `plugin/collect.go` → `getMessagesWithForce()`            |
+| Message collection / force    | `plugin/collect.go` → `getMessagesWithForce()`, `collectTargets()` |
+| Reference walker              | `plugin/model.go` → `messageReferences()`                 |
 | Options extraction            | `plugin/options.go`                                       |
 | Model unit tests              | `plugin/model_test.go`, `plugin/analyze_test.go`          |
 | Test harness helpers          | `plugin_test/testutil.go`                                 |
 | Golden auto-discovery         | `plugin_test/integration_test.go` → `TestGoldenFile`      |
 | MCP smoke test                | `plugin_test/recursive_mcp_test.go`                       |
+| proto2 groups test            | `plugin_test/legacy_test.go`                              |
 | Test protos                   | `testdata/protos/<name>/v1/*.proto`                       |
 | Vendored third-party protos   | `third_party/protos/`                                     |
 | Golden files                  | `testdata/golden/*.golden`                                |
